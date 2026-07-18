@@ -1,0 +1,96 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #131313;
+  --color-ink-soft: #2a2a2a;
+  --color-canvas: #fbfaf8;
+  --color-panel: #f6f4f0;
+  --color-card: #ffffff;
+  --color-stone: #79746a;
+  --color-stone-light: #aaa599;
+  --color-line: #e9e5dc;
+  --color-gold: #a9793a;
+  --color-gold-light: #cf9e5c;
+
+  --font-serif: "Playfair Display", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+
+  --shadow-soft: 0 1px 2px rgba(19, 19, 19, 0.04), 0 8px 20px -10px rgba(19, 19, 19, 0.10);
+  --shadow-lift: 0 2px 4px rgba(19, 19, 19, 0.05), 0 16px 32px -14px rgba(19, 19, 19, 0.16);
+}
+
+body {
+  @apply bg-canvas text-ink font-sans antialiased;
+}
+
+h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
+
+::selection { background: rgba(169, 121, 58, 0.18); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(121, 116, 106, 0.25); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(121, 116, 106, 0.4); }
+
+/* ---------- Shared building blocks ---------- */
+.lx-card {
+  @apply bg-card border border-line/80 rounded-2xl shadow-soft;
+}
+
+.lx-input {
+  @apply w-full bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder:text-stone-light
+    focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/50 transition;
+}
+
+.lx-select {
+  @apply w-full bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink
+    focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/50 transition appearance-none;
+}
+
+.lx-btn-primary {
+  @apply inline-flex items-center justify-center gap-2 bg-ink text-white rounded-xl px-4 py-2.5 text-sm font-medium
+    hover:bg-ink-soft transition;
+}
+
+.lx-btn-gold {
+  @apply inline-flex items-center justify-center gap-2 bg-gold text-white rounded-xl px-4 py-2.5 text-sm font-semibold
+    hover:brightness-105 transition shadow-soft;
+}
+
+.lx-btn-ghost {
+  @apply inline-flex items-center justify-center gap-2 border border-line rounded-xl px-4 py-2.5 text-sm font-medium
+    text-ink hover:bg-panel transition bg-white;
+}
+
+.lx-icon-btn {
+  @apply w-9 h-9 rounded-xl border border-line bg-white flex items-center justify-center text-stone
+    hover:text-ink hover:border-ink/20 transition shrink-0;
+}
+
+.lx-eyebrow {
+  @apply text-[10.5px] font-semibold uppercase tracking-[0.14em] text-stone;
+}
+
+.lx-table th {
+  @apply text-left px-5 py-3 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-stone whitespace-nowrap;
+}
+
+.lx-table td {
+  @apply px-5 py-3.5 text-sm text-ink/90 whitespace-nowrap;
+}
+
+.lx-table tbody tr {
+  @apply border-t border-line/70 hover:bg-panel/60 transition;
+}
+
+/* ---------- Badges ---------- */
+.pill {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wide;
+}
+.pill-dot { @apply w-1.5 h-1.5 rounded-full; }
+
+.tier-guest { @apply bg-stone/10 text-stone; }
+.tier-returning { @apply bg-sky-50 text-sky-700; }
+.tier-resident { @apply bg-emerald-50 text-emerald-700; }
+.tier-exclusive { @apply bg-gold/10 text-gold; }
