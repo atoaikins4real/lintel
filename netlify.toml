@@ -1,7 +1,31 @@
 [build]
   base = "frontend"
-  command = "npm run build"
+  # Netlify only auto-installs deps for [build.base] ("frontend"). The
+  # function bundler still needs backend/node_modules to exist so it can
+  # trace and bundle the backend's own npm dependencies (express,
+  # serverless-http, @supabase/supabase-js, etc.) — so install those
+  # explicitly before building the site.
+  command = "cd ../backend && npm install && cd ../frontend && npm run build"
   publish = "dist"
+
+[functions]
+  # Paths in this file resolve relative to [build.base] ("frontend"), and
+  # our functions live at the repo root, not inside frontend/ — hence "../".
+  directory = "../netlify/functions"
+
+# Runs once a day (00:05 UTC) — generates this period's charges for active
+# long-stay leases and flags overdue pending payments as late. Replaces the
+# node-cron job used in local dev (see backend/src/cron.js).
+[functions."scheduled-billing"]
+  schedule = "5 0 * * *"
+
+# IMPORTANT: order matters — Netlify uses the first matching redirect. The
+# /api/* rule must come before the SPA catch-all, or API calls would be
+# redirected to index.html instead of reaching the function.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
 
 [[redirects]]
   from = "/*"

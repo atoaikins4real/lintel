@@ -7,9 +7,38 @@ incentives (Guest → Returning → Resident → Exclusive).
 
 ## Structure
 
-- `backend/` — Node/Express API backed by Supabase (Postgres)
+- `backend/` — Node/Express API backed by Supabase (Postgres). Runs as a
+  normal long-lived server locally (`src/index.js`) and as a Netlify
+  Function in production (`src/lambda.js` wraps the exact same Express app
+  from `src/app.js` via `serverless-http`) — same route/middleware code
+  either way, no duplicated logic.
 - `frontend/` — React (Vite) app, luxury-styled dashboard
+- `netlify/functions/` — thin entrypoints Netlify actually deploys; the
+  real logic lives under `backend/src/` so it's shared with local dev
 - `db/schema.sql` — full database schema, run once in your Supabase project
+
+## Deployment model
+
+Everything runs on **GitHub + Supabase + Netlify** — no separate backend
+host needed. Supabase is the database. Netlify serves the built frontend
+and runs the API as a serverless function (requests to `/api/*` are
+redirected to it — see `netlify.toml`). Billing automation
+(`generate-charges` / `flag-late-payments`) runs as a Netlify **Scheduled
+Function** (`netlify/functions/scheduled-billing.js`, cron declared in
+`netlify.toml`) instead of the `node-cron` job used locally.
+
+Trade-off worth knowing: every request cold-starts the whole Express app in
+a serverless function, and there's no in-memory state shared between
+requests — fine at this app's scale, but worth knowing if traffic grows.
+
+In Netlify's site settings, set these environment variables:
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET` — same values as
+  your local `backend/.env`
+- `DEV_MODE=false` — keep the dev-only `/api/auth/dev-login` route disabled
+  in production
+- `VITE_API_URL=/api` — relative path, since the API now lives on the same
+  domain as the frontend (this is **different** from the `http://localhost:4000/api`
+  used for local dev — see `frontend/.env.example`)
 
 ## First-time setup
 
@@ -34,9 +63,11 @@ Generate a `JWT_SECRET` with:
 node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-Set `ENABLE_CRON=true` in `.env` if you want the backend process to
-auto-generate charges and flag late payments once a day (00:05) on its own,
-in addition to the manual buttons on the Payments page.
+Set `ENABLE_CRON=true` in `.env` if you want your **local** backend process
+to auto-generate charges and flag late payments once a day (00:05) on its
+own, in addition to the manual buttons on the Payments page. In production
+this same job runs as a Netlify Scheduled Function instead — see
+"Deployment model" below.
 
 ### 3. Frontend
 
