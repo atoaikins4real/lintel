@@ -25,7 +25,14 @@ function errorHandler(err, req, res, next) {
   // message/stack-derived text back to whoever's hitting the API — it's
   // already logged above for us to debug from.
   const status = err.status || 500;
-  const isProd = process.env.NODE_ENV === 'production';
+  // Netlify sets CONTEXT ("production"/"deploy-preview"/"branch-deploy")
+  // automatically on every build AND function invocation — no site config
+  // needed. Deliberately NOT using NODE_ENV=production here: setting that
+  // as a site env var breaks `npm install` during the build (it makes npm
+  // skip devDependencies, which is where `vite` lives — silent "vite: not
+  // found" build failures). NODE_ENV is kept as a fallback for non-Netlify
+  // hosts where CONTEXT won't be set.
+  const isProd = process.env.CONTEXT === 'production' || process.env.NODE_ENV === 'production';
 
   if (isProd && !err.status) {
     return res.status(500).json({ error: 'Internal server error' });

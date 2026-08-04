@@ -42,9 +42,14 @@ In Netlify's site settings, set these environment variables:
 - `FRONTEND_URL` — your Netlify site's URL (e.g. `https://lintelapp.netlify.app`),
   used to restrict CORS. Defaults already include the current domain, but set
   this explicitly if you deploy to a different one.
-- `NODE_ENV=production` — Netlify sets this automatically, but if you're
-  running the backend elsewhere, set it so error responses don't leak
-  internal details to clients.
+- Do **not** set `NODE_ENV=production` as a Netlify site environment
+  variable — Netlify already provides `CONTEXT=production` automatically at
+  build and function runtime, which the backend checks for the same
+  purpose. Setting `NODE_ENV=production` yourself makes `npm install` skip
+  `devDependencies` *during the build step too* — which is where `vite`
+  lives — causing a silent "vite: not found" build failure. (If you run the
+  backend on a non-Netlify host, set `NODE_ENV=production` there instead —
+  `CONTEXT` won't exist outside Netlify.)
 
 ## Security posture
 
