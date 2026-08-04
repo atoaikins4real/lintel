@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const { supabase } = require('../config/supabase');
 const { signToken, requireAuth, requireRole } = require('../middleware/auth');
+const { authLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.get('/bootstrap-status', async (req, res, next) => {
 // While l_users is empty, this is open and always creates a manager
 // (first-run bootstrap). Once any user exists, creating more accounts
 // requires being logged in as a manager.
-router.post('/register', async (req, res, next) => {
+router.post('/register', authLimiter, async (req, res, next) => {
   try {
     const { email, password, name, role } = req.body;
     if (!email || !password || !name) {
@@ -43,6 +44,29 @@ router.post('/register', async (req, res, next) => {
     }
 
     return createUser({ email, password, name: name, role: 'manager' }, res, next);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/signup — public, self-service. This is how a prospect
+// creates their own account to try Lintel without asking anyone for
+// access. It ALWAYS creates a `viewer` (read-only) account — the role
+// field is never read from the request body, so there's no way to sign
+// yourself up as manager/finance this way. Same shared demo dataset
+// every other viewer sees; nothing a signup account does can change data,
+// so this is safe to leave open to the public internet.
+router.post('/signup', authLimiter, async (req, res, next) => {
+  try {
+    const { email, password, name } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'name, email and password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    return createUser({ email, password, name, role: 'viewer' }, res, next);
   } catch (err) {
     next(err);
   }
@@ -73,7 +97,7 @@ async function createUser({ email, password, name, role }, res, next) {
 }
 
 // POST /api/auth/login
-router.post('/login', async (req, res, next) => {
+router.post('/login', authLimiter, async (req, res, next) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'email and password are required' });

@@ -49,6 +49,7 @@ api.interceptors.response.use(
 export const getBootstrapStatus = () => api.get('/auth/bootstrap-status').then((r) => r.data);
 export const login = (payload) => api.post('/auth/login', payload).then((r) => r.data);
 export const register = (payload) => api.post('/auth/register', payload).then((r) => r.data);
+export const signup = (payload) => api.post('/auth/signup', payload).then((r) => r.data);
 export const getMe = () => api.get('/auth/me').then((r) => r.data);
 export const getStaffUsers = () => api.get('/auth/users').then((r) => r.data);
 export const devLogin = (role) => api.post('/auth/dev-login', { role }).then((r) => r.data);

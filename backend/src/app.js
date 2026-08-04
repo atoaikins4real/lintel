@@ -6,6 +6,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const morgan = require('morgan');
 
 const { notFound, errorHandler } = require('./middleware/errorHandler');
@@ -25,7 +26,27 @@ const reportsRouter = require('./routes/reports');
 
 const app = express();
 
-app.use(cors());
+// Origins allowed to call this API from a browser. Set FRONTEND_URL in
+// Netlify (comma-separated if more than one) — defaults cover local dev and
+// the current Netlify domain so nothing breaks if it's left unset.
+const allowedOrigins = (
+  process.env.FRONTEND_URL || 'http://localhost:5173,http://localhost:4173,https://lintelapp.netlify.app'
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+app.use(helmet());
+app.use(
+  cors({
+    origin(origin, callback) {
+      // No Origin header = same-origin, curl, or a Netlify Function calling
+      // itself — allow those. Otherwise it must be in the allowlist.
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error('Not allowed by CORS'));
+    },
+  })
+);
 app.use(express.json());
 app.use(morgan('dev'));
 

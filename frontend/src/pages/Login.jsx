@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBootstrapStatus, register } from '../api/client.js';
+import { getBootstrapStatus, register, signup } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { IconEye, IconEyeOff } from '../components/icons.jsx';
 
@@ -10,6 +10,7 @@ export default function Login() {
   const { login, setSession, user } = useAuth();
   const navigate = useNavigate();
   const [needsBootstrap, setNeedsBootstrap] = useState(null);
+  const [mode, setMode] = useState('login'); // 'login' | 'signup' (bootstrap overrides both)
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -42,6 +43,9 @@ export default function Login() {
     try {
       if (needsBootstrap) {
         const res = await register(form);
+        setSession(res.token, res.user, remember);
+      } else if (mode === 'signup') {
+        const res = await signup(form);
         setSession(res.token, res.user, remember);
       } else {
         await login(form.email, form.password, remember);
@@ -104,11 +108,13 @@ export default function Login() {
             ) : (
               <>
                 <h1 className="font-serif text-2xl text-ink mb-1">
-                  {needsBootstrap ? 'Create your manager account' : 'Welcome back'}
+                  {needsBootstrap ? 'Create your manager account' : mode === 'signup' ? 'Start your free trial' : 'Welcome back'}
                 </h1>
                 <p className="text-stone text-xs mb-6">
                   {needsBootstrap
                     ? 'No accounts exist yet — the first account created here becomes the portfolio manager.'
+                    : mode === 'signup'
+                    ? 'Get instant, read-only access to a live demo portfolio — explore every page, nothing you do can affect real data.'
                     : 'Sign in to your portfolio.'}
                 </p>
 
@@ -119,7 +125,7 @@ export default function Login() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {needsBootstrap && (
+                  {(needsBootstrap || mode === 'signup') && (
                     <div>
                       <label className="block text-xs font-medium text-ink mb-1.5">Full name</label>
                       <input
@@ -133,13 +139,15 @@ export default function Login() {
                   )}
 
                   <div>
-                    <label className="block text-xs font-medium text-ink mb-1.5">Email or username</label>
+                    <label className="block text-xs font-medium text-ink mb-1.5">
+                      {mode === 'signup' && !needsBootstrap ? 'Email' : 'Email or username'}
+                    </label>
                     <input
                       required
                       type="text"
                       autoCapitalize="none"
                       autoCorrect="off"
-                      placeholder="Enter your email or username"
+                      placeholder={mode === 'signup' && !needsBootstrap ? 'you@example.com' : 'Enter your email or username'}
                       className="lx-input"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -192,7 +200,13 @@ export default function Login() {
                   )}
 
                   <button disabled={saving} className="lx-btn-primary w-full">
-                    {saving ? 'Please wait…' : needsBootstrap ? 'Create account & sign in' : 'Login'}
+                    {saving
+                      ? 'Please wait…'
+                      : needsBootstrap
+                      ? 'Create account & sign in'
+                      : mode === 'signup'
+                      ? 'Create free trial account'
+                      : 'Login'}
                   </button>
                 </form>
 
@@ -223,7 +237,36 @@ export default function Login() {
 
                 {!needsBootstrap && (
                   <p className="text-center text-xs text-stone mt-5">
-                    Need an account? <span className="text-ink font-medium">Ask your manager to create one for you.</span>
+                    {mode === 'signup' ? (
+                      <>
+                        Have an account already?{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode('login');
+                            setError('');
+                          }}
+                          className="text-gold hover:underline font-medium"
+                        >
+                          Log in
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        New here?{' '}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMode('signup');
+                            setError('');
+                          }}
+                          className="text-gold hover:underline font-medium"
+                        >
+                          Create a free trial account
+                        </button>{' '}
+                        — or ask your manager for staff access.
+                      </>
+                    )}
                   </p>
                 )}
               </>

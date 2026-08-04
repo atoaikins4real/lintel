@@ -39,6 +39,45 @@ In Netlify's site settings, set these environment variables:
 - `VITE_API_URL=/api` — relative path, since the API now lives on the same
   domain as the frontend (this is **different** from the `http://localhost:4000/api`
   used for local dev — see `frontend/.env.example`)
+- `FRONTEND_URL` — your Netlify site's URL (e.g. `https://lintelapp.netlify.app`),
+  used to restrict CORS. Defaults already include the current domain, but set
+  this explicitly if you deploy to a different one.
+- `NODE_ENV=production` — Netlify sets this automatically, but if you're
+  running the backend elsewhere, set it so error responses don't leak
+  internal details to clients.
+
+## Security posture
+
+Built assuming strangers on the internet will hit this deployment (see
+"Letting people test it" below), so a few things are hardened beyond the
+bare minimum:
+- **Rate limiting** on `/api/auth/login`, `/api/auth/signup`, and
+  `/api/auth/register` (20 requests / 15 min per IP) to slow down brute-force
+  and mass account creation.
+- **Helmet** security headers on every response.
+- **CORS allowlist** — only origins in `FRONTEND_URL` (plus local dev ports)
+  can call the API from a browser.
+- **Sanitized error responses** — in production, unexpected server errors
+  return a generic message instead of the real exception text; full detail
+  still goes to the server logs.
+- **Signup can never grant itself a privileged role** — `/api/auth/signup`
+  hardcodes `role: 'viewer'` server-side and ignores anything else the
+  request sends.
+
+## Letting people test it
+
+Anyone can create their own account from the login screen ("Create a free
+trial account") without asking you first. Self-service signups always land
+as `viewer` — read-only everywhere, blocked server-side (not just hidden in
+the UI) from creating/editing/deleting anything. They see the same shared
+demo dataset as everyone else.
+
+This is intentionally simple: one shared dataset, no per-signup data
+isolation. Fine for a product demo; not fine once this holds a real client's
+actual books. A future multi-tenant redesign (each subscriber gets their own
+isolated data, admin-of-their-own-office) is a known next step, not yet
+built — see the manager-created-staff flow (`POST /api/auth/register`) for
+real business use in the meantime.
 
 ## First-time setup
 

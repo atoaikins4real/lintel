@@ -19,7 +19,18 @@ function errorHandler(err, req, res, next) {
   console.error('full object:', util.inspect(err, { depth: 6, showHidden: false }));
   console.error('-------------------------------------');
 
+  // err.status means the code deliberately threw a client-facing error
+  // (validation, 404, etc.) — safe to show its message. An error with no
+  // status is an unexpected exception; in production, don't echo its
+  // message/stack-derived text back to whoever's hitting the API — it's
+  // already logged above for us to debug from.
   const status = err.status || 500;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd && !err.status) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
   res.status(status).json({
     error: err.message || err.code || 'Internal server error',
     details: err.details || undefined,
