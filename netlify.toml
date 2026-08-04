@@ -1,11 +1,12 @@
 [build]
   base = "frontend"
-  # Netlify only auto-installs deps for [build.base] ("frontend"). The
-  # function bundler still needs backend/node_modules to exist so it can
-  # trace and bundle the backend's own npm dependencies (express,
-  # serverless-http, @supabase/supabase-js, etc.) — so install those
-  # explicitly before building the site.
-  command = "cd ../backend && npm install && cd ../frontend && npm run build"
+  # Don't rely on Netlify's automatic base-dir install — this site has it
+  # disabled somewhere in its settings (leftover from an earlier manual/
+  # drag-and-drop deploy), so `vite` was missing at build time. Install
+  # frontend's own deps explicitly too, plus backend's — the function
+  # bundler needs backend/node_modules to trace and bundle its dependencies
+  # (express, serverless-http, @supabase/supabase-js, etc.).
+  command = "npm install && cd ../backend && npm install && cd ../frontend && npm run build"
   publish = "dist"
 
 [functions]
