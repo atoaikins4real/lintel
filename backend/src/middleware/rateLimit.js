@@ -8,6 +8,18 @@ const authLimiter = rateLimit({
   max: 20, // 20 attempts per IP per window is plenty for a real person, not a script
   standardHeaders: true,
   legacyHeaders: false,
+  // Running behind serverless-http on Netlify Functions, req.ip isn't
+  // always populated the way express-rate-limit's default keyGenerator
+  // expects — it THROWS on an undefined IP rather than falling back
+  // (ERR_ERL_UNDEFINED_IP_ADDRESS), which would take down the whole login
+  // route. Fall back through the headers Netlify/most proxies actually
+  // set, and never throw — worst case is coarser rate limiting, not a
+  // crashed auth endpoint.
+  keyGenerator: (req) =>
+    req.headers['x-nf-client-connection-ip'] ||
+    req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+    req.ip ||
+    'unknown',
   message: { error: 'Too many attempts. Please wait a few minutes and try again.' },
 });
 
