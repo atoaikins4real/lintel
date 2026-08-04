@@ -1,12 +1,13 @@
 [build]
   base = "frontend"
-  # Don't rely on Netlify's automatic base-dir install — this site has it
-  # disabled somewhere in its settings (leftover from an earlier manual/
-  # drag-and-drop deploy), so `vite` was missing at build time. Install
-  # frontend's own deps explicitly too, plus backend's — the function
-  # bundler needs backend/node_modules to trace and bundle its dependencies
-  # (express, serverless-http, @supabase/supabase-js, etc.).
-  command = "npm install && cd ../backend && npm install && cd ../frontend && npm run build"
+  # Netlify's build cache has served a stale/partial node_modules here more
+  # than once (npm reported "up to date" against a half-restored cache,
+  # silently missing the `vite` bin symlink — "vite: not found" at build
+  # time despite the package being "installed"). rm -rf before each install
+  # so we never trust a cached node_modules; always a full, clean install.
+  # Also explicitly installs frontend's own deps (not just backend's) since
+  # this site's automatic base-dir install has been unreliable too.
+  command = "rm -rf node_modules && npm install && cd ../backend && rm -rf node_modules && npm install && cd ../frontend && npm run build"
   publish = "dist"
 
 [functions]
