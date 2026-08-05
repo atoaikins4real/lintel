@@ -160,6 +160,17 @@ screen).
   open faults — sorted worst-to-best so problem units surface first
 - **Reports page** — monthly revenue vs. costs (chart + table), expense
   breakdown by category, all-time portfolio totals, CSV export
+- **Public showcase & booking requests** — `/showcase` (whole portfolio)
+  and `/showcase/:id` (single unit) are public pages, no login required,
+  meant to be shared on social media: photo slideshow, vacant/occupied
+  badge, and a "Book now" request form. Submissions land as pending
+  entries on the authenticated **Booking Requests** page for a
+  manager/finance user to approve or decline — approving doesn't
+  auto-create a lease, that's still a deliberate manual step. Pick a
+  unit's showcase photos from the "Manage showcase gallery" button on its
+  detail page (separate from the single dashboard hero photo), and grab
+  its share link with "Copy public share link" on the same page, or the
+  portfolio-wide link via "View public showcase" on the Units page.
 
 ## Not yet built (next phases)
 

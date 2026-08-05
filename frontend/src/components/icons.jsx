@@ -45,6 +45,16 @@ export function IconBuilding(props) {
   );
 }
 
+export function IconCalendar(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+      <path d="M7.5 13.2h2M11.5 13.2h2M15.5 13.2h2M7.5 16.6h2M11.5 16.6h2" />
+    </svg>
+  );
+}
+
 export function IconFile(props) {
   return (
     <svg {...base} {...props}>

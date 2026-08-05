@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconLogout } from './icons.jsx';
+import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconCalendar, IconLogout } from './icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/leases', label: 'Leases', icon: IconFile },
   { to: '/payments', label: 'Payments', icon: IconWallet },
   { to: '/faults-renovations', label: 'Faults & Reno.', icon: IconWrench },
+  { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
   { to: '/reports', label: 'Reports', icon: IconChart },
 ];
 
@@ -19,6 +20,7 @@ const TITLES = {
   '/leases': 'Leases',
   '/payments': 'Payments',
   '/faults-renovations': 'Faults & Renovations',
+  '/booking-requests': 'Booking Requests',
   '/reports': 'Reports',
 };
 

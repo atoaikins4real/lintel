@@ -107,4 +107,17 @@ export const getMonthlyReport = (params) => api.get('/reports/monthly', { params
 export const getExpenseBreakdown = (params) => api.get('/reports/expense-breakdown', { params }).then((r) => r.data);
 export const getReportsSummary = () => api.get('/reports/summary').then((r) => r.data);
 
+// Public showcase — no auth required, used by the /showcase pages that get
+// shared on social media.
+export const getPublicUnits = () => api.get('/public/units').then((r) => r.data);
+export const getPublicUnit = (id) => api.get(`/public/units/${id}`).then((r) => r.data);
+export const createInquiry = (unitId, payload) =>
+  api.post(`/public/units/${unitId}/inquiries`, payload).then((r) => r.data);
+
+// Booking inquiries — staff-side review of "Book now" submissions from the
+// public showcase.
+export const getBookingInquiries = (params) => api.get('/booking-inquiries', { params }).then((r) => r.data);
+export const updateBookingInquiry = (id, status) =>
+  api.patch(`/booking-inquiries/${id}`, { status }).then((r) => r.data);
+
 export { TOKEN_KEY };

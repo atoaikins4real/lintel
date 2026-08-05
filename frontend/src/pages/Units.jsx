@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 const emptyForm = {
   unit_code: '', property_name: '', unit_type: 'apartment', class: 'standard',
   bedrooms: '', bathrooms: '', city: '', base_rate_short: '', base_rate_long: '', photo_url: '',
+  photo_urls: [],
 };
 
 const CLASS_STYLE = {
@@ -46,11 +47,16 @@ export default function Units() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <p className="text-stone text-sm">Apartments and housing, short-stay through multi-year.</p>
-        {canEdit && (
-          <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
-            {showForm ? 'Cancel' : '+ New Unit'}
-          </button>
-        )}
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <a href="/showcase" target="_blank" rel="noopener noreferrer" className="lx-btn-ghost text-sm flex-1 sm:flex-none text-center">
+            View public showcase ↗
+          </a>
+          {canEdit && (
+            <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary flex-1 sm:flex-none">
+              {showForm ? 'Cancel' : '+ New Unit'}
+            </button>
+          )}
+        </div>
       </div>
 
       {canEdit && showForm && (
@@ -129,6 +135,48 @@ export default function Units() {
               </button>
             )}
           </div>
+
+          <div className="sm:col-span-2 lg:col-span-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="lx-eyebrow">
+                Showcase gallery ({form.photo_urls.length} selected — shown as a slideshow on the public share link)
+              </span>
+              <button type="button" onClick={() => setShowAllPhotos((s) => !s)} className="text-xs text-gold hover:underline">
+                {showAllPhotos ? 'Show suggested only' : 'Show all photos'}
+              </button>
+            </div>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+              {(showAllPhotos ? STOCK_PHOTOS : suggestedPhotos(form.unit_type, form.class)).map((p) => {
+                const selected = form.photo_urls.includes(p.full);
+                return (
+                  <button
+                    type="button"
+                    key={p.id}
+                    title={`${p.label} — photo by ${p.credit} on Unsplash`}
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        photo_urls: selected
+                          ? form.photo_urls.filter((url) => url !== p.full)
+                          : [...form.photo_urls, p.full],
+                      })
+                    }
+                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition ${
+                      selected ? 'border-gold ring-2 ring-gold/30' : 'border-transparent hover:border-line'
+                    }`}
+                  >
+                    <img src={p.thumb} alt={p.label} className="w-full h-full object-cover" loading="lazy" />
+                    {selected && (
+                      <span className="absolute inset-0 bg-ink/20 flex items-center justify-center">
+                        <span className="w-5 h-5 rounded-full bg-gold text-white text-xs flex items-center justify-center">✓</span>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <button disabled={saving} className="lx-btn-gold sm:col-span-2 lg:col-span-3 justify-self-start w-full sm:w-auto">
             {saving ? 'Saving…' : 'Create Unit'}
           </button>

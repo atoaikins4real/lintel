@@ -13,6 +13,7 @@ const { notFound, errorHandler } = require('./middleware/errorHandler');
 const { requireAuth } = require('./middleware/auth');
 
 const authRouter = require('./routes/auth');
+const publicRouter = require('./routes/public');
 const tenantsRouter = require('./routes/tenants');
 const unitsRouter = require('./routes/units');
 const leasesRouter = require('./routes/leases');
@@ -23,6 +24,7 @@ const faultsRouter = require('./routes/faults');
 const performanceRouter = require('./routes/performance');
 const billingRouter = require('./routes/billing');
 const reportsRouter = require('./routes/reports');
+const bookingInquiriesRouter = require('./routes/bookingInquiries');
 
 const app = express();
 
@@ -56,9 +58,10 @@ app.get('/', (req, res) => {
 
 app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
 
-// Auth routes are public (login/register/bootstrap-status); everything
-// else under /api requires a valid session.
+// Auth routes and the public showcase/inquiry routes are the only ones
+// reachable with no session — everything else under /api requires one.
 app.use('/api/auth', authRouter);
+app.use('/api/public', publicRouter);
 app.use('/api', requireAuth);
 
 app.use('/api/tenants', tenantsRouter);
@@ -71,6 +74,7 @@ app.use('/api/faults', faultsRouter);
 app.use('/api/performance', performanceRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/booking-inquiries', bookingInquiriesRouter);
 
 app.use(notFound);
 app.use(errorHandler);

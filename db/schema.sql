@@ -55,6 +55,9 @@ begin
   if not exists (select 1 from pg_type where typname = 'l_user_role') then
     create type l_user_role as enum ('manager', 'finance', 'viewer');
   end if;
+  if not exists (select 1 from pg_type where typname = 'l_inquiry_status') then
+    create type l_inquiry_status as enum ('pending', 'approved', 'declined');
+  end if;
 end
 $$;
 
@@ -138,6 +141,7 @@ create table if not exists l_units (
     base_rate_short numeric(12,2),             -- nightly rate for short-stay
     base_rate_long numeric(12,2),               -- monthly rate for long-stay
     photo_url text,                             -- optional hero image for the dashboard
+    photo_urls text[] not null default '{}',    -- gallery for the public showcase slideshow
     status l_unit_status not null default 'vacant',
     notes text,
     created_at timestamptz not null default now(),
@@ -146,6 +150,30 @@ create table if not exists l_units (
 
 create index if not exists idx_l_units_status on l_units(status);
 create index if not exists idx_l_units_class on l_units(class);
+
+-- ------------------------------------------------------------
+-- L_BOOKING_INQUIRIES
+-- Submitted from the public showcase pages (/showcase, /showcase/:id) —
+-- no login required to create one. Staff review and approve/decline from
+-- the authenticated Booking Requests page; nothing here touches leases
+-- automatically, a manager creates the real lease once they've confirmed
+-- the booking off-platform.
+-- ------------------------------------------------------------
+create table if not exists l_booking_inquiries (
+    id uuid primary key default gen_random_uuid(),
+    unit_id uuid not null references l_units(id) on delete cascade,
+    name text not null,
+    email text,
+    phone text,
+    start_date date,
+    end_date date,
+    message text,
+    status l_inquiry_status not null default 'pending',
+    created_at timestamptz not null default now()
+);
+
+create index if not exists idx_l_booking_inquiries_unit on l_booking_inquiries(unit_id);
+create index if not exists idx_l_booking_inquiries_status on l_booking_inquiries(status);
 
 -- ------------------------------------------------------------
 -- L_LEASES
@@ -303,6 +331,7 @@ alter table l_expenses enable row level security;
 alter table l_renovations enable row level security;
 alter table l_faults enable row level security;
 alter table l_users enable row level security;
+alter table l_booking_inquiries enable row level security;
 
 -- ------------------------------------------------------------
 -- Table-level grants for service_role. RLS bypass (service_role
@@ -324,5 +353,6 @@ grant select, insert, update, delete on
   l_expenses,
   l_renovations,
   l_faults,
-  l_users
+  l_users,
+  l_booking_inquiries
 to service_role;
