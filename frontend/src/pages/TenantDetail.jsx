@@ -4,9 +4,11 @@ import { getTenant, recomputeTenant } from '../api/client.js';
 import TierBadge from '../components/TierBadge.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function TenantDetail() {
   const { canEdit } = useAuth();
+  const { money } = useSettings();
   const { id } = useParams();
   const [tenant, setTenant] = useState(null);
   const [recomputing, setRecomputing] = useState(false);
@@ -48,7 +50,7 @@ export default function TenantDetail() {
         <StatCard label="Score" value={tenant.score} />
         <StatCard label="Total stays" value={tenant.total_stays} />
         <StatCard label="On-time payments" value={`${tenant.on_time_payment_rate}%`} />
-        <StatCard label="Total paid" value={`GHS ${Number(tenant.total_paid).toLocaleString()}`} />
+        <StatCard label="Total paid" value={money(tenant.total_paid)} />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
@@ -83,8 +85,8 @@ export default function TenantDetail() {
             <ul className="space-y-2.5 text-sm">
               {tenant.leases.map((l) => (
                 <li key={l.id} className="border-b border-line/70 pb-2.5">
-                  {l.stay_type.replace('_', ' ')} &middot; {l.start_date} &rarr; {l.end_date || 'ongoing'} &middot; GHS{' '}
-                  {l.agreed_rate}/{l.rate_period} &middot; {l.status}
+                  {l.stay_type.replace('_', ' ')} &middot; {l.start_date} &rarr; {l.end_date || 'ongoing'} &middot;{' '}
+                  {money(l.agreed_rate)}/{l.rate_period} &middot; {l.status}
                 </li>
               ))}
             </ul>
@@ -98,7 +100,7 @@ export default function TenantDetail() {
             <ul className="space-y-2.5 text-sm">
               {tenant.payments.map((p) => (
                 <li key={p.id} className="border-b border-line/70 pb-2.5">
-                  {p.payment_date || p.due_date} &middot; GHS {p.amount} &middot; {p.status}
+                  {p.payment_date || p.due_date} &middot; {money(p.amount, p.currency)} &middot; {p.status}
                 </li>
               ))}
             </ul>

@@ -58,6 +58,12 @@ begin
   if not exists (select 1 from pg_type where typname = 'l_inquiry_status') then
     create type l_inquiry_status as enum ('pending', 'approved', 'declined');
   end if;
+  if not exists (select 1 from pg_type where typname = 'l_payout_method') then
+    create type l_payout_method as enum ('bank', 'mobile_money');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_subscription_status') then
+    create type l_subscription_status as enum ('trial', 'active', 'past_due', 'cancelled');
+  end if;
 end
 $$;
 
@@ -174,6 +180,45 @@ create table if not exists l_booking_inquiries (
 
 create index if not exists idx_l_booking_inquiries_unit on l_booking_inquiries(unit_id);
 create index if not exists idx_l_booking_inquiries_status on l_booking_inquiries(status);
+
+-- ------------------------------------------------------------
+-- L_SETTINGS
+-- Account-wide configuration: display currency, where rent payouts
+-- should be sent, and this account's Lintel subscription.
+--
+-- Single row by construction — `singleton` is unique AND constrained to
+-- true, so a second row is impossible. When the multi-tenant subscriber
+-- redesign lands this becomes one row per organisation keyed by org_id,
+-- and the singleton guard goes away.
+-- ------------------------------------------------------------
+create table if not exists l_settings (
+    id uuid primary key default gen_random_uuid(),
+    singleton boolean not null default true unique check (singleton),
+
+    -- Default currency for NEW payments. Each payment stores its own
+    -- currency (l_payments.currency), so historical amounts are never
+    -- retroactively relabelled when this changes.
+    default_currency text not null default 'GHS',
+
+    payout_method l_payout_method,
+    payout_bank_name text,
+    payout_account_name text,
+    payout_account_number text,
+    payout_branch text,
+    payout_mobile_provider text,
+    payout_mobile_number text,
+
+    subscription_plan text not null default 'trial',
+    subscription_status l_subscription_status not null default 'trial',
+    subscription_started_on date,
+    subscription_renews_on date,
+    subscription_amount numeric(12,2),
+    subscription_currency text not null default 'GHS',
+
+    updated_at timestamptz not null default now()
+);
+
+insert into l_settings (singleton) values (true) on conflict (singleton) do nothing;
 
 -- ------------------------------------------------------------
 -- L_LEASES
@@ -332,6 +377,7 @@ alter table l_renovations enable row level security;
 alter table l_faults enable row level security;
 alter table l_users enable row level security;
 alter table l_booking_inquiries enable row level security;
+alter table l_settings enable row level security;
 
 -- ------------------------------------------------------------
 -- Table-level grants for service_role. RLS bypass (service_role
@@ -354,5 +400,24 @@ grant select, insert, update, delete on
   l_renovations,
   l_faults,
   l_users,
-  l_booking_inquiries
+  l_booking_inquiries,
+  l_settings
 to service_role;
+
+drop trigger if exists trg_l_settings_updated_at on l_settings;
+create trigger trg_l_settings_updated_at before update on l_settings
+  for each row execute function l_set_updated_at();
+
+-- ------------------------------------------------------------
+-- Storage bucket for photos uploaded from a device (see
+-- backend/src/routes/uploads.js). Public-read so the showcase pages can
+-- display them without signed URLs; writes only ever happen server-side
+-- with the service_role key.
+-- ------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('lintel-photos', 'lintel-photos', true, 5242880,
+        array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 5242880,
+      allowed_mime_types = array['image/jpeg','image/png','image/webp'];

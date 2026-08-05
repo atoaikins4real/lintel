@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getUnitsPerformance, getUpgradeEligible, getTenants, getUnits } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 import { IconBuilding, IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench } from '../components/icons.jsx';
 
 const TABS = [
@@ -11,6 +12,7 @@ const TABS = [
 ];
 
 export default function Dashboard() {
+  const { money } = useSettings();
   const [performance, setPerformance] = useState([]);
   const [units, setUnits] = useState([]);
   const [eligible, setEligible] = useState([]);
@@ -108,7 +110,7 @@ export default function Dashboard() {
             <div className="flex items-end justify-between gap-4 flex-wrap">
               <div className="flex flex-wrap gap-2.5">
                 <HeroChip label="Occupancy" value={`${bestPerf ? bestPerf.occupancy_rate : 0}%`} />
-                <HeroChip label="Net Yield" value={`GHS ${bestPerf ? Number(bestPerf.net_yield).toLocaleString() : 0}`} />
+                <HeroChip label="Net Yield" value={money(bestPerf ? bestPerf.net_yield : 0)} />
                 <HeroChip label="Open Faults" value={bestPerf ? bestPerf.open_faults : 0} />
                 <HeroChip label="Class" value={featureUnit.class} capitalize />
               </div>
@@ -180,7 +182,7 @@ export default function Dashboard() {
             <div className="lx-eyebrow mb-3">Revenue vs Costs</div>
             <BarRow icon={IconWallet} label="Revenue" value={totalRevenue} max={Math.max(totalRevenue, totalCosts, 1)} color="bg-emerald-500" />
             <BarRow label="Costs" value={totalCosts} max={Math.max(totalRevenue, totalCosts, 1)} color="bg-rose-400" />
-            <div className="text-sm font-semibold text-ink mt-2">Net GHS {netYield.toLocaleString()}</div>
+            <div className="text-sm font-semibold text-ink mt-2">Net {money(netYield)}</div>
           </div>
 
           <div className="lx-card p-5">
@@ -232,10 +234,10 @@ export default function Dashboard() {
                       <div className="text-xs text-stone">{p.property_name}</div>
                     </td>
                     <td className="capitalize">{p.class}</td>
-                    <td className="text-right">GHS {Number(p.revenue).toLocaleString()}</td>
-                    <td className="text-right">GHS {Number(p.total_costs).toLocaleString()}</td>
+                    <td className="text-right">{money(p.revenue)}</td>
+                    <td className="text-right">{money(p.total_costs)}</td>
                     <td className={`text-right font-medium ${p.net_yield < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                      GHS {Number(p.net_yield).toLocaleString()}
+                      {money(p.net_yield)}
                     </td>
                     <td>
                       <div className="flex items-center gap-2 w-28">
@@ -330,7 +332,7 @@ function BarRow({ icon: Icon, label, value, max, color }) {
     <div className="mb-2.5">
       <div className="flex items-center justify-between text-xs text-stone mb-1">
         <span className="flex items-center gap-1.5">{Icon && <Icon width={12} height={12} />}{label}</span>
-        <span className="text-ink font-medium">GHS {value.toLocaleString()}</span>
+        <span className="text-ink font-medium">{money(value)}</span>
       </div>
       <div className="h-1.5 rounded-full bg-line overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />

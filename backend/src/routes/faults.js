@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 
 const { gateMutations } = require('../middleware/auth');
+const { blank, toNumber, clean } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -33,12 +34,12 @@ router.post('/', async (req, res, next) => {
       .from('l_faults')
       .insert({
         unit_id,
-        tenant_id: tenant_id || null,
+        tenant_id: blank(tenant_id),
         description,
         severity: severity || 'low',
         caused_by: caused_by || 'unknown',
-        reported_date: reported_date || new Date().toISOString().slice(0, 10),
-        cost,
+        reported_date: blank(reported_date) || new Date().toISOString().slice(0, 10),
+        cost: toNumber(cost),
       })
       .select()
       .single();
@@ -53,7 +54,12 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from('l_faults').update(req.body).eq('id', id).select().single();
+    const updates = clean(req.body, {
+      numbers: ['cost'],
+      dates: ['reported_date', 'resolved_date'],
+      texts: ['tenant_id', 'description'],
+    });
+    const { data, error } = await supabase.from('l_faults').update(updates).eq('id', id).select().single();
     if (error) throw error;
     res.json(data);
   } catch (err) {

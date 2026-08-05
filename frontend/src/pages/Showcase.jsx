@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getPublicUnits } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Slideshow from '../components/Slideshow.jsx';
+import { formatMoney } from '../utils/currency.js';
 
 const CLASS_STYLE = {
   standard: 'bg-stone/10 text-stone',
@@ -14,11 +15,15 @@ const CLASS_STYLE = {
 // media. Only ever calls /api/public/* endpoints.
 export default function Showcase() {
   const [units, setUnits] = useState(null);
+  const [currency, setCurrency] = useState('GHS');
   const [error, setError] = useState('');
 
   useEffect(() => {
     getPublicUnits()
-      .then(setUnits)
+      .then((res) => {
+        setUnits(res.units);
+        setCurrency(res.currency || 'GHS');
+      })
       .catch(() => setError("Couldn't load listings right now — please try again shortly."));
   }, []);
 
@@ -67,9 +72,9 @@ export default function Showcase() {
                     {u.city ? ` · ${u.city}` : ''} · {u.bedrooms ?? '–'} bd / {u.bathrooms ?? '–'} ba
                   </div>
                   <div className="text-xs text-stone mt-3 pt-3 border-t border-line/70">
-                    {u.base_rate_short ? `GHS ${u.base_rate_short}/night` : ''}
+                    {u.base_rate_short ? `${formatMoney(u.base_rate_short, currency)}/night` : ''}
                     {u.base_rate_short && u.base_rate_long ? ' · ' : ''}
-                    {u.base_rate_long ? `GHS ${u.base_rate_long}/mo` : ''}
+                    {u.base_rate_long ? `${formatMoney(u.base_rate_long, currency)}/mo` : ''}
                   </div>
                 </div>
               </Link>

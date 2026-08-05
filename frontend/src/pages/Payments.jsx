@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
-import { getPayments, createPayment, getLeases, getBillingSummary, generateCharges, flagLatePayments } from '../api/client.js';
+import { getPayments, createPayment, getLeases, getBillingSummary, generateCharges, flagLatePayments, readApiError } from '../api/client.js';
+import { CURRENCY_LABELS } from '../utils/currency.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 
-const emptyForm = { lease_id: '', amount: '', due_date: '', payment_date: '', status: 'paid', method: 'mobile_money' };
+const emptyForm = {
+  lease_id: '', amount: '', currency: '', due_date: '', payment_date: '', status: 'paid', method: 'mobile_money',
+};
 
 export default function Payments() {
   const { canEdit } = useAuth();
+  const { money, currency } = useSettings();
   const [payments, setPayments] = useState([]);
   const [leases, setLeases] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -15,6 +20,7 @@ export default function Payments() {
   const [summary, setSummary] = useState(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingMsg, setBillingMsg] = useState('');
+  const [error, setError] = useState('');
 
   const load = () => getPayments().then(setPayments);
   const loadSummary = () => getBillingSummary().then(setSummary);
@@ -27,13 +33,18 @@ export default function Payments() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
-      await createPayment(form);
+      // Blank currency means "use the account default" — the backend
+      // resolves it from Settings.
+      await createPayment({ ...form, currency: form.currency || currency });
       setForm(emptyForm);
       setShowForm(false);
       load();
       loadSummary();
+    } catch (err) {
+      setError(readApiError(err, 'log that payment'));
     } finally {
       setSaving(false);
     }
@@ -68,13 +79,17 @@ export default function Payments() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">Every cedi collected, tied to a lease, tenant, and unit.</p>
+        <p className="text-stone text-sm">Every payment collected, tied to a lease, tenant, and unit.</p>
         {canEdit && (
           <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
             {showForm ? 'Cancel' : '+ Log Payment'}
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      )}
 
       {canEdit && (
         <div className="lx-card p-5 sm:p-6 mb-6">
@@ -85,7 +100,7 @@ export default function Payments() {
                 <div className="text-lg font-sans font-bold text-ink">
                   {summary ? summary.pending_count : '—'}
                   <span className="text-xs text-stone font-normal ml-1.5">
-                    {summary ? `GHS ${summary.pending_total.toLocaleString()}` : ''}
+                    {summary ? money(summary.pending_total) : ''}
                   </span>
                 </div>
               </div>
@@ -94,7 +109,7 @@ export default function Payments() {
                 <div className="text-lg font-sans font-bold text-rose-600">
                   {summary ? summary.late_count : '—'}
                   <span className="text-xs text-stone font-normal ml-1.5">
-                    {summary ? `GHS ${summary.late_total.toLocaleString()}` : ''}
+                    {summary ? money(summary.late_total) : ''}
                   </span>
                 </div>
               </div>
@@ -123,12 +138,21 @@ export default function Payments() {
             <option value="">Select lease…</option>
             {leases.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.stay_type} · {l.start_date} → {l.end_date || 'ongoing'} · GHS {l.agreed_rate}/{l.rate_period}
+                {l.stay_type} · {l.start_date} → {l.end_date || 'ongoing'} · {money(l.agreed_rate)}/{l.rate_period}
               </option>
             ))}
           </select>
           <input type="number" required placeholder="Amount" className="lx-input"
             value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <select className="lx-select" value={form.currency}
+            onChange={(e) => setForm({ ...form, currency: e.target.value })}>
+            <option value="">{currency} (account default)</option>
+            {Object.keys(CURRENCY_LABELS)
+              .filter((c) => c !== currency)
+              .map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+          </select>
           <select className="lx-select" value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value })}>
             <option value="paid">Paid</option>
@@ -169,7 +193,7 @@ export default function Payments() {
               {payments.map((p) => (
                 <tr key={p.id}>
                   <td>{p.payment_date || p.due_date}</td>
-                  <td className="text-right">GHS {p.amount}</td>
+                  <td className="text-right">{money(p.amount, p.currency)}</td>
                   <td><StatusBadge status={p.status} /></td>
                   <td className="capitalize">{p.method?.replace('_', ' ') || '—'}</td>
                 </tr>

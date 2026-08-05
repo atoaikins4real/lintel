@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getTenants, createTenant } from '../api/client.js';
+import { getTenants, createTenant, readApiError } from '../api/client.js';
 import TierBadge from '../components/TierBadge.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -13,8 +13,12 @@ export default function Tenants() {
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const load = () => getTenants(search ? { search } : undefined).then(setTenants);
+  const load = () =>
+    getTenants(search ? { search } : undefined)
+      .then(setTenants)
+      .catch((err) => setError(readApiError(err, 'load tenants')));
 
   useEffect(() => {
     load();
@@ -23,12 +27,17 @@ export default function Tenants() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
       await createTenant(form);
       setForm(emptyForm);
       setShowForm(false);
       load();
+    } catch (err) {
+      // Previously this had no catch at all, so a failed create looked
+      // like nothing happened — no error, no feedback.
+      setError(readApiError(err, 'create tenant'));
     } finally {
       setSaving(false);
     }
@@ -44,6 +53,10 @@ export default function Tenants() {
           </button>
         )}
       </div>
+
+      {error && (
+        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      )}
 
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">

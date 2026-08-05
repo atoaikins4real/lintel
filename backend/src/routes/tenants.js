@@ -4,6 +4,9 @@ const { generateLintelId } = require('../utils/lintelId');
 const { computeScore, computeTier, isUpgradeEligible } = require('../utils/tenantScore');
 
 const { gateMutations } = require('../middleware/auth');
+// Blank form inputs arrive as '' — store them as NULL instead, so "no
+// email on file" is unambiguous. See utils/sanitize.js.
+const { blank: str } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -92,14 +95,14 @@ router.post('/', async (req, res, next) => {
       .from('l_tenants')
       .insert({
         lintel_id,
-        first_name,
-        last_name,
-        email,
-        phone,
-        id_document_type,
-        id_document_number,
-        nationality,
-        notes,
+        first_name: String(first_name).trim(),
+        last_name: String(last_name).trim(),
+        email: str(email),
+        phone: str(phone),
+        id_document_type: str(id_document_type),
+        id_document_number: str(id_document_number),
+        nationality: str(nationality),
+        notes: str(notes),
       })
       .select()
       .single();

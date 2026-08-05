@@ -2,6 +2,9 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 
 const { gateMutations } = require('../middleware/auth');
+// See utils/sanitize.js — '' from an untouched form field is rejected by
+// Postgres for integer/numeric columns and fails the whole insert.
+const { blank: str, toNumber: num } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -49,6 +52,7 @@ router.post('/', async (req, res, next) => {
       status,
       notes,
       photo_url,
+      photo_urls,
     } = req.body;
 
     if (!unit_code || !property_name || !unit_type) {
@@ -62,15 +66,18 @@ router.post('/', async (req, res, next) => {
         property_name,
         unit_type,
         class: unitClass || 'standard',
-        bedrooms,
-        bathrooms,
-        address,
-        city,
-        base_rate_short,
-        base_rate_long,
+        bedrooms: num(bedrooms),
+        bathrooms: num(bathrooms),
+        address: str(address),
+        city: str(city),
+        base_rate_short: num(base_rate_short),
+        base_rate_long: num(base_rate_long),
         status: status || 'vacant',
-        notes,
-        photo_url: photo_url || null,
+        notes: str(notes),
+        photo_url: str(photo_url),
+        // Was previously dropped on create entirely — gallery photos picked
+        // on the new-unit form silently never saved.
+        photo_urls: Array.isArray(photo_urls) ? photo_urls : [],
       })
       .select()
       .single();
@@ -87,6 +94,15 @@ router.put('/:id', async (req, res, next) => {
     const { id } = req.params;
     const updates = { ...req.body };
     if (updates.class === undefined && req.body.unitClass) updates.class = req.body.unitClass;
+    delete updates.unitClass;
+
+    // Same '' -> null coercion as on create (see num/str above).
+    for (const field of ['bedrooms', 'bathrooms', 'base_rate_short', 'base_rate_long']) {
+      if (field in updates) updates[field] = num(updates[field]);
+    }
+    for (const field of ['address', 'city', 'notes', 'photo_url']) {
+      if (field in updates) updates[field] = str(updates[field]);
+    }
 
     const { data, error } = await supabase.from('l_units').update(updates).eq('id', id).select().single();
     if (error) throw error;

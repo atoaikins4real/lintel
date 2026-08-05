@@ -172,6 +172,35 @@ screen).
   its share link with "Copy public share link" on the same page, or the
   portfolio-wide link via "View public showcase" on the Units page.
 
+- **Photo uploads from your device** — alongside the royalty-free stock
+  library, you can upload your own photos to a unit's showcase gallery.
+  Images are resized and compressed in the browser first
+  (`frontend/src/utils/image.js`) and stored in the public Supabase
+  Storage bucket `lintel-photos`.
+- **Staff & access** — managers can create accounts for colleagues and
+  change anyone's role between manager / finance / viewer. This is how a
+  self-service signup (which always arrives as a read-only viewer) gets
+  promoted. A manager can't demote themselves if they're the last one.
+- **Settings** — account default currency (GHS, NGN, USD, EUR, GBP, ZAR,
+  KES), rent payout destination (bank account or mobile money), and this
+  account's Lintel subscription details.
+
+### Currency
+
+Each payment stores its own currency, so changing the account default
+never retroactively relabels historical amounts. New payments default to
+the account currency and can be overridden per payment on the Payments
+form. All display formatting goes through `frontend/src/utils/currency.js`.
+
+### A note on money movement
+
+Lintel records payments and payout preferences — it does **not** charge
+cards, collect mobile money, or transfer funds. Doing that requires a
+merchant account with a payment provider (Paystack and Flutterwave are the
+usual choices in Ghana) and their API keys. The subscription section is
+likewise record-keeping only: nothing in the app is restricted based on
+subscription status.
+
 ## Not yet built (next phases)
 
 - Fine-grained accounting (VAT, withholding, formal statements/exports
@@ -179,5 +208,10 @@ screen).
 - Short-stay OTA sync (Airbnb/Booking.com) and dynamic pricing
 - Automated late-payment reminders (email/SMS) — late payments are
   currently flagged, not yet messaged
-- Staff management UI (creating/editing accounts is API-only for now —
-  `POST /api/auth/register` as a manager)
+- Actually processing payments (see "A note on money movement" above) —
+  needs a payment provider integration and merchant account
+- Password reset / invitation emails — staff accounts are created with a
+  temporary password you share with the person directly
+- Real multi-tenancy: today all users share one data pool and one
+  `l_settings` row. A subscriber signing up and onboarding their own
+  office staff into an isolated workspace is the next significant step.

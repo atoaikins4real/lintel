@@ -45,6 +45,25 @@ api.interceptors.response.use(
   }
 );
 
+// Turns an axios failure into something a person can actually act on.
+// Distinguishes "the server said no and why" from "the server was never
+// reached" and from "you're not allowed" — a bare "something went wrong"
+// hides all three.
+export function readApiError(err, action = 'complete that') {
+  const status = err?.response?.status;
+  const serverMessage = err?.response?.data?.error;
+
+  if (!err?.response) {
+    return `Couldn't reach the server to ${action}. Check your connection and try again.`;
+  }
+  if (status === 401) return 'Your session expired — please sign in again.';
+  if (status === 403) {
+    return serverMessage || `You don't have permission to ${action}. Ask a manager for access.`;
+  }
+  if (status === 429) return serverMessage || 'Too many attempts — please wait a moment and try again.';
+  return serverMessage || `Couldn't ${action} (error ${status}). Please try again.`;
+}
+
 // Auth
 export const getBootstrapStatus = () => api.get('/auth/bootstrap-status').then((r) => r.data);
 export const login = (payload) => api.post('/auth/login', payload).then((r) => r.data);
@@ -52,6 +71,7 @@ export const register = (payload) => api.post('/auth/register', payload).then((r
 export const signup = (payload) => api.post('/auth/signup', payload).then((r) => r.data);
 export const getMe = () => api.get('/auth/me').then((r) => r.data);
 export const getStaffUsers = () => api.get('/auth/users').then((r) => r.data);
+export const updateUserRole = (id, role) => api.patch(`/auth/users/${id}`, { role }).then((r) => r.data);
 export const devLogin = (role) => api.post('/auth/dev-login', { role }).then((r) => r.data);
 
 // Tenants
@@ -119,5 +139,12 @@ export const createInquiry = (unitId, payload) =>
 export const getBookingInquiries = (params) => api.get('/booking-inquiries', { params }).then((r) => r.data);
 export const updateBookingInquiry = (id, status) =>
   api.patch(`/booking-inquiries/${id}`, { status }).then((r) => r.data);
+
+// Uploads
+export const uploadPhoto = (payload) => api.post('/uploads/photo', payload).then((r) => r.data);
+
+// Settings — default currency, payout destination, subscription
+export const getSettings = () => api.get('/settings').then((r) => r.data);
+export const updateSettings = (payload) => api.put('/settings', payload).then((r) => r.data);
 
 export { TOKEN_KEY };

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getUnits, createUnit } from '../api/client.js';
+import { getUnits, createUnit, readApiError } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
+import PhotoUploader from '../components/PhotoUploader.jsx';
 import { STOCK_PHOTOS, suggestedPhotos } from '../data/stockPhotos.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyForm = {
   unit_code: '', property_name: '', unit_type: 'apartment', class: 'standard',
@@ -19,25 +21,35 @@ const CLASS_STYLE = {
 
 export default function Units() {
   const { canEdit } = useAuth();
+  const { money } = useSettings();
   const [units, setUnits] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [error, setError] = useState('');
 
-  const load = () => getUnits().then(setUnits);
+  const load = () =>
+    getUnits()
+      .then(setUnits)
+      .catch((err) => setError(readApiError(err, 'load units')));
 
   useEffect(() => { load(); }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
       await createUnit(form);
       setForm(emptyForm);
       setShowForm(false);
       load();
+    } catch (err) {
+      // Previously this had no catch at all, so a failed create looked
+      // like nothing happened — no error, no feedback.
+      setError(readApiError(err, 'create unit'));
     } finally {
       setSaving(false);
     }
@@ -58,6 +70,10 @@ export default function Units() {
           )}
         </div>
       </div>
+
+      {error && (
+        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      )}
 
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -137,14 +153,41 @@ export default function Units() {
           </div>
 
           <div className="sm:col-span-2 lg:col-span-3">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-2 gap-3 flex-wrap">
               <span className="lx-eyebrow">
                 Showcase gallery ({form.photo_urls.length} selected — shown as a slideshow on the public share link)
               </span>
-              <button type="button" onClick={() => setShowAllPhotos((s) => !s)} className="text-xs text-gold hover:underline">
-                {showAllPhotos ? 'Show suggested only' : 'Show all photos'}
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <PhotoUploader
+                  onUploaded={(urls) => setForm((f) => ({ ...f, photo_urls: [...f.photo_urls, ...urls] }))}
+                />
+                <button type="button" onClick={() => setShowAllPhotos((s) => !s)} className="text-xs text-gold hover:underline">
+                  {showAllPhotos ? 'Show suggested only' : 'Show all photos'}
+                </button>
+              </div>
             </div>
+
+            {/* Photos uploaded from the device, shown ahead of the stock library */}
+            {form.photo_urls.filter((u) => !STOCK_PHOTOS.some((p) => p.full === u)).length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-2">
+                {form.photo_urls
+                  .filter((u) => !STOCK_PHOTOS.some((p) => p.full === u))
+                  .map((url) => (
+                    <div key={url} className="relative aspect-square rounded-lg overflow-hidden border-2 border-gold ring-2 ring-gold/30">
+                      <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      <button
+                        type="button"
+                        title="Remove"
+                        onClick={() => setForm((f) => ({ ...f, photo_urls: f.photo_urls.filter((u) => u !== url) }))}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-ink/70 text-white text-xs flex items-center justify-center"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
               {(showAllPhotos ? STOCK_PHOTOS : suggestedPhotos(form.unit_type, form.class)).map((p) => {
                 const selected = form.photo_urls.includes(p.full);
@@ -201,9 +244,9 @@ export default function Units() {
               <div className="font-serif text-lg text-ink">{u.unit_code}</div>
               <div className="text-sm text-stone">{u.property_name}{u.city ? ` · ${u.city}` : ''}</div>
               <div className="text-xs text-stone mt-3 pt-3 border-t border-line/70">
-                {u.base_rate_short ? `GHS ${u.base_rate_short}/night` : ''}
+                {u.base_rate_short ? `${money(u.base_rate_short)}/night` : ''}
                 {u.base_rate_short && u.base_rate_long ? ' · ' : ''}
-                {u.base_rate_long ? `GHS ${u.base_rate_long}/mo` : ''}
+                {u.base_rate_long ? `${money(u.base_rate_long)}/mo` : ''}
               </div>
             </div>
           </Link>

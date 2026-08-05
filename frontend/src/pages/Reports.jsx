@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getMonthlyReport, getExpenseBreakdown, getReportsSummary } from '../api/client.js';
 import StatCard from '../components/StatCard.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 import { IconWallet, IconTrendUp, IconTrendDown, IconChart } from '../components/icons.jsx';
 import { downloadCsv } from '../utils/csv.js';
 
@@ -12,6 +13,7 @@ const MONTH_LABEL = (key) => {
 const CATEGORY_LABEL = (c) => c.replace(/_/g, ' ').replace(/^\w/, (ch) => ch.toUpperCase());
 
 export default function Reports() {
+  const { money } = useSettings();
   const [monthly, setMonthly] = useState([]);
   const [breakdown, setBreakdown] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -61,9 +63,9 @@ export default function Reports() {
 
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <StatCard label="All-time revenue" value={`GHS ${summary.revenue.toLocaleString()}`} icon={IconTrendUp} />
-          <StatCard label="All-time costs" value={`GHS ${summary.costs.toLocaleString()}`} icon={IconTrendDown} />
-          <StatCard label="Net" value={`GHS ${summary.net.toLocaleString()}`} icon={IconWallet} />
+          <StatCard label="All-time revenue" value={money(summary.revenue)} icon={IconTrendUp} />
+          <StatCard label="All-time costs" value={money(summary.costs)} icon={IconTrendDown} />
+          <StatCard label="Net" value={money(summary.net)} icon={IconWallet} />
         </div>
       )}
 
@@ -85,12 +87,12 @@ export default function Reports() {
                     <div
                       className="w-3.5 rounded-t bg-emerald-500"
                       style={{ height: `${Math.max(2, (m.revenue / maxVal) * 100)}%` }}
-                      title={`Revenue: GHS ${m.revenue.toLocaleString()}`}
+                      title={`Revenue: ${money(m.revenue)}`}
                     />
                     <div
                       className="w-3.5 rounded-t bg-rose-400"
                       style={{ height: `${Math.max(2, (m.costs / maxVal) * 100)}%` }}
-                      title={`Costs: GHS ${m.costs.toLocaleString()}`}
+                      title={`Costs: ${money(m.costs)}`}
                     />
                   </div>
                   <span className="text-[10px] text-stone whitespace-nowrap">{MONTH_LABEL(m.month)}</span>
@@ -116,7 +118,7 @@ export default function Reports() {
                 <div key={b.category}>
                   <div className="flex items-center justify-between text-xs text-stone mb-1">
                     <span>{CATEGORY_LABEL(b.category)}</span>
-                    <span className="text-ink font-medium">GHS {b.amount.toLocaleString()}</span>
+                    <span className="text-ink font-medium">{money(b.amount)}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-line overflow-hidden">
                     <div className="h-full rounded-full bg-gold" style={{ width: `${(b.amount / maxCategory) * 100}%` }} />
@@ -148,11 +150,11 @@ export default function Reports() {
               {monthly.map((m) => (
                 <tr key={m.month}>
                   <td>{MONTH_LABEL(m.month)}</td>
-                  <td className="text-right">GHS {m.revenue.toLocaleString()}</td>
-                  <td className="text-right">GHS {m.expenses.toLocaleString()}</td>
-                  <td className="text-right">GHS {m.renovations.toLocaleString()}</td>
+                  <td className="text-right">{money(m.revenue)}</td>
+                  <td className="text-right">{money(m.expenses)}</td>
+                  <td className="text-right">{money(m.renovations)}</td>
                   <td className={`text-right font-medium ${m.net < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
-                    GHS {m.net.toLocaleString()}
+                    {money(m.net)}
                   </td>
                 </tr>
               ))}

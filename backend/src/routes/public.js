@@ -29,6 +29,13 @@ const inquiryLimiter = rateLimit({
 const PUBLIC_UNIT_FIELDS =
   'id, unit_code, property_name, unit_type, class, bedrooms, bathrooms, city, base_rate_short, base_rate_long, photo_url, photo_urls, status';
 
+// The showcase pages are public, so they can't read the authenticated
+// settings endpoint — send the display currency along with the listings.
+async function defaultCurrency() {
+  const { data } = await supabase.from('l_settings').select('default_currency').limit(1).single();
+  return data?.default_currency || 'GHS';
+}
+
 // GET /api/public/units — the portfolio-wide showcase grid.
 router.get('/units', async (req, res, next) => {
   try {
@@ -38,7 +45,7 @@ router.get('/units', async (req, res, next) => {
       .neq('status', 'off_market')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    res.json(data);
+    res.json({ units: data, currency: await defaultCurrency() });
   } catch (err) {
     next(err);
   }
@@ -55,7 +62,7 @@ router.get('/units/:id', async (req, res, next) => {
       .neq('status', 'off_market')
       .single();
     if (error || !data) return res.status(404).json({ error: 'Listing not found' });
-    res.json(data);
+    res.json({ ...data, currency: await defaultCurrency() });
   } catch (err) {
     next(err);
   }

@@ -25,6 +25,8 @@ const performanceRouter = require('./routes/performance');
 const billingRouter = require('./routes/billing');
 const reportsRouter = require('./routes/reports');
 const bookingInquiriesRouter = require('./routes/bookingInquiries');
+const uploadsRouter = require('./routes/uploads');
+const settingsRouter = require('./routes/settings');
 
 const app = express();
 
@@ -49,7 +51,10 @@ app.use(
     },
   })
 );
-app.use(express.json());
+// Default limit is 100kb, which is far too small for the base64 image
+// uploads on /api/uploads/photo (see routes/uploads.js). 10mb leaves room
+// for base64's ~33% inflation over the 5mb image ceiling.
+app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 
 app.get('/', (req, res) => {
@@ -75,6 +80,8 @@ app.use('/api/performance', performanceRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/booking-inquiries', bookingInquiriesRouter);
+app.use('/api/uploads', uploadsRouter);
+app.use('/api/settings', settingsRouter);
 
 app.use(notFound);
 app.use(errorHandler);

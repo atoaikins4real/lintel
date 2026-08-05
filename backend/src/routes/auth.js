@@ -186,4 +186,47 @@ router.get('/users', requireAuth, requireRole('manager'), async (req, res, next)
   }
 });
 
+// PATCH /api/auth/users/:id — manager only, change a user's role.
+// This is how a self-service signup (which always lands as `viewer`) gets
+// promoted to real staff access.
+router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { role } = req.body;
+    const allowedRoles = ['manager', 'finance', 'viewer'];
+
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ error: `role must be one of: ${allowedRoles.join(', ')}` });
+    }
+
+    // Guard against locking the account out of its own administration: if
+    // this is the last manager, don't let them demote themselves.
+    if (req.user.id === id && role !== 'manager') {
+      const { count, error: countErr } = await supabase
+        .from('l_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('role', 'manager');
+      if (countErr) throw countErr;
+      if ((count || 0) <= 1) {
+        return res.status(400).json({
+          error: "You're the only manager — promote someone else before changing your own role.",
+        });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('l_users')
+      .update({ role })
+      .eq('id', id)
+      .select('id, email, name, role, created_at')
+      .single();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'User not found' });
+
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

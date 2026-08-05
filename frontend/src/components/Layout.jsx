@@ -1,17 +1,24 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconCalendar, IconLogout } from './icons.jsx';
+import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconCalendar, IconCog, IconShield, IconLogout } from './icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
+// `primary` marks the items that also appear in the mobile bottom tab bar
+// — that bar only fits about five before the labels become unreadable, so
+// the rest stay in the sidebars on larger screens.
 const navItems = [
-  { to: '/', label: 'Dashboard', end: true, icon: IconGrid },
-  { to: '/tenants', label: 'Tenants', icon: IconUsers },
-  { to: '/units', label: 'Units', icon: IconBuilding },
+  { to: '/', label: 'Dashboard', end: true, icon: IconGrid, primary: true },
+  { to: '/tenants', label: 'Tenants', icon: IconUsers, primary: true },
+  { to: '/units', label: 'Units', icon: IconBuilding, primary: true },
   { to: '/leases', label: 'Leases', icon: IconFile },
-  { to: '/payments', label: 'Payments', icon: IconWallet },
+  { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
   { to: '/faults-renovations', label: 'Faults & Reno.', icon: IconWrench },
   { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
-  { to: '/reports', label: 'Reports', icon: IconChart },
+  { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
+  { to: '/staff', label: 'Staff', icon: IconShield },
+  { to: '/settings', label: 'Settings', icon: IconCog },
 ];
+
+const mobileNavItems = navItems.filter((n) => n.primary);
 
 const TITLES = {
   '/': 'Portfolio Overview',
@@ -22,6 +29,8 @@ const TITLES = {
   '/faults-renovations': 'Faults & Renovations',
   '/booking-requests': 'Booking Requests',
   '/reports': 'Reports',
+  '/staff': 'Staff & Access',
+  '/settings': 'Settings',
 };
 
 const ROLE_LABEL = { manager: 'Manager', finance: 'Finance', viewer: 'Viewer' };
@@ -153,7 +162,7 @@ export default function Layout({ children }) {
 
       {/* Mobile bottom tab bar */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 bg-card border-t border-line flex items-stretch">
-        {navItems.map((item) => {
+        {mobileNavItems.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink

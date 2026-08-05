@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { getFaults, createFault, getRenovations, createRenovation, getUnits } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyFault = { unit_id: '', description: '', severity: 'low', caused_by: 'unknown', reported_date: '', cost: '' };
 const emptyReno = { unit_id: '', description: '', cost: '', start_date: '', end_date: '', rate_before: '', rate_after: '' };
 
 export default function FaultsRenovations() {
   const { canEdit } = useAuth();
+  const { money } = useSettings();
   const [units, setUnits] = useState([]);
   const [faults, setFaults] = useState([]);
   const [renovations, setRenovations] = useState([]);
@@ -93,7 +95,7 @@ export default function FaultsRenovations() {
                 </div>
                 <div className="text-sm text-ink/80">{f.description}</div>
                 <div className="text-stone text-xs mt-1">
-                  {f.reported_date} · {f.severity} · caused by {f.caused_by.replace('_', ' ')}{f.cost ? ` · GHS ${f.cost}` : ''}
+                  {f.reported_date} · {f.severity} · caused by {f.caused_by.replace('_', ' ')}{f.cost ? ` · ${money(f.cost)}` : ''}
                 </div>
               </li>
             ))}
@@ -142,7 +144,7 @@ export default function FaultsRenovations() {
                 <div className="font-medium text-ink text-sm mb-1">{unitLabel(r.unit_id)}</div>
                 <div className="text-sm text-ink/80">{r.description}</div>
                 <div className="text-stone text-xs mt-1">
-                  GHS {r.cost}{r.rate_before && r.rate_after ? ` · GHS ${r.rate_before} → GHS ${r.rate_after}` : ''}
+                  {money(r.cost)}{r.rate_before && r.rate_after ? ` · ${money(r.rate_before)} → ${money(r.rate_after)}` : ''}
                 </div>
               </li>
             ))}

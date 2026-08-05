@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getLeases, createLease, getTenants, getUnits } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyForm = {
   tenant_id: '', unit_id: '', stay_type: 'short_stay', start_date: '', end_date: '',
@@ -10,6 +11,7 @@ const emptyForm = {
 
 export default function Leases() {
   const { canEdit } = useAuth();
+  const { money } = useSettings();
   const [leases, setLeases] = useState([]);
   const [tenants, setTenants] = useState([]);
   const [units, setUnits] = useState([]);
@@ -116,7 +118,7 @@ export default function Leases() {
                   <td>{unitLabel(l.unit_id)}</td>
                   <td className="capitalize">{l.stay_type.replace('_', ' ')}</td>
                   <td>{l.start_date} → {l.end_date || 'ongoing'}</td>
-                  <td className="text-right">GHS {l.agreed_rate}/{l.rate_period}</td>
+                  <td className="text-right">{money(l.agreed_rate)}/{l.rate_period}</td>
                   <td><StatusBadge status={l.status} /></td>
                 </tr>
               ))}

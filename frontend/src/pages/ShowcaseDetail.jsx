@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getPublicUnit, createInquiry } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Slideshow from '../components/Slideshow.jsx';
+import { formatMoney } from '../utils/currency.js';
 
 const emptyInquiry = { name: '', email: '', phone: '', start_date: '', end_date: '', message: '' };
 
@@ -87,12 +88,18 @@ export default function ShowcaseDetail() {
               <div className="flex flex-wrap gap-5 text-sm text-stone mb-6 pb-6 border-b border-line/70">
                 {unit.base_rate_short && (
                   <div>
-                    <span className="text-ink font-medium">GHS {unit.base_rate_short}</span> / night
+                    <span className="text-ink font-medium">
+                      {formatMoney(unit.base_rate_short, unit.currency)}
+                    </span>{' '}
+                    / night
                   </div>
                 )}
                 {unit.base_rate_long && (
                   <div>
-                    <span className="text-ink font-medium">GHS {unit.base_rate_long}</span> / month
+                    <span className="text-ink font-medium">
+                      {formatMoney(unit.base_rate_long, unit.currency)}
+                    </span>{' '}
+                    / month
                   </div>
                 )}
               </div>

@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 
 const { gateMutations } = require('../middleware/auth');
+const { blank, toNumber } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -29,7 +30,15 @@ router.post('/', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('l_renovations')
-      .insert({ unit_id, description, cost, start_date, end_date, rate_before, rate_after })
+      .insert({
+        unit_id,
+        description,
+        cost: toNumber(cost),
+        start_date: blank(start_date),
+        end_date: blank(end_date),
+        rate_before: toNumber(rate_before),
+        rate_after: toNumber(rate_after),
+      })
       .select()
       .single();
 

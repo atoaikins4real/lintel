@@ -5,6 +5,18 @@ const { gateMutations } = require('../middleware/auth');
 const router = express.Router();
 router.use(gateMutations);
 
+// Blank form inputs arrive as '' — Postgres rejects that outright for date
+// and numeric columns ("invalid input syntax for type date"), so an
+// optional un-filled date would otherwise fail the whole insert.
+const { blank: str, toNumber: num } = require('../utils/sanitize');
+
+// The account's configured currency (Settings page) is the source of
+// truth; DEFAULT_CURRENCY env var stays as a fallback for local dev.
+async function defaultCurrency() {
+  const { data } = await supabase.from('l_settings').select('default_currency').limit(1).single();
+  return data?.default_currency || process.env.DEFAULT_CURRENCY || 'GHS';
+}
+
 
 // GET /api/payments?tenant_id=&unit_id=&lease_id=&status=
 router.get('/', async (req, res, next) => {
@@ -46,14 +58,14 @@ router.post('/', async (req, res, next) => {
         lease_id,
         tenant_id: lease.tenant_id,
         unit_id: lease.unit_id,
-        amount,
-        currency: currency || process.env.DEFAULT_CURRENCY || 'GHS',
-        due_date,
-        payment_date,
+        amount: num(amount),
+        currency: currency || (await defaultCurrency()),
+        due_date: str(due_date),
+        payment_date: str(payment_date),
         status: status || 'pending',
-        method,
-        reference,
-        notes,
+        method: str(method),
+        reference: str(reference),
+        notes: str(notes),
       })
       .select()
       .single();
@@ -68,7 +80,13 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from('l_payments').update(req.body).eq('id', id).select().single();
+    const updates = { ...req.body };
+    for (const f of ['due_date', 'payment_date', 'method', 'reference', 'notes']) {
+      if (f in updates) updates[f] = str(updates[f]);
+    }
+    if ('amount' in updates) updates.amount = num(updates.amount);
+
+    const { data, error } = await supabase.from('l_payments').update(updates).eq('id', id).select().single();
     if (error) throw error;
     res.json(data);
   } catch (err) {

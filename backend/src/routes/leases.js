@@ -2,6 +2,7 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 
 const { gateMutations } = require('../middleware/auth');
+const { blank, toNumber, clean } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -50,7 +51,18 @@ router.post('/', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('l_leases')
-      .insert({ tenant_id, unit_id, stay_type, start_date, end_date, agreed_rate, rate_period, source })
+      .insert({
+        tenant_id,
+        unit_id,
+        stay_type,
+        start_date,
+        // Open-ended long stays legitimately have no end date — '' here
+        // would fail the insert against a date column.
+        end_date: blank(end_date),
+        agreed_rate: toNumber(agreed_rate),
+        rate_period,
+        source: blank(source),
+      })
       .select()
       .single();
 
@@ -67,7 +79,11 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const updates = { ...req.body };
+    const updates = clean(req.body, {
+      numbers: ['agreed_rate'],
+      dates: ['start_date', 'end_date'],
+      texts: ['source'],
+    });
 
     const { data, error } = await supabase.from('l_leases').update(updates).eq('id', id).select().single();
     if (error) throw error;
