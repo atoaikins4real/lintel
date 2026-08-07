@@ -328,6 +328,9 @@ function Donut({ value }) {
 }
 
 function BarRow({ icon: Icon, label, value, max, color }) {
+  // Its own hook call — this component sits outside Dashboard(), so it
+  // can't close over Dashboard's `money`.
+  const { money } = useSettings();
   return (
     <div className="mb-2.5">
       <div className="flex items-center justify-between text-xs text-stone mb-1">
