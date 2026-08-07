@@ -12,8 +12,8 @@ const { blank: str, toNumber: num } = require('../utils/sanitize');
 
 // The account's configured currency (Settings page) is the source of
 // truth; DEFAULT_CURRENCY env var stays as a fallback for local dev.
-async function defaultCurrency() {
-  const { data } = await supabase.from('l_settings').select('default_currency').limit(1).single();
+async function defaultCurrency(companyId) {
+  const { data } = await supabase.from('l_settings').select('default_currency').eq('company_id', companyId).maybeSingle();
   return data?.default_currency || process.env.DEFAULT_CURRENCY || 'GHS';
 }
 
@@ -22,7 +22,7 @@ async function defaultCurrency() {
 router.get('/', async (req, res, next) => {
   try {
     const { tenant_id, unit_id, lease_id, status } = req.query;
-    let query = supabase.from('l_payments').select('*').order('payment_date', { ascending: false });
+    let query = supabase.from('l_payments').select('*').eq('company_id', req.user.company_id).order('payment_date', { ascending: false });
     if (tenant_id) query = query.eq('tenant_id', tenant_id);
     if (unit_id) query = query.eq('unit_id', unit_id);
     if (lease_id) query = query.eq('lease_id', lease_id);
@@ -49,17 +49,20 @@ router.post('/', async (req, res, next) => {
       .from('l_leases')
       .select('tenant_id, unit_id')
       .eq('id', lease_id)
-      .single();
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
     if (leaseError) throw leaseError;
+    if (!lease) return res.status(404).json({ error: 'Lease not found' });
 
     const { data, error } = await supabase
       .from('l_payments')
       .insert({
+        company_id: req.user.company_id,
         lease_id,
         tenant_id: lease.tenant_id,
         unit_id: lease.unit_id,
         amount: num(amount),
-        currency: currency || (await defaultCurrency()),
+        currency: currency || (await defaultCurrency(req.user.company_id)),
         due_date: str(due_date),
         payment_date: str(payment_date),
         status: status || 'pending',
@@ -86,7 +89,15 @@ router.put('/:id', async (req, res, next) => {
     }
     if ('amount' in updates) updates.amount = num(updates.amount);
 
-    const { data, error } = await supabase.from('l_payments').update(updates).eq('id', id).select().single();
+    delete updates.company_id;
+    const { data, error } = await supabase
+      .from('l_payments')
+      .update(updates)
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
+    if (!data) return res.status(404).json({ error: 'Payment not found' });
     if (error) throw error;
     res.json(data);
   } catch (err) {

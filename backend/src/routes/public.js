@@ -1,16 +1,20 @@
-// Public showcase + booking-inquiry endpoints — deliberately mounted
-// BEFORE the requireAuth gate in app.js, since these are meant to be
-// shared on social media and hit by strangers with no Lintel account.
-// Only ever exposes a safe subset of unit fields (no address, no internal
-// notes) and never touches tenant/lease/payment data.
+// Public showcase + booking-inquiry endpoints — mounted BEFORE the
+// requireAuth gate in app.js, since these are meant to be shared on social
+// media and hit by strangers with no Lintel account.
+//
+// Multi-tenancy note: there's no session here, so the company is
+// identified by the slug in the URL (/api/public/:slug/...). Every query
+// is still scoped to exactly one company — a visitor can only ever see the
+// listings of the company whose link they followed.
+//
+// Only a safe subset of unit fields is exposed (no street address, no
+// internal notes) and no tenant, lease or payment data is reachable.
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { supabase } = require('../config/supabase');
 
 const router = express.Router();
 
-// Spam prevention, not brute-force prevention (there's no secret being
-// guessed here) — a bit more generous than the auth limiter.
 const inquiryLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -24,55 +28,77 @@ const inquiryLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait a few minutes and try again.' },
 });
 
-// address and notes are deliberately excluded — street-level address and
-// internal staff notes have no business being public.
 const PUBLIC_UNIT_FIELDS =
   'id, unit_code, property_name, unit_type, class, bedrooms, bathrooms, city, base_rate_short, base_rate_long, photo_url, photo_urls, status';
 
-// The showcase pages are public, so they can't read the authenticated
-// settings endpoint — send the display currency along with the listings.
-async function defaultCurrency() {
-  const { data } = await supabase.from('l_settings').select('default_currency').limit(1).single();
+// Resolves the slug to a company, or null. Everything below refuses to
+// return data without one.
+async function companyBySlug(slug) {
+  const { data } = await supabase
+    .from('l_companies')
+    .select('id, name, slug, logo_url, phone, email, city, country, website')
+    .eq('slug', slug)
+    .maybeSingle();
+  return data || null;
+}
+
+async function currencyFor(companyId) {
+  const { data } = await supabase
+    .from('l_settings')
+    .select('default_currency')
+    .eq('company_id', companyId)
+    .maybeSingle();
   return data?.default_currency || 'GHS';
 }
 
-// GET /api/public/units — the portfolio-wide showcase grid.
-router.get('/units', async (req, res, next) => {
+// GET /api/public/:slug/units — one company's showcase grid.
+router.get('/:slug/units', async (req, res, next) => {
   try {
+    const company = await companyBySlug(req.params.slug);
+    if (!company) return res.status(404).json({ error: 'Showcase not found' });
+
     const { data, error } = await supabase
       .from('l_units')
       .select(PUBLIC_UNIT_FIELDS)
+      .eq('company_id', company.id)
       .neq('status', 'off_market')
       .order('created_at', { ascending: false });
     if (error) throw error;
-    res.json({ units: data, currency: await defaultCurrency() });
+
+    res.json({ units: data, company, currency: await currencyFor(company.id) });
   } catch (err) {
     next(err);
   }
 });
 
-// GET /api/public/units/:id — a single unit's showcase page.
-router.get('/units/:id', async (req, res, next) => {
+// GET /api/public/:slug/units/:id — a single listing.
+router.get('/:slug/units/:id', async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const company = await companyBySlug(req.params.slug);
+    if (!company) return res.status(404).json({ error: 'Showcase not found' });
+
     const { data, error } = await supabase
       .from('l_units')
       .select(PUBLIC_UNIT_FIELDS)
-      .eq('id', id)
+      .eq('id', req.params.id)
+      .eq('company_id', company.id)
       .neq('status', 'off_market')
-      .single();
-    if (error || !data) return res.status(404).json({ error: 'Listing not found' });
-    res.json({ ...data, currency: await defaultCurrency() });
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Listing not found' });
+
+    res.json({ ...data, company, currency: await currencyFor(company.id) });
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/public/units/:id/inquiries — "Book now" submission. Creates a
-// pending inquiry for staff to review; never touches leases directly.
-router.post('/units/:id/inquiries', inquiryLimiter, async (req, res, next) => {
+// POST /api/public/:slug/units/:id/inquiries — "Book now" submission.
+router.post('/:slug/units/:id/inquiries', inquiryLimiter, async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const company = await companyBySlug(req.params.slug);
+    if (!company) return res.status(404).json({ error: 'Showcase not found' });
+
     const { name, email, phone, start_date, end_date, message } = req.body;
 
     if (!name || !name.trim()) {
@@ -82,18 +108,23 @@ router.post('/units/:id/inquiries', inquiryLimiter, async (req, res, next) => {
       return res.status(400).json({ error: 'Provide an email or phone number so we can reach you' });
     }
 
+    // Confirms the unit belongs to THIS company — stops someone pointing a
+    // valid slug at another company's unit id.
     const { data: unit, error: unitErr } = await supabase
       .from('l_units')
       .select('id')
-      .eq('id', id)
+      .eq('id', req.params.id)
+      .eq('company_id', company.id)
       .neq('status', 'off_market')
-      .single();
-    if (unitErr || !unit) return res.status(404).json({ error: 'Listing not found' });
+      .maybeSingle();
+    if (unitErr) throw unitErr;
+    if (!unit) return res.status(404).json({ error: 'Listing not found' });
 
     const { data, error } = await supabase
       .from('l_booking_inquiries')
       .insert({
-        unit_id: id,
+        company_id: company.id,
+        unit_id: unit.id,
         name: name.trim(),
         email: email?.trim() || null,
         phone: phone?.trim() || null,

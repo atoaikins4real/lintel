@@ -10,7 +10,7 @@ router.use(gateMutations);
 router.get('/', async (req, res, next) => {
   try {
     const { unit_id, category } = req.query;
-    let query = supabase.from('l_expenses').select('*').order('expense_date', { ascending: false });
+    let query = supabase.from('l_expenses').select('*').eq('company_id', req.user.company_id).order('expense_date', { ascending: false });
     if (unit_id) query = query.eq('unit_id', unit_id);
     if (category) query = query.eq('category', category);
 
@@ -31,7 +31,7 @@ router.post('/', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('l_expenses')
-      .insert({ unit_id, category, amount: toNumber(amount), expense_date, description: blank(description) })
+      .insert({ company_id: req.user.company_id, unit_id, category, amount: toNumber(amount), expense_date, description: blank(description) })
       .select()
       .single();
 
@@ -45,7 +45,7 @@ router.post('/', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('l_expenses').delete().eq('id', id);
+    const { error } = await supabase.from('l_expenses').delete().eq('id', id).eq('company_id', req.user.company_id);
     if (error) throw error;
     res.status(204).send();
   } catch (err) {

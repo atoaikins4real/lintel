@@ -7,7 +7,7 @@ const router = express.Router();
 // GET /api/billing/summary — any authenticated role can view
 router.get('/summary', async (req, res, next) => {
   try {
-    const summary = await getBillingSummary();
+    const summary = await getBillingSummary(req.user.company_id);
     res.json(summary);
   } catch (err) {
     next(err);
@@ -18,7 +18,7 @@ router.get('/summary', async (req, res, next) => {
 // payments for active long-stay leases not yet billed this period.
 router.post('/generate', requireRole('manager', 'finance'), async (req, res, next) => {
   try {
-    const result = await generateCharges();
+    const result = await generateCharges(req.user.company_id);
     res.json(result);
   } catch (err) {
     next(err);
@@ -28,7 +28,7 @@ router.post('/generate', requireRole('manager', 'finance'), async (req, res, nex
 // POST /api/billing/flag-late — manager/finance only.
 router.post('/flag-late', requireRole('manager', 'finance'), async (req, res, next) => {
   try {
-    const result = await flagLatePayments();
+    const result = await flagLatePayments(req.user.company_id);
     res.json(result);
   } catch (err) {
     next(err);

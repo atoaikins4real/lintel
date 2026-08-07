@@ -4,7 +4,10 @@ const JWT_SECRET = process.env.JWT_SECRET;
 
 function signToken(user) {
   return jwt.sign(
-    { sub: user.id, email: user.email, name: user.name, role: user.role },
+    // company_id is what every data route scopes on — it must come from
+    // the signed token, never from the request body, or one company could
+    // read another's data just by passing a different id.
+    { sub: user.id, email: user.email, name: user.name, role: user.role, company_id: user.company_id },
     JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -21,7 +24,20 @@ function requireAuth(req, res, next) {
     if (!token) return res.status(401).json({ error: 'Not authenticated' });
 
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = { id: payload.sub, email: payload.email, name: payload.name, role: payload.role };
+
+    // Tokens issued before multi-tenancy have no company_id. Rather than
+    // silently defaulting them into some company's data, force a re-login.
+    if (!payload.company_id) {
+      return res.status(401).json({ error: 'Your session predates a security update — please sign in again.' });
+    }
+
+    req.user = {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+      company_id: payload.company_id,
+    };
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired session' });

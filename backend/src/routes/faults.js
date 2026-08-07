@@ -10,7 +10,7 @@ router.use(gateMutations);
 router.get('/', async (req, res, next) => {
   try {
     const { unit_id, tenant_id, status } = req.query;
-    let query = supabase.from('l_faults').select('*').order('reported_date', { ascending: false });
+    let query = supabase.from('l_faults').select('*').eq('company_id', req.user.company_id).order('reported_date', { ascending: false });
     if (unit_id) query = query.eq('unit_id', unit_id);
     if (tenant_id) query = query.eq('tenant_id', tenant_id);
     if (status) query = query.eq('status', status);
@@ -33,6 +33,7 @@ router.post('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('l_faults')
       .insert({
+        company_id: req.user.company_id,
         unit_id,
         tenant_id: blank(tenant_id),
         description,
@@ -59,7 +60,15 @@ router.put('/:id', async (req, res, next) => {
       dates: ['reported_date', 'resolved_date'],
       texts: ['tenant_id', 'description'],
     });
-    const { data, error } = await supabase.from('l_faults').update(updates).eq('id', id).select().single();
+    delete updates.company_id;
+    const { data, error } = await supabase
+      .from('l_faults')
+      .update(updates)
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
+    if (!data) return res.status(404).json({ error: 'Fault not found' });
     if (error) throw error;
     res.json(data);
   } catch (err) {

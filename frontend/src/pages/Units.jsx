@@ -20,7 +20,7 @@ const CLASS_STYLE = {
 };
 
 export default function Units() {
-  const { canEdit } = useAuth();
+  const { canEdit, company } = useAuth();
   const { money } = useSettings();
   const [units, setUnits] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -60,9 +60,16 @@ export default function Units() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <p className="text-stone text-sm">Apartments and housing, short-stay through multi-year.</p>
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <a href="/showcase" target="_blank" rel="noopener noreferrer" className="lx-btn-ghost text-sm flex-1 sm:flex-none text-center">
-            View public showcase ↗
-          </a>
+          {company?.slug && (
+            <a
+              href={`/showcase/${company.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="lx-btn-ghost text-sm flex-1 sm:flex-none text-center"
+            >
+              View public showcase ↗
+            </a>
+          )}
           {canEdit && (
             <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary flex-1 sm:flex-none">
               {showForm ? 'Cancel' : '+ New Unit'}

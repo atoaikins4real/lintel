@@ -5,3 +5,8 @@ dist/
 build/
 *.log
 .DS_Store
+
+# Spent one-off codemods and files the sandbox couldn't unlink
+*.done
+*.stale_*
+_redirects.removed_*

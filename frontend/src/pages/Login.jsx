@@ -11,7 +11,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [needsBootstrap, setNeedsBootstrap] = useState(null);
   const [mode, setMode] = useState('login'); // 'login' | 'signup' (bootstrap overrides both)
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', company_name: '' });
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
@@ -46,7 +46,7 @@ export default function Login() {
         setSession(res.token, res.user, remember);
       } else if (mode === 'signup') {
         const res = await signup(form);
-        setSession(res.token, res.user, remember);
+        setSession(res.token, res.user, remember, res.company);
       } else {
         await login(form.email, form.password, remember);
       }
@@ -114,7 +114,7 @@ export default function Login() {
                   {needsBootstrap
                     ? 'No accounts exist yet — the first account created here becomes the portfolio manager.'
                     : mode === 'signup'
-                    ? 'Get instant, read-only access to a live demo portfolio — explore every page, nothing you do can affect real data.'
+                    ? 'Set up your own private workspace, pre-loaded with sample properties so you can explore a working system straight away.'
                     : 'Sign in to your portfolio.'}
                 </p>
 
@@ -126,16 +126,30 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {(needsBootstrap || mode === 'signup') && (
-                    <div>
-                      <label className="block text-xs font-medium text-ink mb-1.5">Full name</label>
-                      <input
-                        required
-                        placeholder="Your full name"
-                        className="lx-input"
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      />
-                    </div>
+                    <>
+                      <div>
+                        <label className="block text-xs font-medium text-ink mb-1.5">Full name</label>
+                        <input
+                          required
+                          placeholder="Your full name"
+                          className="lx-input"
+                          value={form.name}
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-ink mb-1.5">Company name</label>
+                        <input
+                          placeholder="Your company or agency"
+                          className="lx-input"
+                          value={form.company_name}
+                          onChange={(e) => setForm({ ...form, company_name: e.target.value })}
+                        />
+                        <p className="text-[11px] text-stone mt-1">
+                          You can change this later in Settings.
+                        </p>
+                      </div>
+                    </>
                   )}
 
                   <div>
@@ -205,7 +219,7 @@ export default function Login() {
                       : needsBootstrap
                       ? 'Create account & sign in'
                       : mode === 'signup'
-                      ? 'Create free trial account'
+                      ? 'Create my workspace'
                       : 'Login'}
                   </button>
                 </form>
@@ -262,7 +276,7 @@ export default function Login() {
                           }}
                           className="text-gold hover:underline font-medium"
                         >
-                          Create a free trial account
+                          Set up your company
                         </button>{' '}
                         — or ask your manager for staff access.
                       </>

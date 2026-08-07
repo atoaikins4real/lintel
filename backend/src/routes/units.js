@@ -13,7 +13,7 @@ router.use(gateMutations);
 router.get('/', async (req, res, next) => {
   try {
     const { status, class: unitClass } = req.query;
-    let query = supabase.from('l_units').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('l_units').select('*').eq('company_id', req.user.company_id).order('created_at', { ascending: false });
     if (status) query = query.eq('status', status);
     if (unitClass) query = query.eq('class', unitClass);
 
@@ -28,7 +28,8 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from('l_units').select('*').eq('id', id).single();
+    const { data, error } = await supabase.from('l_units').select('*').eq('id', id).eq('company_id', req.user.company_id).maybeSingle();
+    if (!data) return res.status(404).json({ error: 'Unit not found' });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -62,6 +63,7 @@ router.post('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('l_units')
       .insert({
+        company_id: req.user.company_id,
         unit_code,
         property_name,
         unit_type,
@@ -104,7 +106,15 @@ router.put('/:id', async (req, res, next) => {
       if (field in updates) updates[field] = str(updates[field]);
     }
 
-    const { data, error } = await supabase.from('l_units').update(updates).eq('id', id).select().single();
+    delete updates.company_id; // never reassignable from the request body
+    const { data, error } = await supabase
+      .from('l_units')
+      .update(updates)
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
+    if (!data) return res.status(404).json({ error: 'Unit not found' });
     if (error) throw error;
     res.json(data);
   } catch (err) {
@@ -115,7 +125,7 @@ router.put('/:id', async (req, res, next) => {
 router.delete('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('l_units').delete().eq('id', id);
+    const { error } = await supabase.from('l_units').delete().eq('id', id).eq('company_id', req.user.company_id);
     if (error) throw error;
     res.status(204).send();
   } catch (err) {

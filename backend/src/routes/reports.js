@@ -28,9 +28,9 @@ router.get('/monthly', async (req, res, next) => {
 
     const [{ data: payments, error: payErr }, { data: expenses, error: expErr }, { data: renovations, error: renoErr }] =
       await Promise.all([
-        supabase.from('l_payments').select('amount, payment_date, status').eq('status', 'paid').gte('payment_date', earliest),
-        supabase.from('l_expenses').select('amount, expense_date').gte('expense_date', earliest),
-        supabase.from('l_renovations').select('cost, start_date').gte('start_date', earliest),
+        supabase.from('l_payments').select('amount, payment_date, status').eq('company_id', req.user.company_id).eq('status', 'paid').gte('payment_date', earliest),
+        supabase.from('l_expenses').select('amount, expense_date').eq('company_id', req.user.company_id).gte('expense_date', earliest),
+        supabase.from('l_renovations').select('cost, start_date').eq('company_id', req.user.company_id).gte('start_date', earliest),
       ]);
     if (payErr) throw payErr;
     if (expErr) throw expErr;
@@ -75,6 +75,7 @@ router.get('/expense-breakdown', async (req, res, next) => {
     const { data: expenses, error } = await supabase
       .from('l_expenses')
       .select('amount, category')
+      .eq('company_id', req.user.company_id)
       .gte('expense_date', earliest);
     if (error) throw error;
 
@@ -98,9 +99,9 @@ router.get('/summary', async (req, res, next) => {
   try {
     const [{ data: payments, error: payErr }, { data: expenses, error: expErr }, { data: renovations, error: renoErr }] =
       await Promise.all([
-        supabase.from('l_payments').select('amount').eq('status', 'paid'),
-        supabase.from('l_expenses').select('amount'),
-        supabase.from('l_renovations').select('cost'),
+        supabase.from('l_payments').select('amount').eq('company_id', req.user.company_id).eq('status', 'paid'),
+        supabase.from('l_expenses').select('amount').eq('company_id', req.user.company_id),
+        supabase.from('l_renovations').select('cost').eq('company_id', req.user.company_id),
       ]);
     if (payErr) throw payErr;
     if (expErr) throw expErr;

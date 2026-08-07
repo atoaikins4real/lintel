@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
-import { updateSettings, readApiError } from '../api/client.js';
+import { updateSettings, getCompany, updateCompany, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { CURRENCY_LABELS } from '../utils/currency.js';
+import PhotoUploader from '../components/PhotoUploader.jsx';
 
 const MOBILE_PROVIDERS = ['MTN Mobile Money', 'Telecel Cash', 'AirtelTigo Money', 'Other'];
 
 export default function Settings() {
-  const { isManager } = useAuth();
+  const { isManager, setCompany } = useAuth();
   const { settings, setSettings } = useSettings();
   const [form, setForm] = useState(null);
+  const [companyForm, setCompanyForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -18,7 +20,20 @@ export default function Settings() {
     if (settings) setForm(settings);
   }, [settings]);
 
-  if (!form) return <div className="text-stone text-sm">Loading&hellip;</div>;
+  useEffect(() => {
+    getCompany()
+      .then(setCompanyForm)
+      .catch((err) => setError(readApiError(err, 'load your company profile')));
+  }, []);
+
+  if (!form || !companyForm) return <div className="text-stone text-sm">Loading&hellip;</div>;
+
+  const setCo = (patch) => {
+    setCompanyForm({ ...companyForm, ...patch });
+    setSaved(false);
+  };
+
+  const showcaseUrl = `${window.location.origin}/showcase/${companyForm.slug}`;
 
   const set = (patch) => {
     setForm({ ...form, ...patch });
@@ -30,9 +45,14 @@ export default function Settings() {
     setError('');
     setSaving(true);
     try {
-      const updated = await updateSettings(form);
+      const [updated, updatedCompany] = await Promise.all([
+        updateSettings(form),
+        updateCompany(companyForm),
+      ]);
       setSettings(updated);
       setForm(updated);
+      setCompanyForm(updatedCompany);
+      setCompany(updatedCompany);
       setSaved(true);
     } catch (err) {
       setError(readApiError(err, 'save settings'));
@@ -58,6 +78,88 @@ export default function Settings() {
           Settings saved.
         </div>
       )}
+
+      {/* Company profile */}
+      <section className="lx-card p-5 sm:p-6">
+        <h2 className="font-serif text-lg text-ink mb-1">Company profile</h2>
+        <p className="text-xs text-stone mb-4">
+          Shown at the top of your public showcase page and used on tenant-facing documents.
+        </p>
+
+        <div className="flex items-center gap-4 mb-4">
+          {companyForm.logo_url ? (
+            <img src={companyForm.logo_url} alt="" className="w-14 h-14 rounded-xl object-cover border border-line" />
+          ) : (
+            <div className="w-14 h-14 rounded-xl bg-panel border border-line flex items-center justify-center font-serif text-lg text-stone">
+              {companyForm.name?.[0]?.toUpperCase() || 'C'}
+            </div>
+          )}
+          {isManager && (
+            <div>
+              <PhotoUploader onUploaded={(urls) => setCo({ logo_url: urls[0] })} label="Upload logo" />
+              {companyForm.logo_url && (
+                <button
+                  type="button"
+                  onClick={() => setCo({ logo_url: '' })}
+                  className="text-xs text-stone hover:underline mt-1.5 block"
+                >
+                  Remove logo
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input
+            className="lx-input sm:col-span-2" placeholder="Company name" disabled={!isManager}
+            value={companyForm.name || ''} onChange={(e) => setCo({ name: e.target.value })}
+          />
+          <input
+            className="lx-input" placeholder="Contact email" disabled={!isManager}
+            value={companyForm.email || ''} onChange={(e) => setCo({ email: e.target.value })}
+          />
+          <input
+            className="lx-input" placeholder="Contact phone" disabled={!isManager}
+            value={companyForm.phone || ''} onChange={(e) => setCo({ phone: e.target.value })}
+          />
+          <input
+            className="lx-input sm:col-span-2" placeholder="Address" disabled={!isManager}
+            value={companyForm.address || ''} onChange={(e) => setCo({ address: e.target.value })}
+          />
+          <input
+            className="lx-input" placeholder="City" disabled={!isManager}
+            value={companyForm.city || ''} onChange={(e) => setCo({ city: e.target.value })}
+          />
+          <input
+            className="lx-input" placeholder="Country" disabled={!isManager}
+            value={companyForm.country || ''} onChange={(e) => setCo({ country: e.target.value })}
+          />
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-line/70">
+          <label className="block text-xs font-medium text-ink mb-1.5">Public showcase link</label>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-stone">{window.location.origin}/showcase/</span>
+            <input
+              className="lx-input flex-1 min-w-[140px]" disabled={!isManager}
+              value={companyForm.slug || ''} onChange={(e) => setCo({ slug: e.target.value })}
+            />
+          </div>
+          <div className="flex items-center gap-3 mt-2">
+            <a href={showcaseUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:underline">
+              Open showcase ↗
+            </a>
+            <button
+              type="button"
+              onClick={() => navigator.clipboard?.writeText(showcaseUrl)}
+              className="text-xs text-stone hover:underline"
+            >
+              Copy link
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Currency */}
       <section className="lx-card p-5 sm:p-6">

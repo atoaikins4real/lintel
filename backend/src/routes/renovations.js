@@ -10,7 +10,7 @@ router.use(gateMutations);
 router.get('/', async (req, res, next) => {
   try {
     const { unit_id } = req.query;
-    let query = supabase.from('l_renovations').select('*').order('start_date', { ascending: false });
+    let query = supabase.from('l_renovations').select('*').eq('company_id', req.user.company_id).order('start_date', { ascending: false });
     if (unit_id) query = query.eq('unit_id', unit_id);
 
     const { data, error } = await query;
@@ -31,6 +31,7 @@ router.post('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('l_renovations')
       .insert({
+        company_id: req.user.company_id,
         unit_id,
         description,
         cost: toNumber(cost),

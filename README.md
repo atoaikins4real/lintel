@@ -51,6 +51,32 @@ In Netlify's site settings, set these environment variables:
   backend on a non-Netlify host, set `NODE_ENV=production` there instead —
   `CONTEXT` won't exist outside Netlify.)
 
+## Multi-tenancy
+
+Lintel is multi-tenant: **a company is one subscriber**, and its units,
+tenants, leases, payments, staff and settings are invisible to every other
+company.
+
+- Signing up from the public page creates a brand-new company workspace,
+  makes the signer its **manager**, and seeds it with sample properties,
+  tenants, leases and payments so they land in a working system. Sample
+  rows are labelled "Sample data — safe to delete."
+- A manager adds colleagues from the **Staff** page; those accounts join
+  the manager's company automatically.
+- Isolation is enforced in the API layer. Every request filters on the
+  `company_id` carried in the caller's signed JWT — never from the request
+  body or a URL parameter, so it can't be spoofed.
+- `npm run audit:scoping` (in `backend/`) walks every Supabase query and
+  fails if one touches a company-owned table without a `company_id`
+  filter. It's verified against a deliberately-broken control, so a green
+  result means something. Run it after touching any route.
+- Each company gets its own public showcase at `/showcase/<slug>`, branded
+  with its name and logo. The slug is editable in Settings.
+
+Tokens issued before multi-tenancy carry no `company_id` and are rejected
+with a "please sign in again" message rather than being defaulted into
+someone's data — so **everyone must log in again after this deploys.**
+
 ## Security posture
 
 Built assuming strangers on the internet will hit this deployment (see
@@ -212,6 +238,12 @@ subscription status.
   needs a payment provider integration and merchant account
 - Password reset / invitation emails — staff accounts are created with a
   temporary password you share with the person directly
-- Real multi-tenancy: today all users share one data pool and one
-  `l_settings` row. A subscriber signing up and onboarding their own
-  office staff into an isolated workspace is the next significant step.
+- Properties as first-class records — `property_name` is still just a text
+  field on each unit, so there's no property-level address, photo set or
+  roll-up across the units inside one building
+- Sales listings — the showcase only supports rentals/bookings today;
+  there's no for-sale flag, asking price, or offer flow
+- Notifications — late payments and booking requests are recorded but
+  nobody is emailed or texted about them
+- Password reset and staff invitation emails
+- A tenant-facing portal (tenants can't log in to see their own statement)

@@ -127,12 +127,16 @@ export const getMonthlyReport = (params) => api.get('/reports/monthly', { params
 export const getExpenseBreakdown = (params) => api.get('/reports/expense-breakdown', { params }).then((r) => r.data);
 export const getReportsSummary = () => api.get('/reports/summary').then((r) => r.data);
 
-// Public showcase — no auth required, used by the /showcase pages that get
-// shared on social media.
-export const getPublicUnits = () => api.get('/public/units').then((r) => r.data);
-export const getPublicUnit = (id) => api.get(`/public/units/${id}`).then((r) => r.data);
-export const createInquiry = (unitId, payload) =>
-  api.post(`/public/units/${unitId}/inquiries`, payload).then((r) => r.data);
+// Public showcase — no auth required. The company is identified by its
+// slug in the URL, since there's no session to read it from.
+export const getPublicUnits = (slug) => api.get(`/public/${slug}/units`).then((r) => r.data);
+export const getPublicUnit = (slug, id) => api.get(`/public/${slug}/units/${id}`).then((r) => r.data);
+export const createInquiry = (slug, unitId, payload) =>
+  api.post(`/public/${slug}/units/${unitId}/inquiries`, payload).then((r) => r.data);
+
+// Company profile
+export const getCompany = () => api.get('/company').then((r) => r.data);
+export const updateCompany = (payload) => api.put('/company', payload).then((r) => r.data);
 
 // Booking inquiries — staff-side review of "Book now" submissions from the
 // public showcase.

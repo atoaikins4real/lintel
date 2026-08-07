@@ -13,15 +13,23 @@ function periodKey(date, ratePeriod) {
 // already have a payment logged for the current billing period. Short-stay
 // (nightly) leases are one-off bookings and are excluded — those are paid
 // at time of stay, not billed recurringly.
-async function generateCharges() {
+// `companyId` is optional: the Payments page passes the caller's company so
+// the button only ever bills their own leases, while the nightly scheduled
+// function omits it to bill every company in one pass. Either way each
+// created payment inherits company_id from its lease, so rows are always
+// attributed correctly.
+async function generateCharges(companyId = null) {
   const today = new Date();
   const todayIso = today.toISOString().slice(0, 10);
 
-  const { data: leases, error: leaseErr } = await supabase
+  let leaseQuery = supabase
     .from('l_leases')
     .select('*')
     .eq('status', 'active')
     .eq('stay_type', 'long_stay');
+  if (companyId) leaseQuery = leaseQuery.eq('company_id', companyId);
+
+  const { data: leases, error: leaseErr } = await leaseQuery;
   if (leaseErr) throw leaseErr;
 
   const created = [];
@@ -34,7 +42,8 @@ async function generateCharges() {
     const { data: existing, error: payErr } = await supabase
       .from('l_payments')
       .select('id, due_date')
-      .eq('lease_id', lease.id);
+      .eq('lease_id', lease.id)
+      .eq('company_id', lease.company_id);
     if (payErr) throw payErr;
 
     const currentPeriod = periodKey(today, lease.rate_period);
@@ -45,6 +54,7 @@ async function generateCharges() {
     const { data: inserted, error: insErr } = await supabase
       .from('l_payments')
       .insert({
+        company_id: lease.company_id,
         lease_id: lease.id,
         tenant_id: lease.tenant_id,
         unit_id: lease.unit_id,
@@ -64,27 +74,38 @@ async function generateCharges() {
 }
 
 // Flips any pending payment whose due_date has passed to 'late'.
-async function flagLatePayments() {
+// Same optional-scope rule as generateCharges above.
+async function flagLatePayments(companyId = null) {
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const { data: overdue, error: findErr } = await supabase
+  let findQuery = supabase
     .from('l_payments')
     .select('id')
     .eq('status', 'pending')
     .lt('due_date', todayIso);
+  if (companyId) findQuery = findQuery.eq('company_id', companyId);
+
+  const { data: overdue, error: findErr } = await findQuery;
   if (findErr) throw findErr;
 
   if (!overdue || overdue.length === 0) return { flagged_count: 0, ids: [] };
 
   const ids = overdue.map((p) => p.id);
-  const { error: updErr } = await supabase.from('l_payments').update({ status: 'late' }).in('id', ids);
+  let updQuery = supabase.from('l_payments').update({ status: 'late' }).in('id', ids);
+  if (companyId) updQuery = updQuery.eq('company_id', companyId);
+  const { error: updErr } = await updQuery;
   if (updErr) throw updErr;
 
   return { flagged_count: ids.length, ids };
 }
 
-async function getBillingSummary() {
-  const { data, error } = await supabase.from('l_payments').select('amount, status').in('status', ['pending', 'late']);
+// Always scoped — this only ever backs a signed-in user's Payments page.
+async function getBillingSummary(companyId) {
+  const { data, error } = await supabase
+    .from('l_payments')
+    .select('amount, status')
+    .eq('company_id', companyId)
+    .in('status', ['pending', 'late']);
   if (error) throw error;
 
   const summary = { pending_count: 0, pending_total: 0, late_count: 0, late_total: 0 };

@@ -15,7 +15,7 @@ router.use(gateMutations);
 router.get('/', async (req, res, next) => {
   try {
     const { tier, search } = req.query;
-    let query = supabase.from('l_tenants').select('*').order('created_at', { ascending: false });
+    let query = supabase.from('l_tenants').select('*').eq('company_id', req.user.company_id).order('created_at', { ascending: false });
 
     if (tier) query = query.eq('tier', tier);
     if (search) {
@@ -36,7 +36,7 @@ router.get('/', async (req, res, next) => {
 // Exclusive-tier incentive offer, per the tenant lifecycle spec.
 router.get('/upgrade-eligible', async (req, res, next) => {
   try {
-    const { data, error } = await supabase.from('l_tenants').select('*');
+    const { data, error } = await supabase.from('l_tenants').select('*').eq('company_id', req.user.company_id);
     if (error) throw error;
 
     const eligible = data.filter((t) =>
@@ -62,15 +62,17 @@ router.get('/:id', async (req, res, next) => {
       .from('l_tenants')
       .select('*')
       .eq('id', id)
-      .single();
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
     if (error) throw error;
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' });
 
     const [{ data: leases }, { data: payments }, { data: faults }, { data: tierEvents }] =
       await Promise.all([
-        supabase.from('l_leases').select('*').eq('tenant_id', id).order('start_date', { ascending: false }),
-        supabase.from('l_payments').select('*').eq('tenant_id', id).order('payment_date', { ascending: false }),
-        supabase.from('l_faults').select('*').eq('tenant_id', id),
-        supabase.from('l_tenant_tier_events').select('*').eq('tenant_id', id).order('created_at', { ascending: false }),
+        supabase.from('l_leases').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id).order('start_date', { ascending: false }),
+        supabase.from('l_payments').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id).order('payment_date', { ascending: false }),
+        supabase.from('l_faults').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+        supabase.from('l_tenant_tier_events').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id).order('created_at', { ascending: false }),
       ]);
 
     res.json({ ...tenant, leases, payments, faults, tier_events: tierEvents });
@@ -89,11 +91,12 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'first_name and last_name are required' });
     }
 
-    const lintel_id = await generateLintelId();
+    const lintel_id = await generateLintelId(req.user.company_id);
 
     const { data, error } = await supabase
       .from('l_tenants')
       .insert({
+        company_id: req.user.company_id,
         lintel_id,
         first_name: String(first_name).trim(),
         last_name: String(last_name).trim(),
@@ -125,8 +128,9 @@ router.put('/:id', async (req, res, next) => {
       .from('l_tenants')
       .update({ first_name, last_name, email, phone, id_document_type, id_document_number, nationality, notes })
       .eq('id', id)
+      .eq('company_id', req.user.company_id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
     res.json(data);
@@ -144,9 +148,9 @@ router.post('/:id/recompute', async (req, res, next) => {
 
     const [{ data: leases, error: leaseErr }, { data: payments, error: payErr }, { data: faults, error: faultErr }] =
       await Promise.all([
-        supabase.from('l_leases').select('*').eq('tenant_id', id),
-        supabase.from('l_payments').select('*').eq('tenant_id', id),
-        supabase.from('l_faults').select('*').eq('tenant_id', id),
+        supabase.from('l_leases').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+        supabase.from('l_payments').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+        supabase.from('l_faults').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
       ]);
     if (leaseErr) throw leaseErr;
     if (payErr) throw payErr;
@@ -177,7 +181,7 @@ router.post('/:id/recompute', async (req, res, next) => {
     const score = computeScore({ totalStays, onTimePaymentRate, tenantCausedFaults, longestContinuousMonths });
     const tier = computeTier({ totalStays, longestContinuousMonths, score });
 
-    const { data: currentTenant } = await supabase.from('l_tenants').select('tier').eq('id', id).single();
+    const { data: currentTenant } = await supabase.from('l_tenants').select('tier').eq('id', id).eq('company_id', req.user.company_id).maybeSingle();
 
     const { data, error } = await supabase
       .from('l_tenants')
@@ -189,13 +193,15 @@ router.post('/:id/recompute', async (req, res, next) => {
         tier,
       })
       .eq('id', id)
+      .eq('company_id', req.user.company_id)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) throw error;
 
     if (currentTenant && currentTenant.tier !== tier) {
       await supabase.from('l_tenant_tier_events').insert({
+        company_id: req.user.company_id,
         tenant_id: id,
         event_type: 'tier_upgrade',
         detail: `Tier changed from ${currentTenant.tier} to ${tier} (score: ${score})`,
@@ -218,7 +224,7 @@ router.post('/:id/tier-events', async (req, res, next) => {
 
     const { data, error } = await supabase
       .from('l_tenant_tier_events')
-      .insert({ tenant_id: id, event_type, detail })
+      .insert({ company_id: req.user.company_id, tenant_id: id, event_type, detail })
       .select()
       .single();
 

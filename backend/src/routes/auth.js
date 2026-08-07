@@ -3,62 +3,57 @@ const bcrypt = require('bcryptjs');
 const { supabase } = require('../config/supabase');
 const { signToken, requireAuth, requireRole } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
+const { seedDemoData } = require('../utils/seedDemoData');
 
 const router = express.Router();
 
-// GET /api/auth/bootstrap-status — lets the frontend know whether to show
-// "create your manager account" (no users yet) or the normal login form.
-router.get('/bootstrap-status', async (req, res, next) => {
-  try {
-    const { count, error } = await supabase.from('l_users').select('*', { count: 'exact', head: true });
-    if (error) throw error;
-    res.json({ needsBootstrap: (count || 0) === 0 });
-  } catch (err) {
-    next(err);
-  }
+// GET /api/auth/bootstrap-status
+// Retained for the frontend's benefit. Since every signup now creates its
+// own company, there's no global "first user" state any more — this always
+// reports false and the login page shows the normal sign-in form.
+router.get('/bootstrap-status', async (req, res) => {
+  res.json({ needsBootstrap: false });
 });
 
-// POST /api/auth/register
-// While l_users is empty, this is open and always creates a manager
-// (first-run bootstrap). Once any user exists, creating more accounts
-// requires being logged in as a manager.
-router.post('/register', authLimiter, async (req, res, next) => {
-  try {
-    const { email, password, name, role } = req.body;
-    if (!email || !password || !name) {
-      return res.status(400).json({ error: 'email, password and name are required' });
-    }
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
+/** "Ako Properties Ltd" -> "ako-properties-ltd", made unique if taken. */
+async function uniqueSlug(name) {
+  const base =
+    String(name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) || 'company';
 
-    const { count, error: countErr } = await supabase.from('l_users').select('*', { count: 'exact', head: true });
-    if (countErr) throw countErr;
-    const isBootstrap = (count || 0) === 0;
-
-    if (!isBootstrap) {
-      // Not the first account — require a logged-in manager to create more staff.
-      return requireAuth(req, res, () =>
-        requireRole('manager')(req, res, () => createUser({ email, password, name, role }, res, next))
-      );
-    }
-
-    return createUser({ email, password, name: name, role: 'manager' }, res, next);
-  } catch (err) {
-    next(err);
+  let slug = base;
+  for (let i = 0; i < 50; i++) {
+    const { data } = await supabase.from('l_companies').select('id').eq('slug', slug).maybeSingle();
+    if (!data) return slug;
+    slug = `${base}-${Math.random().toString(36).slice(2, 6)}`;
   }
+  return `${base}-${Date.now()}`;
+}
+
+// POST /api/auth/register — create a colleague's account inside the
+// CALLER'S company. Manager only. The new user always inherits
+// req.user.company_id; a company_id in the request body is ignored.
+router.post('/register', authLimiter, requireAuth, requireRole('manager'), async (req, res, next) => {
+  const { email, password, name, role } = req.body;
+  if (!email || !password || !name) {
+    return res.status(400).json({ error: 'email, password and name are required' });
+  }
+  if (password.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  }
+  return createUser({ email, password, name, role, companyId: req.user.company_id }, res, next);
 });
 
-// POST /api/auth/signup — public, self-service. This is how a prospect
-// creates their own account to try Lintel without asking anyone for
-// access. It ALWAYS creates a `viewer` (read-only) account — the role
-// field is never read from the request body, so there's no way to sign
-// yourself up as manager/finance this way. Same shared demo dataset
-// every other viewer sees; nothing a signup account does can change data,
-// so this is safe to leave open to the public internet.
+// POST /api/auth/signup — public, self-service. Creates a NEW company
+// workspace, makes the signer its manager, and seeds it with sample data
+// so they land in a working system. Their data is isolated from every
+// other company from the first request.
 router.post('/signup', authLimiter, async (req, res, next) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, company_name } = req.body;
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'name, email and password are required' });
     }
@@ -66,13 +61,39 @@ router.post('/signup', authLimiter, async (req, res, next) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    return createUser({ email, password, name, role: 'viewer' }, res, next);
+    // Reject duplicates before creating a company, so a failed signup
+    // doesn't leave an empty orphan company behind.
+    const { data: existing } = await supabase
+      .from('l_users')
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
+      .maybeSingle();
+    if (existing) return res.status(409).json({ error: 'An account with that email already exists' });
+
+    const companyName = (company_name || '').trim() || `${name.trim()}'s Company`;
+    const { data: company, error: companyErr } = await supabase
+      .from('l_companies')
+      .insert({ name: companyName, slug: await uniqueSlug(companyName) })
+      .select('id, name, slug')
+      .single();
+    if (companyErr) throw companyErr;
+
+    // Each company gets its own settings row (currency, payout, etc.).
+    await supabase.from('l_settings').insert({ company_id: company.id });
+
+    await seedDemoData(company.id);
+
+    return createUser(
+      { email, password, name, role: 'manager', companyId: company.id, company },
+      res,
+      next
+    );
   } catch (err) {
     next(err);
   }
 });
 
-async function createUser({ email, password, name, role }, res, next) {
+async function createUser({ email, password, name, role, companyId, company }, res, next) {
   try {
     const allowedRoles = ['manager', 'finance', 'viewer'];
     const finalRole = allowedRoles.includes(role) ? role : 'viewer';
@@ -80,8 +101,14 @@ async function createUser({ email, password, name, role }, res, next) {
 
     const { data, error } = await supabase
       .from('l_users')
-      .insert({ email: email.toLowerCase().trim(), password_hash, name, role: finalRole })
-      .select('id, email, name, role, created_at')
+      .insert({
+        email: email.toLowerCase().trim(),
+        password_hash,
+        name,
+        role: finalRole,
+        company_id: companyId,
+      })
+      .select('id, email, name, role, created_at, company_id')
       .single();
 
     if (error) {
@@ -90,7 +117,7 @@ async function createUser({ email, password, name, role }, res, next) {
     }
 
     const token = signToken(data);
-    res.status(201).json({ token, user: data });
+    res.status(201).json({ token, user: data, company: company || undefined });
   } catch (err) {
     next(err);
   }
@@ -113,10 +140,24 @@ router.post('/login', authLimiter, async (req, res, next) => {
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
+    const { data: company } = await supabase
+      .from('l_companies')
+      .select('id, name, slug, logo_url')
+      .eq('id', user.company_id)
+      .maybeSingle();
+
     const token = signToken(user);
     res.json({
       token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role, created_at: user.created_at },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        created_at: user.created_at,
+        company_id: user.company_id,
+      },
+      company,
     });
   } catch (err) {
     next(err);
@@ -124,8 +165,17 @@ router.post('/login', authLimiter, async (req, res, next) => {
 });
 
 // GET /api/auth/me
-router.get('/me', requireAuth, async (req, res) => {
-  res.json({ user: req.user });
+router.get('/me', requireAuth, async (req, res, next) => {
+  try {
+    const { data: company } = await supabase
+      .from('l_companies')
+      .select('id, name, slug, logo_url')
+      .eq('id', req.user.company_id)
+      .maybeSingle();
+    res.json({ user: req.user, company });
+  } catch (err) {
+    next(err);
+  }
 });
 
 // POST /api/auth/dev-login — INSTANT role switching for local testing only.
@@ -148,18 +198,27 @@ router.post('/dev-login', async (req, res, next) => {
     const email = `dev-${role}@lintel.local`;
     const { data: existing, error: findErr } = await supabase
       .from('l_users')
-      .select('id, email, name, role, created_at')
+      .select('id, email, name, role, created_at, company_id')
       .eq('email', email)
       .maybeSingle();
     if (findErr) throw findErr;
 
     let user = existing;
     if (!user) {
+      // Dev accounts join the default company so they exercise the same
+      // scoping rules as a real user.
+      const { data: company } = await supabase.from('l_companies').select('id').eq('slug', 'main').maybeSingle();
       const password_hash = await bcrypt.hash(`dev-${role}-${Date.now()}`, 10);
       const { data: created, error: createErr } = await supabase
         .from('l_users')
-        .insert({ email, password_hash, name: `Dev ${role.charAt(0).toUpperCase()}${role.slice(1)}`, role })
-        .select('id, email, name, role, created_at')
+        .insert({
+          email,
+          password_hash,
+          name: `Dev ${role.charAt(0).toUpperCase()}${role.slice(1)}`,
+          role,
+          company_id: company?.id,
+        })
+        .select('id, email, name, role, created_at, company_id')
         .single();
       if (createErr) throw createErr;
       user = created;
@@ -178,6 +237,7 @@ router.get('/users', requireAuth, requireRole('manager'), async (req, res, next)
     const { data, error } = await supabase
       .from('l_users')
       .select('id, email, name, role, created_at')
+      .eq('company_id', req.user.company_id)
       .order('created_at', { ascending: true });
     if (error) throw error;
     res.json(data);
@@ -205,6 +265,7 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
       const { count, error: countErr } = await supabase
         .from('l_users')
         .select('*', { count: 'exact', head: true })
+        .eq('company_id', req.user.company_id)
         .eq('role', 'manager');
       if (countErr) throw countErr;
       if ((count || 0) <= 1) {
@@ -214,12 +275,15 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
       }
     }
 
+    // The company_id filter is what stops a manager changing roles for
+    // users belonging to a different company.
     const { data, error } = await supabase
       .from('l_users')
       .update({ role })
       .eq('id', id)
+      .eq('company_id', req.user.company_id)
       .select('id, email, name, role, created_at')
-      .single();
+      .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'User not found' });
 

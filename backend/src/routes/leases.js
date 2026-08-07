@@ -11,7 +11,7 @@ router.use(gateMutations);
 router.get('/', async (req, res, next) => {
   try {
     const { unit_id, tenant_id, status, stay_type } = req.query;
-    let query = supabase.from('l_leases').select('*').order('start_date', { ascending: false });
+    let query = supabase.from('l_leases').select('*').eq('company_id', req.user.company_id).order('start_date', { ascending: false });
     if (unit_id) query = query.eq('unit_id', unit_id);
     if (tenant_id) query = query.eq('tenant_id', tenant_id);
     if (status) query = query.eq('status', status);
@@ -28,10 +28,11 @@ router.get('/', async (req, res, next) => {
 router.get('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase.from('l_leases').select('*').eq('id', id).single();
+    const { data, error } = await supabase.from('l_leases').select('*').eq('id', id).eq('company_id', req.user.company_id).maybeSingle();
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Lease not found' });
 
-    const { data: payments } = await supabase.from('l_payments').select('*').eq('lease_id', id);
+    const { data: payments } = await supabase.from('l_payments').select('*').eq('lease_id', id).eq('company_id', req.user.company_id);
     res.json({ ...data, payments });
   } catch (err) {
     next(err);
@@ -52,6 +53,7 @@ router.post('/', async (req, res, next) => {
     const { data, error } = await supabase
       .from('l_leases')
       .insert({
+        company_id: req.user.company_id,
         tenant_id,
         unit_id,
         stay_type,
@@ -68,7 +70,7 @@ router.post('/', async (req, res, next) => {
 
     if (error) throw error;
 
-    await supabase.from('l_units').update({ status: 'occupied' }).eq('id', unit_id);
+    await supabase.from('l_units').update({ status: 'occupied' }).eq('id', unit_id).eq('company_id', req.user.company_id);
 
     res.status(201).json(data);
   } catch (err) {
@@ -85,12 +87,20 @@ router.put('/:id', async (req, res, next) => {
       texts: ['source'],
     });
 
-    const { data, error } = await supabase.from('l_leases').update(updates).eq('id', id).select().single();
+    delete updates.company_id;
+    const { data, error } = await supabase
+      .from('l_leases')
+      .update(updates)
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Lease not found' });
 
     // If the lease is being closed out, free up the unit.
     if (updates.status === 'completed' || updates.status === 'cancelled') {
-      await supabase.from('l_units').update({ status: 'vacant' }).eq('id', data.unit_id);
+      await supabase.from('l_units').update({ status: 'vacant' }).eq('id', data.unit_id).eq('company_id', req.user.company_id);
     }
 
     res.json(data);

@@ -10,7 +10,7 @@ const emptyInquiry = { name: '', email: '', phone: '', start_date: '', end_date:
 // Public, unauthenticated — the per-unit link meant to be shared directly
 // (e.g. one Instagram post per listing). Only ever calls /api/public/*.
 export default function ShowcaseDetail() {
-  const { id } = useParams();
+  const { slug, id } = useParams();
   const [unit, setUnit] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -20,17 +20,17 @@ export default function ShowcaseDetail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getPublicUnit(id)
+    getPublicUnit(slug, id)
       .then(setUnit)
       .catch(() => setNotFound(true));
-  }, [id]);
+  }, [slug, id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSending(true);
     try {
-      await createInquiry(id, form);
+      await createInquiry(slug, id, form);
       setSent(true);
       setShowForm(false);
     } catch (err) {
@@ -45,7 +45,7 @@ export default function ShowcaseDetail() {
       <div className="min-h-screen flex items-center justify-center bg-panel px-4">
         <div className="text-center">
           <p className="text-stone mb-3">This listing isn&apos;t available.</p>
-          <Link to="/showcase" className="text-gold hover:underline text-sm">
+          <Link to={`/showcase/${slug}`} className="text-gold hover:underline text-sm">
             ← Back to all listings
           </Link>
         </div>
@@ -67,7 +67,7 @@ export default function ShowcaseDetail() {
   return (
     <div className="min-h-screen bg-panel">
       <div className="max-w-3xl mx-auto px-4 sm:px-8 py-8">
-        <Link to="/showcase" className="text-sm text-stone hover:text-ink mb-4 inline-block">
+        <Link to={`/showcase/${slug}`} className="text-sm text-stone hover:text-ink mb-4 inline-block">
           ← All listings
         </Link>
 

@@ -22,7 +22,11 @@ function str(value) {
 // GET /api/settings
 router.get('/', async (req, res, next) => {
   try {
-    const { data, error } = await supabase.from('l_settings').select('*').limit(1).single();
+    const { data, error } = await supabase
+      .from('l_settings')
+      .select('*')
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
     if (error) throw error;
     res.json({ ...data, supported_currencies: SUPPORTED_CURRENCIES });
   } catch (err) {
@@ -76,13 +80,19 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
     }
     if (subscription_currency !== undefined) updates.subscription_currency = subscription_currency || 'GHS';
 
-    const { data: existing, error: findErr } = await supabase.from('l_settings').select('id').limit(1).single();
+    const { data: existing, error: findErr } = await supabase
+      .from('l_settings')
+      .select('id')
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
     if (findErr) throw findErr;
+    if (!existing) return res.status(404).json({ error: 'Settings not found for this company' });
 
     const { data, error } = await supabase
       .from('l_settings')
       .update(updates)
       .eq('id', existing.id)
+      .eq('company_id', req.user.company_id)
       .select()
       .single();
     if (error) throw error;

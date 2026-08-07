@@ -9,18 +9,18 @@ const router = express.Router();
  * (days covered by active/completed leases vs. days since the unit
  * was created, capped to the requested window), and net yield.
  */
-async function computeUnitPerformance(unit, { from, to } = {}) {
+async function computeUnitPerformance(unit, companyId, { from, to } = {}) {
   const windowStart = from ? new Date(from) : new Date(unit.created_at);
   const windowEnd = to ? new Date(to) : new Date();
   const windowDays = Math.max(1, Math.round((windowEnd - windowStart) / (1000 * 60 * 60 * 24)));
 
   const [{ data: payments }, { data: expenses }, { data: renovations }, { data: faults }, { data: leases }] =
     await Promise.all([
-      supabase.from('l_payments').select('*').eq('unit_id', unit.id).eq('status', 'paid'),
-      supabase.from('l_expenses').select('*').eq('unit_id', unit.id),
-      supabase.from('l_renovations').select('*').eq('unit_id', unit.id),
-      supabase.from('l_faults').select('*').eq('unit_id', unit.id),
-      supabase.from('l_leases').select('*').eq('unit_id', unit.id),
+      supabase.from('l_payments').select('*').eq('unit_id', unit.id).eq('company_id', companyId).eq('status', 'paid'),
+      supabase.from('l_expenses').select('*').eq('unit_id', unit.id).eq('company_id', companyId),
+      supabase.from('l_renovations').select('*').eq('unit_id', unit.id).eq('company_id', companyId),
+      supabase.from('l_faults').select('*').eq('unit_id', unit.id).eq('company_id', companyId),
+      supabase.from('l_leases').select('*').eq('unit_id', unit.id).eq('company_id', companyId),
     ]);
 
   const revenue = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
@@ -64,10 +64,15 @@ async function computeUnitPerformance(unit, { from, to } = {}) {
 router.get('/units', async (req, res, next) => {
   try {
     const { from, to } = req.query;
-    const { data: units, error } = await supabase.from('l_units').select('*');
+    const { data: units, error } = await supabase
+      .from('l_units')
+      .select('*')
+      .eq('company_id', req.user.company_id);
     if (error) throw error;
 
-    const results = await Promise.all(units.map((u) => computeUnitPerformance(u, { from, to })));
+    const results = await Promise.all(
+      units.map((u) => computeUnitPerformance(u, req.user.company_id, { from, to }))
+    );
     results.sort((a, b) => a.net_yield - b.net_yield);
 
     res.json(results);
@@ -81,10 +86,16 @@ router.get('/units/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { from, to } = req.query;
-    const { data: unit, error } = await supabase.from('l_units').select('*').eq('id', id).single();
+    const { data: unit, error } = await supabase
+      .from('l_units')
+      .select('*')
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
     if (error) throw error;
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
 
-    const performance = await computeUnitPerformance(unit, { from, to });
+    const performance = await computeUnitPerformance(unit, req.user.company_id, { from, to });
     res.json(performance);
   } catch (err) {
     next(err);

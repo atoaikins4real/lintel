@@ -5,11 +5,13 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const logout = useCallback(() => {
     clearToken();
     setUser(null);
+    setCompany(null);
   }, []);
 
   useEffect(() => {
@@ -23,7 +25,10 @@ export function AuthProvider({ children }) {
       return;
     }
     getMe()
-      .then((res) => setUser(res.user))
+      .then((res) => {
+        setUser(res.user);
+        setCompany(res.company || null);
+      })
       .catch(() => logout())
       .finally(() => setLoading(false));
   }, [logout]);
@@ -32,20 +37,22 @@ export function AuthProvider({ children }) {
     const res = await apiLogin({ email, password });
     storeToken(res.token, remember);
     setUser(res.user);
+    setCompany(res.company || null);
     return res.user;
   }, []);
 
-  const setSession = useCallback((token, sessionUser, remember = true) => {
+  const setSession = useCallback((token, sessionUser, remember = true, sessionCompany = null) => {
     storeToken(token, remember);
     setUser(sessionUser);
+    if (sessionCompany) setCompany(sessionCompany);
   }, []);
 
   const canEdit = user ? ['manager', 'finance'].includes(user.role) : false;
   const isManager = user?.role === 'manager';
 
   const value = useMemo(
-    () => ({ user, loading, login, logout, setSession, canEdit, isManager }),
-    [user, loading, login, logout, setSession, canEdit, isManager]
+    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager }),
+    [user, company, loading, login, logout, setSession, canEdit, isManager]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

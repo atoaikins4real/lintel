@@ -6,7 +6,8 @@
   "type": "commonjs",
   "scripts": {
     "dev": "nodemon src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "audit:scoping": "node audit-scoping.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

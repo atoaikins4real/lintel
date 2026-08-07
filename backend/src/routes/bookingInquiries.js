@@ -16,6 +16,7 @@ router.get('/', async (req, res, next) => {
     let query = supabase
       .from('l_booking_inquiries')
       .select('*, l_units(unit_code, property_name)')
+      .eq('company_id', req.user.company_id)
       .order('created_at', { ascending: false });
     if (status) query = query.eq('status', status);
 
@@ -44,9 +45,11 @@ router.patch('/:id', requireRole('manager', 'finance'), async (req, res, next) =
       .from('l_booking_inquiries')
       .update({ status })
       .eq('id', id)
+      .eq('company_id', req.user.company_id)
       .select('*, l_units(unit_code, property_name)')
-      .single();
+      .maybeSingle();
     if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Request not found' });
     res.json(data);
   } catch (err) {
     next(err);

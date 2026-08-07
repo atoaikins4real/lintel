@@ -10,7 +10,7 @@ import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function UnitDetail() {
   const { id } = useParams();
-  const { canEdit } = useAuth();
+  const { canEdit, company } = useAuth();
   const { money } = useSettings();
   const [unit, setUnit] = useState(null);
   const [perf, setPerf] = useState(null);
@@ -30,7 +30,7 @@ export default function UnitDetail() {
     getFaults({ unit_id: id }).then(setFaults);
   }, [id]);
 
-  const shareUrl = `${window.location.origin}/showcase/${id}`;
+  const shareUrl = company?.slug ? `${window.location.origin}/showcase/${company.slug}/${id}` : '';
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareUrl);

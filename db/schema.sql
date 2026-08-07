@@ -15,6 +15,32 @@
 create extension if not exists "pgcrypto";
 
 -- ------------------------------------------------------------
+-- MULTI-TENANCY
+-- Every business table carries a company_id. A company is one
+-- subscriber: their units, tenants, leases, payments, staff and
+-- settings are invisible to every other company.
+--
+-- Isolation is enforced in the API layer — each request filters by the
+-- company_id carried in the caller's signed JWT (never from the request
+-- body). See backend/audit-scoping.js, which fails the build if any
+-- query against a company-owned table is missing that filter.
+-- ------------------------------------------------------------
+create table if not exists l_companies (
+    id uuid primary key default gen_random_uuid(),
+    name text not null,
+    slug text not null unique,               -- public showcase URL: /showcase/<slug>
+    logo_url text,
+    email text,
+    phone text,
+    address text,
+    city text,
+    country text,
+    website text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+-- ------------------------------------------------------------
 -- ENUM TYPES (l_ prefixed)
 -- ------------------------------------------------------------
 do $$
@@ -75,6 +101,7 @@ $$;
 -- viewer is read-only across the app.
 -- ------------------------------------------------------------
 create table if not exists l_users (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     email text unique not null,
     password_hash text not null,
@@ -92,8 +119,9 @@ create index if not exists idx_l_users_email on l_users(email);
 -- record and Lintel ID, regardless of how many stays they have.
 -- ------------------------------------------------------------
 create table if not exists l_tenants (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
-    lintel_id text unique not null,          -- e.g. LNT-2026-0001
+    lintel_id text not null,                   -- e.g. LNT-2026-0001; unique per company (index below)
     first_name text not null,
     last_name text not null,
     email text,
@@ -113,16 +141,23 @@ create table if not exists l_tenants (
 
 create index if not exists idx_l_tenants_lintel_id on l_tenants(lintel_id);
 create index if not exists idx_l_tenants_tier on l_tenants(tier);
+create index if not exists idx_l_tenants_company on l_tenants(company_id);
+-- Lintel IDs restart per company, so uniqueness is per company too.
+create unique index if not exists idx_l_tenants_company_lintel on l_tenants(company_id, lintel_id);
 
--- Sequence-backed counter per year for LNT-YYYY-#### generation
+-- Counter per (company, year) for LNT-YYYY-#### generation — each
+-- company's IDs run 0001, 0002, ... independently.
 create table if not exists l_tenant_id_counters (
-    year integer primary key,
-    last_seq integer not null default 0
+    company_id uuid not null references l_companies(id) on delete cascade,
+    year integer not null,
+    last_seq integer not null default 0,
+    primary key (company_id, year)
 );
 
 -- Log of tier changes and incentives offered/accepted — the audit
 -- trail behind every "why is this tenant Exclusive" question.
 create table if not exists l_tenant_tier_events (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     tenant_id uuid not null references l_tenants(id) on delete cascade,
     event_type text not null,                  -- tier_upgrade, incentive_offered, incentive_accepted, incentive_declined
@@ -135,8 +170,9 @@ create table if not exists l_tenant_tier_events (
 -- Every apartment/house is its own mini P&L.
 -- ------------------------------------------------------------
 create table if not exists l_units (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
-    unit_code text unique not null,            -- e.g. "Airport Res - 4B"
+    unit_code text not null,                   -- e.g. "Airport Res - 4B"; unique per company (index below)
     property_name text not null,
     unit_type text not null,                   -- apartment, house, townhouse, studio
     class l_unit_class not null default 'standard',
@@ -156,6 +192,9 @@ create table if not exists l_units (
 
 create index if not exists idx_l_units_status on l_units(status);
 create index if not exists idx_l_units_class on l_units(class);
+create index if not exists idx_l_units_company on l_units(company_id);
+-- Two different companies may each have a unit called "Block A - 1".
+create unique index if not exists idx_l_units_company_code on l_units(company_id, unit_code);
 
 -- ------------------------------------------------------------
 -- L_BOOKING_INQUIRIES
@@ -166,6 +205,7 @@ create index if not exists idx_l_units_class on l_units(class);
 -- the booking off-platform.
 -- ------------------------------------------------------------
 create table if not exists l_booking_inquiries (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     unit_id uuid not null references l_units(id) on delete cascade,
     name text not null,
@@ -186,14 +226,12 @@ create index if not exists idx_l_booking_inquiries_status on l_booking_inquiries
 -- Account-wide configuration: display currency, where rent payouts
 -- should be sent, and this account's Lintel subscription.
 --
--- Single row by construction — `singleton` is unique AND constrained to
--- true, so a second row is impossible. When the multi-tenant subscriber
--- redesign lands this becomes one row per organisation keyed by org_id,
--- and the singleton guard goes away.
+-- Exactly one row per company, enforced by the unique index below. A
+-- company's row is created at signup alongside the company itself.
 -- ------------------------------------------------------------
 create table if not exists l_settings (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
-    singleton boolean not null default true unique check (singleton),
 
     -- Default currency for NEW payments. Each payment stores its own
     -- currency (l_payments.currency), so historical amounts are never
@@ -218,7 +256,7 @@ create table if not exists l_settings (
     updated_at timestamptz not null default now()
 );
 
-insert into l_settings (singleton) values (true) on conflict (singleton) do nothing;
+create unique index if not exists idx_l_settings_company_unique on l_settings(company_id);
 
 -- ------------------------------------------------------------
 -- L_LEASES
@@ -226,6 +264,7 @@ insert into l_settings (singleton) values (true) on conflict (singleton) do noth
 -- multi-year residential lease.
 -- ------------------------------------------------------------
 create table if not exists l_leases (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     tenant_id uuid not null references l_tenants(id) on delete restrict,
     unit_id uuid not null references l_units(id) on delete restrict,
@@ -249,6 +288,7 @@ create index if not exists idx_l_leases_status on l_leases(status);
 -- Every dollar/cedi collected, tied to lease + tenant + unit.
 -- ------------------------------------------------------------
 create table if not exists l_payments (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     lease_id uuid not null references l_leases(id) on delete cascade,
     tenant_id uuid not null references l_tenants(id) on delete restrict,
@@ -274,6 +314,7 @@ create index if not exists idx_l_payments_status on l_payments(status);
 -- Recurring / operational costs per unit (not capitalized).
 -- ------------------------------------------------------------
 create table if not exists l_expenses (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     unit_id uuid not null references l_units(id) on delete cascade,
     category l_expense_category not null,
@@ -293,6 +334,7 @@ create index if not exists idx_l_expenses_date on l_expenses(expense_date);
 -- rate lets us prove renovation ROI.
 -- ------------------------------------------------------------
 create table if not exists l_renovations (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     unit_id uuid not null references l_units(id) on delete cascade,
     description text not null,
@@ -312,6 +354,7 @@ create index if not exists idx_l_renovations_unit on l_renovations(unit_id);
 -- tenant if they caused it (feeds into tenant score).
 -- ------------------------------------------------------------
 create table if not exists l_faults (
+    company_id uuid not null references l_companies(id) on delete cascade,
     id uuid primary key default gen_random_uuid(),
     unit_id uuid not null references l_units(id) on delete cascade,
     tenant_id uuid references l_tenants(id) on delete set null,

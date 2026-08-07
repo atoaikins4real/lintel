@@ -28,9 +28,11 @@ function App() {
       {showDevPanel && <DevPanel />}
       <Routes>
         <Route path="/login" element={<Login />} />
-        {/* Public — no auth, meant to be shared on social media */}
-        <Route path="/showcase" element={<Showcase />} />
-        <Route path="/showcase/:id" element={<ShowcaseDetail />} />
+        {/* Public — no auth, meant to be shared on social media. The
+            company slug identifies whose listings to show, since there's
+            no session to read it from. */}
+        <Route path="/showcase/:slug" element={<Showcase />} />
+        <Route path="/showcase/:slug/:id" element={<ShowcaseDetail />} />
         <Route
           path="/*"
           element={

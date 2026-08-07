@@ -27,6 +27,7 @@ const reportsRouter = require('./routes/reports');
 const bookingInquiriesRouter = require('./routes/bookingInquiries');
 const uploadsRouter = require('./routes/uploads');
 const settingsRouter = require('./routes/settings');
+const companyRouter = require('./routes/company');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/reports', reportsRouter);
 app.use('/api/booking-inquiries', bookingInquiriesRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/company', companyRouter);
 
 app.use(notFound);
 app.use(errorHandler);
