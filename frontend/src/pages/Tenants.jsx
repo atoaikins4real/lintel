@@ -48,9 +48,14 @@ export default function Tenants() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <p className="text-stone text-sm">Every guest and resident, tracked under one permanent Lintel ID.</p>
         {canEdit && (
-          <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary sm:w-auto w-full">
-            {showForm ? 'Cancel' : '+ New Tenant'}
-          </button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Link to="/tenants/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
+              + Onboard Tenant
+            </Link>
+            <button onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
+              {showForm ? 'Cancel' : 'Quick add'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -90,6 +95,7 @@ export default function Tenants() {
               <tr>
                 <th>Lintel ID</th>
                 <th>Name</th>
+                <th>Onboarding</th>
                 <th>Tier</th>
                 <th className="text-right">Score</th>
                 <th className="text-right">Stays</th>
@@ -105,6 +111,15 @@ export default function Tenants() {
                     </Link>
                   </td>
                   <td>{t.first_name} {t.last_name}</td>
+                  <td>
+                    {t.onboarding_status === 'complete' ? (
+                      <span className="pill bg-emerald-50 text-emerald-700">Complete</span>
+                    ) : (
+                      <Link to={`/tenants/${t.id}/onboard`} className="pill bg-amber-50 text-amber-700 hover:underline">
+                        Finish setup
+                      </Link>
+                    )}
+                  </td>
                   <td><TierBadge tier={t.tier} /></td>
                   <td className="text-right">{t.score}</td>
                   <td className="text-right">{t.total_stays}</td>
@@ -112,7 +127,7 @@ export default function Tenants() {
                 </tr>
               ))}
               {tenants.length === 0 && (
-                <tr><td colSpan={6} className="px-5 py-10 text-center text-stone">No tenants yet.</td></tr>
+                <tr><td colSpan={7} className="px-5 py-10 text-center text-stone">No tenants yet.</td></tr>
               )}
             </tbody>
           </table>

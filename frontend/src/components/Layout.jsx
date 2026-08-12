@@ -1,5 +1,5 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconCalendar, IconCog, IconShield, IconLogout } from './icons.jsx';
+import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconCalendar, IconCog, IconShield, IconKey, IconHome, IconLogout } from './icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 // `primary` marks the items that also appear in the mobile bottom tab bar
@@ -8,8 +8,10 @@ import { useAuth } from '../context/AuthContext.jsx';
 const navItems = [
   { to: '/', label: 'Dashboard', end: true, icon: IconGrid, primary: true },
   { to: '/tenants', label: 'Tenants', icon: IconUsers, primary: true },
-  { to: '/units', label: 'Units', icon: IconBuilding, primary: true },
+  { to: '/properties', label: 'Properties', icon: IconHome, primary: true },
+  { to: '/units', label: 'Units', icon: IconBuilding },
   { to: '/leases', label: 'Leases', icon: IconFile },
+  { to: '/access', label: 'Access Cards', icon: IconKey },
   { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
   { to: '/faults-renovations', label: 'Faults & Reno.', icon: IconWrench },
   { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
@@ -23,8 +25,11 @@ const mobileNavItems = navItems.filter((n) => n.primary);
 const TITLES = {
   '/': 'Portfolio Overview',
   '/tenants': 'Tenants',
+  '/tenants/onboard': 'Onboard Tenant',
+  '/properties': 'Properties',
   '/units': 'Units',
   '/leases': 'Leases',
+  '/access': 'Access Cards',
   '/payments': 'Payments',
   '/faults-renovations': 'Faults & Renovations',
   '/booking-requests': 'Booking Requests',

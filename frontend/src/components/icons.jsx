@@ -45,6 +45,15 @@ export function IconBuilding(props) {
   );
 }
 
+export function IconKey(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="8" cy="8" r="4.2" />
+      <path d="M11 11l8.5 8.5M16.5 16l2-2M14 13.5l2.5-2.5" />
+    </svg>
+  );
+}
+
 export function IconCog(props) {
   return (
     <svg {...base} {...props}>

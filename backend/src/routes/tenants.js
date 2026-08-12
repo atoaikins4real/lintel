@@ -10,6 +10,23 @@ const { blank: str } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
+// Editable profile/KYC fields. Kept in one list so create and update can
+// never drift apart (which is how photo_urls got silently dropped on
+// unit create before).
+const PROFILE_FIELDS = [
+  'email',
+  'phone',
+  'id_document_type',
+  'id_document_number',
+  'id_document_expiry',
+  'id_document_front_url',
+  'id_document_back_url',
+  'photo_url',
+  'date_of_birth',
+  'nationality',
+  'notes',
+];
+
 
 // GET /api/tenants?tier=exclusive&search=kofi
 router.get('/', async (req, res, next) => {
@@ -75,7 +92,27 @@ router.get('/:id', async (req, res, next) => {
         supabase.from('l_tenant_tier_events').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id).order('created_at', { ascending: false }),
       ]);
 
-    res.json({ ...tenant, leases, payments, faults, tier_events: tierEvents });
+    // Onboarding records, so the tenant page shows the full captured
+    // picture in one request.
+    const [{ data: contacts }, { data: occupants }, { data: vehicles }, { data: credentials }] =
+      await Promise.all([
+        supabase.from('l_tenant_contacts').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+        supabase.from('l_tenant_occupants').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+        supabase.from('l_tenant_vehicles').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+        supabase.from('l_access_credentials').select('*').eq('tenant_id', id).eq('company_id', req.user.company_id),
+      ]);
+
+    res.json({
+      ...tenant,
+      leases,
+      payments,
+      faults,
+      tier_events: tierEvents,
+      contacts: contacts || [],
+      occupants: occupants || [],
+      vehicles: vehicles || [],
+      credentials: credentials || [],
+    });
   } catch (err) {
     next(err);
   }
@@ -84,8 +121,7 @@ router.get('/:id', async (req, res, next) => {
 // POST /api/tenants — creates a tenant and assigns their permanent Lintel ID
 router.post('/', async (req, res, next) => {
   try {
-    const { first_name, last_name, email, phone, id_document_type, id_document_number, nationality, notes } =
-      req.body;
+    const { first_name, last_name } = req.body;
 
     if (!first_name || !last_name) {
       return res.status(400).json({ error: 'first_name and last_name are required' });
@@ -93,20 +129,16 @@ router.post('/', async (req, res, next) => {
 
     const lintel_id = await generateLintelId(req.user.company_id);
 
+    const payload = {
+      lintel_id,
+      first_name: String(first_name).trim(),
+      last_name: String(last_name).trim(),
+    };
+    for (const f of PROFILE_FIELDS) payload[f] = str(req.body[f]);
+
     const { data, error } = await supabase
       .from('l_tenants')
-      .insert({
-        company_id: req.user.company_id,
-        lintel_id,
-        first_name: String(first_name).trim(),
-        last_name: String(last_name).trim(),
-        email: str(email),
-        phone: str(phone),
-        id_document_type: str(id_document_type),
-        id_document_number: str(id_document_number),
-        nationality: str(nationality),
-        notes: str(notes),
-      })
+      .insert({ ...payload, company_id: req.user.company_id })
       .select()
       .single();
 
@@ -121,12 +153,17 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { first_name, last_name, email, phone, id_document_type, id_document_number, nationality, notes } =
-      req.body;
+
+    const updates = {};
+    if (req.body.first_name !== undefined) updates.first_name = String(req.body.first_name).trim();
+    if (req.body.last_name !== undefined) updates.last_name = String(req.body.last_name).trim();
+    for (const f of PROFILE_FIELDS) {
+      if (req.body[f] !== undefined) updates[f] = str(req.body[f]);
+    }
 
     const { data, error } = await supabase
       .from('l_tenants')
-      .update({ first_name, last_name, email, phone, id_document_type, id_document_number, nationality, notes })
+      .update(updates)
       .eq('id', id)
       .eq('company_id', req.user.company_id)
       .select()

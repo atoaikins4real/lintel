@@ -167,6 +167,20 @@ screen).
   everything, `viewer` is read-only across the whole app. All `/api/*`
   routes require a valid session; mutating routes additionally require
   manager or finance.
+- **Properties** — buildings and estates are their own records (type,
+  address, digital/GPS address, year built, floors, amenities, photo
+  gallery). Every unit belongs to one, and a property can't be deleted
+  while it still has units.
+- **Guided tenant onboarding** (`/tenants/onboard`) — a six-step intake:
+  identity, ID documents (photo + front/back uploads), emergency contact
+  and next of kin, other occupants, vehicles, then a review. The tenant
+  record is created at step one so a half-finished intake is resumable,
+  and the Tenants list flags anyone still mid-setup.
+- **Access cards** — keycards, fobs, PINs, mobile keys and biometrics
+  issued to tenants, staff or contractors, scoped to a property and
+  optionally a unit, with a validity window and active/lost/revoked
+  status. Issuing a replacement automatically retires the card it
+  replaces. See the caveat below.
 - Tenant CRUD with auto-generated Lintel ID (`LNT-2026-0001`), score, and
   lifecycle tier, recomputed from lease/payment/fault history
 - "Upgrade eligible" endpoint that flags tenants ready for an Exclusive-tier
@@ -218,6 +232,19 @@ never retroactively relabels historical amounts. New payments default to
 the account currency and can be overridden per payment on the Payments
 form. All display formatting goes through `frontend/src/utils/currency.js`.
 
+### A note on door hardware
+
+The access-card feature is **record-keeping only**. Lintel does not
+communicate with any lock, reader or controller, so issuing a card in the
+app does not program a physical card or open anything.
+
+What it does do is hold the data in the shape real access systems expect —
+a credential identifier, a holder, a scope (property, optionally unit) and
+a validity window — plus an empty `l_access_events` table ready to receive
+door activity. That means connecting a controller later is an integration
+job, not a re-modelling job, and no history is lost in the meantime. The
+UI says this plainly so nobody mistakes an issued card for a working one.
+
 ### A note on money movement
 
 Lintel records payments and payout preferences — it does **not** charge
@@ -238,9 +265,7 @@ subscription status.
   needs a payment provider integration and merchant account
 - Password reset / invitation emails — staff accounts are created with a
   temporary password you share with the person directly
-- Properties as first-class records — `property_name` is still just a text
-  field on each unit, so there's no property-level address, photo set or
-  roll-up across the units inside one building
+- Live door hardware integration (see "A note on door hardware")
 - Sales listings — the showcase only supports rentals/bookings today;
   there's no for-sale flag, asking price, or offer flow
 - Notifications — late payments and booking requests are recorded but

@@ -464,3 +464,135 @@ on conflict (id) do update
   set public = true,
       file_size_limit = 5242880,
       allowed_mime_types = array['image/jpeg','image/png','image/webp'];
+
+-- ------------------------------------------------------------
+-- PROPERTIES, TENANT ONBOARDING CAPTURE, ACCESS CREDENTIALS
+-- Mirrors migrations: add_properties_entity,
+-- add_tenant_onboarding_capture, add_access_credentials_and_events.
+-- ------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'l_property_type') then
+    create type l_property_type as enum ('apartment_block','estate','standalone_house','townhouse_complex','commercial','mixed_use');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_onboarding_status') then
+    create type l_onboarding_status as enum ('in_progress','complete');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_credential_type') then
+    create type l_credential_type as enum ('keycard','fob','pin','mobile_key','biometric');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_credential_status') then
+    create type l_credential_status as enum ('active','lost','revoked','expired');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_access_event_type') then
+    create type l_access_event_type as enum ('unlock','denied','lock','tamper');
+  end if;
+end $$;
+
+-- A building or estate. Units live inside a property.
+create table if not exists l_properties (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    name text not null,
+    property_type l_property_type not null default 'apartment_block',
+    address text, city text, region text, country text,
+    digital_address text,                       -- Ghana Post GPS etc.
+    year_built integer, floors integer,
+    description text,
+    photo_url text,
+    photo_urls text[] not null default '{}',
+    amenities text[] not null default '{}',
+    notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+create index if not exists idx_l_properties_company on l_properties(company_id);
+create unique index if not exists idx_l_properties_company_name on l_properties(company_id, name);
+
+alter table l_units add column if not exists property_id uuid references l_properties(id) on delete set null;
+create index if not exists idx_l_units_property on l_units(property_id);
+
+-- Identity / KYC captured during onboarding.
+alter table l_tenants add column if not exists date_of_birth date;
+alter table l_tenants add column if not exists photo_url text;
+alter table l_tenants add column if not exists id_document_expiry date;
+alter table l_tenants add column if not exists id_document_front_url text;
+alter table l_tenants add column if not exists id_document_back_url text;
+alter table l_tenants add column if not exists onboarding_status l_onboarding_status not null default 'in_progress';
+alter table l_tenants add column if not exists onboarded_at timestamptz;
+
+create table if not exists l_tenant_contacts (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    tenant_id uuid not null references l_tenants(id) on delete cascade,
+    name text not null, relationship text, phone text, email text, address text,
+    is_next_of_kin boolean not null default false,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists l_tenant_occupants (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    tenant_id uuid not null references l_tenants(id) on delete cascade,
+    full_name text not null, relationship text, date_of_birth date, notes text,
+    created_at timestamptz not null default now()
+);
+
+create table if not exists l_tenant_vehicles (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    tenant_id uuid not null references l_tenants(id) on delete cascade,
+    plate_number text not null, make text, model text, colour text,
+    parking_slot text, notes text,
+    created_at timestamptz not null default now()
+);
+
+-- Keycards/fobs/PINs. RECORD-KEEPING ONLY — Lintel does not talk to lock
+-- hardware. Shape is reader-agnostic so a controller can be connected
+-- later without remodelling.
+create table if not exists l_access_credentials (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    credential_type l_credential_type not null default 'keycard',
+    card_number text not null,
+    label text,
+    tenant_id uuid references l_tenants(id) on delete set null,
+    holder_name text,                           -- staff/contractors with no tenant record
+    property_id uuid references l_properties(id) on delete cascade,
+    unit_id uuid references l_units(id) on delete set null,
+    status l_credential_status not null default 'active',
+    valid_from date, valid_until date,
+    issued_at timestamptz not null default now(),
+    issued_by uuid references l_users(id) on delete set null,
+    revoked_at timestamptz, revoked_reason text,
+    replaces_id uuid references l_access_credentials(id) on delete set null,
+    notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+create unique index if not exists idx_l_access_credentials_company_card on l_access_credentials(company_id, card_number);
+
+-- Append-only door activity. Empty until real reader hardware posts here.
+create table if not exists l_access_events (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    credential_id uuid references l_access_credentials(id) on delete set null,
+    property_id uuid references l_properties(id) on delete cascade,
+    unit_id uuid references l_units(id) on delete set null,
+    event_type l_access_event_type not null,
+    occurred_at timestamptz not null default now(),
+    device_id text, direction text, raw jsonb,
+    created_at timestamptz not null default now()
+);
+
+alter table l_properties         enable row level security;
+alter table l_tenant_contacts    enable row level security;
+alter table l_tenant_occupants   enable row level security;
+alter table l_tenant_vehicles    enable row level security;
+alter table l_access_credentials enable row level security;
+alter table l_access_events      enable row level security;
+
+grant select, insert, update, delete on
+  l_properties, l_tenant_contacts, l_tenant_occupants, l_tenant_vehicles,
+  l_access_credentials, l_access_events
+to service_role;

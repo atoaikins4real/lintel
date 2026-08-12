@@ -10,6 +10,8 @@ const SCOPED_TABLES = [
   'l_units', 'l_tenants', 'l_leases', 'l_payments', 'l_expenses',
   'l_renovations', 'l_faults', 'l_booking_inquiries', 'l_tenant_tier_events',
   'l_settings', 'l_users', 'l_tenant_id_counters',
+  'l_properties', 'l_tenant_contacts', 'l_tenant_occupants', 'l_tenant_vehicles',
+  'l_access_credentials', 'l_access_events',
 ];
 
 // Queries that are legitimately unscoped, with the reason. Anything not

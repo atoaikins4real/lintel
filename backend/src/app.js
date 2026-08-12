@@ -28,6 +28,9 @@ const bookingInquiriesRouter = require('./routes/bookingInquiries');
 const uploadsRouter = require('./routes/uploads');
 const settingsRouter = require('./routes/settings');
 const companyRouter = require('./routes/company');
+const propertiesRouter = require('./routes/properties');
+const tenantOnboardingRouter = require('./routes/tenantOnboarding');
+const accessRouter = require('./routes/access');
 
 const app = express();
 
@@ -70,7 +73,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 app.use('/api', requireAuth);
 
+app.use('/api/properties', propertiesRouter);
+// Nested under tenants — mounted before the tenants router so its
+// /:id/contacts etc. take precedence over /:id.
+app.use('/api/tenants/:id', tenantOnboardingRouter);
 app.use('/api/tenants', tenantsRouter);
+app.use('/api/access', accessRouter);
 app.use('/api/units', unitsRouter);
 app.use('/api/leases', leasesRouter);
 app.use('/api/payments', paymentsRouter);

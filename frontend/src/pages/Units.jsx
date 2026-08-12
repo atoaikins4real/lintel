@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getUnits, createUnit, readApiError } from '../api/client.js';
+import { getUnits, createUnit, getProperties, readApiError } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import { STOCK_PHOTOS, suggestedPhotos } from '../data/stockPhotos.js';
@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyForm = {
-  unit_code: '', property_name: '', unit_type: 'apartment', class: 'standard',
+  unit_code: '', property_id: '', unit_type: 'apartment', class: 'standard',
   bedrooms: '', bathrooms: '', city: '', base_rate_short: '', base_rate_long: '', photo_url: '',
   photo_urls: [],
 };
@@ -30,12 +30,17 @@ export default function Units() {
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [error, setError] = useState('');
 
+  const [properties, setProperties] = useState([]);
+
   const load = () =>
     getUnits()
       .then(setUnits)
       .catch((err) => setError(readApiError(err, 'load units')));
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    getProperties().then(setProperties).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,7 +87,14 @@ export default function Units() {
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
       )}
 
-      {canEdit && showForm && (
+      {canEdit && showForm && properties.length === 0 && (
+        <div className="mb-5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          You don&apos;t have any properties yet, and every unit belongs to one.{' '}
+          <Link to="/properties" className="underline font-medium">Add a property first</Link>.
+        </div>
+      )}
+
+      {canEdit && showForm && properties.length > 0 && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <input required placeholder="Unit code (e.g. Airport Res - 4B)" className="lx-input sm:col-span-2"
             value={form.unit_code} onChange={(e) => setForm({ ...form, unit_code: e.target.value })} />
@@ -92,8 +104,13 @@ export default function Units() {
             <option value="premium">Premium</option>
             <option value="luxury">Luxury</option>
           </select>
-          <input required placeholder="Property name" className="lx-input"
-            value={form.property_name} onChange={(e) => setForm({ ...form, property_name: e.target.value })} />
+          <select required className="lx-select" value={form.property_id}
+            onChange={(e) => setForm({ ...form, property_id: e.target.value })}>
+            <option value="">Select property…</option>
+            {properties.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
           <select className="lx-select" value={form.unit_type}
             onChange={(e) => setForm({ ...form, unit_type: e.target.value })}>
             <option value="apartment">Apartment</option>

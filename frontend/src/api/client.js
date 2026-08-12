@@ -83,6 +83,29 @@ export const recomputeTenant = (id) => api.post(`/tenants/${id}/recompute`).then
 export const getUpgradeEligible = () => api.get('/tenants/upgrade-eligible').then((r) => r.data);
 export const addTierEvent = (id, payload) => api.post(`/tenants/${id}/tier-events`, payload).then((r) => r.data);
 
+// Properties (buildings/estates — units live inside one)
+export const getProperties = () => api.get('/properties').then((r) => r.data);
+export const getProperty = (id) => api.get(`/properties/${id}`).then((r) => r.data);
+export const createProperty = (payload) => api.post('/properties', payload).then((r) => r.data);
+export const updateProperty = (id, payload) => api.put(`/properties/${id}`, payload).then((r) => r.data);
+export const deleteProperty = (id) => api.delete(`/properties/${id}`).then((r) => r.data);
+
+// Tenant onboarding sub-resources
+export const getTenantContacts = (id) => api.get(`/tenants/${id}/contacts`).then((r) => r.data);
+export const addTenantContact = (id, payload) => api.post(`/tenants/${id}/contacts`, payload).then((r) => r.data);
+export const deleteTenantContact = (id, childId) => api.delete(`/tenants/${id}/contacts/${childId}`);
+export const addTenantOccupant = (id, payload) => api.post(`/tenants/${id}/occupants`, payload).then((r) => r.data);
+export const deleteTenantOccupant = (id, childId) => api.delete(`/tenants/${id}/occupants/${childId}`);
+export const addTenantVehicle = (id, payload) => api.post(`/tenants/${id}/vehicles`, payload).then((r) => r.data);
+export const deleteTenantVehicle = (id, childId) => api.delete(`/tenants/${id}/vehicles/${childId}`);
+export const completeOnboarding = (id) => api.post(`/tenants/${id}/complete-onboarding`).then((r) => r.data);
+
+// Access credentials (keycards / fobs / PINs)
+export const getCredentials = (params) => api.get('/access/credentials', { params }).then((r) => r.data);
+export const issueCredential = (payload) => api.post('/access/credentials', payload).then((r) => r.data);
+export const updateCredential = (id, payload) => api.patch(`/access/credentials/${id}`, payload).then((r) => r.data);
+export const getAccessEvents = (params) => api.get('/access/events', { params }).then((r) => r.data);
+
 // Units
 export const getUnits = (params) => api.get('/units', { params }).then((r) => r.data);
 export const getUnit = (id) => api.get(`/units/${id}`).then((r) => r.data);

@@ -9,6 +9,10 @@ import Tenants from './pages/Tenants.jsx';
 import TenantDetail from './pages/TenantDetail.jsx';
 import Units from './pages/Units.jsx';
 import UnitDetail from './pages/UnitDetail.jsx';
+import Properties from './pages/Properties.jsx';
+import PropertyDetail from './pages/PropertyDetail.jsx';
+import TenantOnboarding from './pages/TenantOnboarding.jsx';
+import AccessCards from './pages/AccessCards.jsx';
 import Leases from './pages/Leases.jsx';
 import Payments from './pages/Payments.jsx';
 import FaultsRenovations from './pages/FaultsRenovations.jsx';
@@ -44,9 +48,14 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/tenants" element={<Tenants />} />
+                    <Route path="/tenants/onboard" element={<TenantOnboarding />} />
+                    <Route path="/tenants/:id/onboard" element={<TenantOnboarding />} />
                     <Route path="/tenants/:id" element={<TenantDetail />} />
+                    <Route path="/properties" element={<Properties />} />
+                    <Route path="/properties/:id" element={<PropertyDetail />} />
                     <Route path="/units" element={<Units />} />
                     <Route path="/units/:id" element={<UnitDetail />} />
+                    <Route path="/access" element={<AccessCards />} />
                     <Route path="/leases" element={<Leases />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/faults-renovations" element={<FaultsRenovations />} />
