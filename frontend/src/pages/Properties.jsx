@@ -3,21 +3,11 @@ import { Link } from 'react-router-dom';
 import { getProperties, createProperty, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import { PROPERTY_TYPES as TYPES, AMENITIES as AMENITY_LIST } from '../data/specs.js';
 
-export const PROPERTY_TYPES = [
-  { value: 'apartment_block', label: 'Apartment block' },
-  { value: 'estate', label: 'Estate' },
-  { value: 'standalone_house', label: 'Standalone house' },
-  { value: 'townhouse_complex', label: 'Townhouse complex' },
-  { value: 'commercial', label: 'Commercial' },
-  { value: 'mixed_use', label: 'Mixed use' },
-];
-
-export const AMENITIES = [
-  'Borehole', 'Standby generator', 'Gated & walled', '24/7 security', 'CCTV',
-  'Swimming pool', 'Gym', 'Elevator', 'Parking', 'Air conditioning',
-  'Furnished', 'Backup water tank', 'Playground', 'Waste collection',
-];
+// Single source of truth lives in data/specs.js — re-exported here so the
+// existing imports in PropertyDetail keep working.
+export { PROPERTY_TYPES, AMENITIES } from '../data/specs.js';
 
 const emptyForm = {
   name: '', property_type: 'apartment_block', address: '', city: '', region: '',
@@ -71,9 +61,14 @@ export default function Properties() {
           Your buildings and estates. Each apartment or house lives inside one of these.
         </p>
         {canEdit && (
-          <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
-            {showForm ? 'Cancel' : '+ New Property'}
-          </button>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <Link to="/properties/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
+              + Add Property
+            </Link>
+            <button onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
+              {showForm ? 'Cancel' : 'Quick add'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -92,7 +87,7 @@ export default function Properties() {
               className="lx-select" value={form.property_type}
               onChange={(e) => setForm({ ...form, property_type: e.target.value })}
             >
-              {PROPERTY_TYPES.map((t) => (
+              {TYPES.map((t) => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
@@ -134,7 +129,7 @@ export default function Properties() {
           <div>
             <div className="lx-eyebrow mb-2">Amenities</div>
             <div className="flex flex-wrap gap-2">
-              {AMENITIES.map((a) => (
+              {AMENITY_LIST.map((a) => (
                 <button
                   key={a} type="button" onClick={() => toggleAmenity(a)}
                   className={`px-3 py-1.5 rounded-full text-xs border transition ${

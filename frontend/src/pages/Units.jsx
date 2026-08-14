@@ -76,9 +76,14 @@ export default function Units() {
             </a>
           )}
           {canEdit && (
-            <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary flex-1 sm:flex-none">
-              {showForm ? 'Cancel' : '+ New Unit'}
-            </button>
+            <>
+              <Link to="/units/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
+                + Add Apartment
+              </Link>
+              <button onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
+                {showForm ? 'Cancel' : 'Quick add'}
+              </button>
+            </>
           )}
         </div>
       </div>

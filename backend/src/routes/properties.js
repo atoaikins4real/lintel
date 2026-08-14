@@ -8,8 +8,16 @@ const { blank, toNumber, clean } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
-const TEXTS = ['address', 'city', 'region', 'country', 'digital_address', 'description', 'photo_url', 'notes'];
-const NUMBERS = ['year_built', 'floors'];
+const TEXTS = [
+  'address', 'city', 'region', 'country', 'digital_address', 'description', 'photo_url', 'notes',
+  // Building specifications — shown on the public showcase.
+  'staircase_type', 'plot_size_unit', 'glass_panel_type', 'exterior_finish',
+  'roofing_type', 'wall_material', 'water_source', 'power_backup',
+];
+const NUMBERS = [
+  'year_built', 'floors', 'storeys', 'staircases', 'plot_size',
+  'total_units', 'parking_spaces',
+];
 
 function arrayOf(value) {
   if (!Array.isArray(value)) return [];

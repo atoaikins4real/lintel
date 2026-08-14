@@ -4,6 +4,7 @@ import { getPublicUnit, createInquiry } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Slideshow from '../components/Slideshow.jsx';
 import { formatMoney } from '../utils/currency.js';
+import { LAYOUT_FIELDS, FINISH_FIELDS, BUILDING_FIELDS, furnishingLabel, areaLabel } from '../data/specs.js';
 
 const emptyInquiry = { name: '', email: '', phone: '', start_date: '', end_date: '', message: '' };
 
@@ -79,10 +80,14 @@ export default function ShowcaseDetail() {
               <StatusBadge status={isVacant ? 'vacant' : 'occupied'} />
             </div>
             <h1 className="font-serif text-2xl sm:text-3xl text-ink mb-1">{unit.property_name}</h1>
-            <p className="text-stone text-sm mb-5">
+            <p className="text-stone text-sm mb-4">
               {unit.unit_type}
-              {unit.city ? ` · ${unit.city}` : ''} · {unit.bedrooms ?? '–'} bed / {unit.bathrooms ?? '–'} bath
+              {unit.city ? ` · ${unit.city}` : ''}
+              {areaLabel(unit.floor_area, unit.floor_area_unit) ? ` · ${areaLabel(unit.floor_area, unit.floor_area_unit)}` : ''}
+              {furnishingLabel(unit.furnishing) ? ` · ${furnishingLabel(unit.furnishing)}` : ''}
             </p>
+
+            {unit.description && <p className="text-sm text-ink/80 mb-5 leading-relaxed">{unit.description}</p>}
 
             {(unit.base_rate_short || unit.base_rate_long) && (
               <div className="flex flex-wrap gap-5 text-sm text-stone mb-6 pb-6 border-b border-line/70">
@@ -103,6 +108,48 @@ export default function ShowcaseDetail() {
                   </div>
                 )}
               </div>
+            )}
+
+            {/* Layout counts */}
+            {LAYOUT_FIELDS.some((f) => unit[f.key]) && (
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6">
+                {LAYOUT_FIELDS.filter((f) => unit[f.key]).map((f) => (
+                  <div key={f.key} className="bg-panel rounded-xl px-3 py-2.5 text-center">
+                    <div className="font-sans font-bold text-lg text-ink leading-none">{unit[f.key]}</div>
+                    <div className="text-[11px] text-stone mt-1">{f.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Features */}
+            {unit.features?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-6">
+                {unit.has_air_conditioning && <span className="pill bg-sky-50 text-sky-700">Air conditioning</span>}
+                {unit.features.map((f) => (
+                  <span key={f} className="pill bg-stone/10 text-stone">{f}</span>
+                ))}
+              </div>
+            )}
+
+            {/* Finishes */}
+            {FINISH_FIELDS.some((f) => unit[f.key]) && (
+              <div className="mb-6">
+                <div className="lx-eyebrow mb-2">Finishes & fittings</div>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                  {FINISH_FIELDS.filter((f) => unit[f.key]).map((f) => (
+                    <div key={f.key} className="flex justify-between gap-3 border-b border-line/60 pb-1.5">
+                      <dt className="text-stone">{f.label}</dt>
+                      <dd className="text-ink text-right">{unit[f.key]}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
+            {/* Building-level detail from the parent property */}
+            {unit.l_properties && (
+              <BuildingSection property={unit.l_properties} />
             )}
 
             {sent ? (
@@ -186,6 +233,40 @@ export default function ShowcaseDetail() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Building-level detail, joined from the unit's parent property. Gives a
+// shared listing real substance beyond the apartment itself.
+function BuildingSection({ property }) {
+  const rows = BUILDING_FIELDS.filter((f) => property[f.key]);
+  const hasAnything = rows.length || property.amenities?.length || property.description;
+  if (!hasAnything) return null;
+
+  return (
+    <div className="mb-6 pt-5 border-t border-line/70">
+      <div className="lx-eyebrow mb-2">About the building</div>
+      {property.description && <p className="text-sm text-ink/80 mb-3 leading-relaxed">{property.description}</p>}
+
+      {rows.length > 0 && (
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5 text-sm mb-3">
+          {rows.map((f) => (
+            <div key={f.key} className="flex justify-between gap-3 border-b border-line/60 pb-1.5">
+              <dt className="text-stone">{f.label}</dt>
+              <dd className="text-ink text-right">{property[f.key]}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
+      {property.amenities?.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {property.amenities.map((a) => (
+            <span key={a} className="pill bg-emerald-50 text-emerald-700">{a}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

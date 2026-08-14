@@ -72,6 +72,11 @@ company.
   result means something. Run it after touching any route.
 - Each company gets its own public showcase at `/showcase/<slug>`, branded
   with its name and logo. The slug is editable in Settings.
+- Listings show the full specification captured during onboarding: layout
+  counts as a stat grid, floor area, furnishing, features, a finishes
+  table, and an "About the building" section pulled from the parent
+  property. Internal `notes` and the exact street address are deliberately
+  never exposed publicly.
 
 Tokens issued before multi-tenancy carry no `company_id` and are rejected
 with a "please sign in again" message rather than being defaulted into
@@ -167,10 +172,24 @@ screen).
   everything, `viewer` is read-only across the whole app. All `/api/*`
   routes require a valid session; mutating routes additionally require
   manager or finance.
-- **Properties** — buildings and estates are their own records (type,
-  address, digital/GPS address, year built, floors, amenities, photo
-  gallery). Every unit belongs to one, and a property can't be deleted
-  while it still has units.
+- **Properties** — buildings and estates are their own records. Every unit
+  belongs to one, and a property can't be deleted while it still has units.
+  Added via a guided wizard (`/properties/onboard`): basics, location and
+  plot size, building structure (storeys, floors, staircases and type,
+  parking, year built), materials and finishes (glass panels, exterior
+  finish, roofing, walls, water source, power backup), amenities, photos,
+  review.
+- **Apartments** — added via their own wizard (`/units/onboard`): the
+  property they sit in, layout counts (bedrooms, bathrooms, en-suites,
+  halls, kitchens, balconies, store rooms, total rooms, storeys for
+  duplexes, internal staircases, floor number), floor area in sqm or sqft,
+  finishes and fittings (flooring, ceiling, wood colour, joinery, glass
+  panels, wall colour, outlook, furnishing, air conditioning), features,
+  pricing, photos, review. Finish fields are combo inputs — pick a common
+  option or type your own.
+- Both wizards save the record on the first step, so a part-finished entry
+  is kept and resumable rather than lost. "Quick add" remains for a
+  bare-minimum record you flesh out later.
 - **Guided tenant onboarding** (`/tenants/onboard`) — a six-step intake:
   identity, ID documents (photo + front/back uploads), emergency contact
   and next of kin, other occupants, vehicles, then a review. The tenant

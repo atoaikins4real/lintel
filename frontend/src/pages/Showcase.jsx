@@ -4,6 +4,7 @@ import { getPublicUnits } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Slideshow from '../components/Slideshow.jsx';
 import { formatMoney } from '../utils/currency.js';
+import { areaLabel } from '../data/specs.js';
 
 const CLASS_STYLE = {
   standard: 'bg-stone/10 text-stone',
@@ -87,7 +88,17 @@ export default function Showcase() {
                   <div className="font-serif text-lg text-ink">{u.property_name}</div>
                   <div className="text-sm text-stone">
                     {u.unit_type}
-                    {u.city ? ` · ${u.city}` : ''} · {u.bedrooms ?? '–'} bd / {u.bathrooms ?? '–'} ba
+                    {u.city ? ` · ${u.city}` : ''}
+                    {areaLabel(u.floor_area, u.floor_area_unit) ? ` · ${areaLabel(u.floor_area, u.floor_area_unit)}` : ''}
+                  </div>
+                  <div className="text-xs text-stone mt-1.5">
+                    {[
+                      u.bedrooms && `${u.bedrooms} bed`,
+                      u.bathrooms && `${u.bathrooms} bath`,
+                      u.halls && `${u.halls} hall`,
+                      u.kitchens && `${u.kitchens} kitchen`,
+                      u.storeys > 1 && `${u.storeys} storey`,
+                    ].filter(Boolean).join(' · ') || 'Details coming soon'}
                   </div>
                   <div className="text-xs text-stone mt-3 pt-3 border-t border-line/70">
                     {u.base_rate_short ? `${formatMoney(u.base_rate_short, currency)}/night` : ''}

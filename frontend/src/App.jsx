@@ -11,6 +11,8 @@ import Units from './pages/Units.jsx';
 import UnitDetail from './pages/UnitDetail.jsx';
 import Properties from './pages/Properties.jsx';
 import PropertyDetail from './pages/PropertyDetail.jsx';
+import PropertyOnboarding from './pages/PropertyOnboarding.jsx';
+import UnitOnboarding from './pages/UnitOnboarding.jsx';
 import TenantOnboarding from './pages/TenantOnboarding.jsx';
 import AccessCards from './pages/AccessCards.jsx';
 import Leases from './pages/Leases.jsx';
@@ -52,8 +54,12 @@ function App() {
                     <Route path="/tenants/:id/onboard" element={<TenantOnboarding />} />
                     <Route path="/tenants/:id" element={<TenantDetail />} />
                     <Route path="/properties" element={<Properties />} />
+                    <Route path="/properties/onboard" element={<PropertyOnboarding />} />
+                    <Route path="/properties/:id/edit" element={<PropertyOnboarding />} />
                     <Route path="/properties/:id" element={<PropertyDetail />} />
                     <Route path="/units" element={<Units />} />
+                    <Route path="/units/onboard" element={<UnitOnboarding />} />
+                    <Route path="/units/:id/edit" element={<UnitOnboarding />} />
                     <Route path="/units/:id" element={<UnitDetail />} />
                     <Route path="/access" element={<AccessCards />} />
                     <Route path="/leases" element={<Leases />} />

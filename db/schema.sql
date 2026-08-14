@@ -596,3 +596,57 @@ grant select, insert, update, delete on
   l_properties, l_tenant_contacts, l_tenant_occupants, l_tenant_vehicles,
   l_access_credentials, l_access_events
 to service_role;
+
+-- ------------------------------------------------------------
+-- DETAILED SPECIFICATIONS
+-- Mirrors migration add_property_and_unit_specifications.
+-- Split: whole-building facts on the property, per-apartment facts on
+-- the unit. Storeys/staircases appear on both because a duplex inside a
+-- 6-storey block legitimately has its own.
+-- ------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'l_furnishing') then
+    create type l_furnishing as enum ('unfurnished','semi_furnished','fully_furnished');
+  end if;
+end $$;
+
+-- Building-level
+alter table l_properties add column if not exists storeys integer;
+alter table l_properties add column if not exists staircases integer;
+alter table l_properties add column if not exists staircase_type text;
+alter table l_properties add column if not exists plot_size numeric(12,2);
+alter table l_properties add column if not exists plot_size_unit text default 'sqm';
+alter table l_properties add column if not exists total_units integer;
+alter table l_properties add column if not exists parking_spaces integer;
+alter table l_properties add column if not exists glass_panel_type text;
+alter table l_properties add column if not exists exterior_finish text;
+alter table l_properties add column if not exists roofing_type text;
+alter table l_properties add column if not exists wall_material text;
+alter table l_properties add column if not exists water_source text;
+alter table l_properties add column if not exists power_backup text;
+
+-- Apartment-level
+alter table l_units add column if not exists floor_area numeric(12,2);
+alter table l_units add column if not exists floor_area_unit text default 'sqm';
+alter table l_units add column if not exists floor_number integer;
+alter table l_units add column if not exists storeys integer;              -- 1 = flat, 2 = duplex
+alter table l_units add column if not exists staircases integer;
+alter table l_units add column if not exists rooms integer;
+alter table l_units add column if not exists kitchens integer;
+alter table l_units add column if not exists halls integer;
+alter table l_units add column if not exists balconies integer;
+alter table l_units add column if not exists ensuite_bathrooms integer;
+alter table l_units add column if not exists store_rooms integer;
+alter table l_units add column if not exists glass_panel_type text;
+alter table l_units add column if not exists wood_colour text;
+alter table l_units add column if not exists joinery_material text;
+alter table l_units add column if not exists flooring_type text;
+alter table l_units add column if not exists ceiling_type text;
+alter table l_units add column if not exists wall_colour text;
+alter table l_units add column if not exists furnishing l_furnishing;
+alter table l_units add column if not exists has_air_conditioning boolean;
+alter table l_units add column if not exists view_orientation text;
+alter table l_units add column if not exists features text[] not null default '{}';
+-- Public-facing blurb. `notes` stays internal and is never shown publicly.
+alter table l_units add column if not exists description text;

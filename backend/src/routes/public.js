@@ -28,8 +28,19 @@ const inquiryLimiter = rateLimit({
   message: { error: 'Too many requests. Please wait a few minutes and try again.' },
 });
 
-const PUBLIC_UNIT_FIELDS =
-  'id, unit_code, property_name, unit_type, class, bedrooms, bathrooms, city, base_rate_short, base_rate_long, photo_url, photo_urls, status';
+// Everything a prospect should see. `notes` and `address` stay excluded —
+// internal staff notes and the exact street address have no business on a
+// public link. `description` is the public-facing blurb.
+const PUBLIC_UNIT_FIELDS = [
+  'id, unit_code, property_name, unit_type, class, city, status, description',
+  'bedrooms, bathrooms, rooms, kitchens, halls, balconies, ensuite_bathrooms, store_rooms',
+  'floor_area, floor_area_unit, floor_number, storeys, staircases',
+  'glass_panel_type, wood_colour, joinery_material, flooring_type, ceiling_type, wall_colour',
+  'furnishing, has_air_conditioning, view_orientation, features',
+  'base_rate_short, base_rate_long, photo_url, photo_urls',
+  // Building-level specs, joined from the parent property.
+  'l_properties(name, property_type, city, region, country, storeys, staircases, staircase_type, year_built, floors, parking_spaces, glass_panel_type, exterior_finish, roofing_type, wall_material, water_source, power_backup, amenities, description)',
+].join(', ');
 
 // Resolves the slug to a company, or null. Everything below refuses to
 // return data without one.

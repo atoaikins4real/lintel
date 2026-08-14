@@ -8,6 +8,20 @@ const { blank, blank: str, toNumber: num } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
+// Apartment specification fields. Kept as single lists so create and
+// update can never drift apart.
+const SPEC_NUMBERS = [
+  'bedrooms', 'bathrooms', 'base_rate_short', 'base_rate_long',
+  'floor_area', 'floor_number', 'storeys', 'staircases', 'rooms',
+  'kitchens', 'halls', 'balconies', 'ensuite_bathrooms', 'store_rooms',
+];
+const SPEC_TEXTS = [
+  'address', 'city', 'notes', 'photo_url', 'description',
+  'floor_area_unit', 'glass_panel_type', 'wood_colour', 'joinery_material',
+  'flooring_type', 'ceiling_type', 'wall_colour', 'view_orientation',
+];
+const FURNISHING = ['unfurnished', 'semi_furnished', 'fully_furnished'];
+
 
 // GET /api/units?status=vacant&class=luxury
 router.get('/', async (req, res, next) => {
@@ -95,27 +109,34 @@ router.post('/', async (req, res, next) => {
       resolvedName = created.name;
     }
 
+    // Build the specification fields from the same lists the update path
+    // uses, so a new field can never be accepted on edit but dropped on
+    // create (which is exactly how photo_urls went missing before).
+    const spec = {};
+    for (const f of SPEC_NUMBERS) spec[f] = num(req.body[f]);
+    for (const f of SPEC_TEXTS) spec[f] = str(req.body[f]);
+    if (req.body.furnishing && FURNISHING.includes(req.body.furnishing)) {
+      spec.furnishing = req.body.furnishing;
+    }
+    if (req.body.has_air_conditioning !== undefined && req.body.has_air_conditioning !== null) {
+      spec.has_air_conditioning = Boolean(req.body.has_air_conditioning);
+    }
+
     const { data, error } = await supabase
       .from('l_units')
       .insert({
+        ...spec,
         company_id: req.user.company_id,
         unit_code,
         property_id: resolvedPropertyId,
         property_name: resolvedName,
         unit_type,
         class: unitClass || 'standard',
-        bedrooms: num(bedrooms),
-        bathrooms: num(bathrooms),
-        address: str(address),
-        city: str(city),
-        base_rate_short: num(base_rate_short),
-        base_rate_long: num(base_rate_long),
         status: status || 'vacant',
-        notes: str(notes),
-        photo_url: str(photo_url),
         // Was previously dropped on create entirely — gallery photos picked
         // on the new-unit form silently never saved.
         photo_urls: Array.isArray(photo_urls) ? photo_urls : [],
+        features: Array.isArray(req.body.features) ? req.body.features : [],
       })
       .select()
       .single();
@@ -135,12 +156,20 @@ router.put('/:id', async (req, res, next) => {
     delete updates.unitClass;
 
     // Same '' -> null coercion as on create (see num/str above).
-    for (const field of ['bedrooms', 'bathrooms', 'base_rate_short', 'base_rate_long']) {
+    for (const field of SPEC_NUMBERS) {
       if (field in updates) updates[field] = num(updates[field]);
     }
-    for (const field of ['address', 'city', 'notes', 'photo_url']) {
+    for (const field of SPEC_TEXTS) {
       if (field in updates) updates[field] = str(updates[field]);
     }
+    if ('features' in updates) {
+      updates.features = Array.isArray(updates.features) ? updates.features : [];
+    }
+    if ('has_air_conditioning' in updates && updates.has_air_conditioning !== null) {
+      updates.has_air_conditioning = Boolean(updates.has_air_conditioning);
+    }
+    // Empty string isn't a valid enum value.
+    if ('furnishing' in updates) updates.furnishing = str(updates.furnishing);
 
     delete updates.company_id; // never reassignable from the request body
 
