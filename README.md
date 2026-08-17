@@ -101,6 +101,40 @@ Tokens issued before multi-tenancy carry no `company_id` and are rejected
 with a "please sign in again" message rather than being defaulted into
 someone's data — so **everyone must log in again after this deploys.**
 
+## Subscriptions (platform owner)
+
+There are two kinds of authority in Lintel, deliberately kept separate:
+
+- **`role`** (manager / finance / viewer) — authority *inside* one company.
+  Even a manager is just a customer.
+- **`is_platform_admin`** — the operator of Lintel itself. Set on
+  `l_users`, never grantable from inside the app by a subscriber.
+
+Subscription state lives in `l_subscriptions`, **not** on the
+subscriber-editable settings row. Previously it sat on `l_settings`, which
+meant a customer's own manager could mark themselves "active" and renewing
+in 2030. Now:
+
+- Subscribers see their plan, status, dates and limits **read-only** in
+  Settings. Any subscription fields they send to `PUT /api/settings` are
+  ignored rather than trusted.
+- Only a platform admin can change a plan or status, via `/api/admin`.
+- `/admin` (the "Subscribers" page) lists every company with its plan,
+  status, renewal date, computed overdue flag, and real usage (properties,
+  units, staff). It's the only place in Lintel that reads across companies.
+- `l_plans` is the catalogue (trial / starter / growth / enterprise with
+  price and limits). Each subscription stores its own agreed `amount`, so
+  changing catalogue pricing never silently rewrites an existing deal.
+
+`requirePlatformAdmin` **re-reads the flag from the database on every
+request** rather than trusting the JWT, because tokens live for 7 days and
+revoking operator rights needs to take effect immediately. Non-admins get
+a 404, not a 403, so the admin area's existence isn't advertised.
+
+Still not built: nothing is *enforced* on subscription status (an expired
+account works normally), and no payment provider is connected — see "A
+note on money movement".
+
 ## Security posture
 
 Built assuming strangers on the internet will hit this deployment (see

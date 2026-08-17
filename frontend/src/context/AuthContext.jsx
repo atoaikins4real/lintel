@@ -49,10 +49,12 @@ export function AuthProvider({ children }) {
 
   const canEdit = user ? ['manager', 'finance'].includes(user.role) : false;
   const isManager = user?.role === 'manager';
+  // Operator of Lintel itself — separate from any role inside a company.
+  const isPlatformAdmin = user?.is_platform_admin === true;
 
   const value = useMemo(
-    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager }),
-    [user, company, loading, login, logout, setSession, canEdit, isManager]
+    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin }),
+    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

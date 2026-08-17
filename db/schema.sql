@@ -768,3 +768,76 @@ alter table l_access_events       add  constraint l_access_events_property_id_fk
 alter table l_access_events       drop constraint if exists l_access_events_unit_id_fkey;
 alter table l_access_events       add  constraint l_access_events_unit_id_fkey
   foreign key (unit_id, company_id) references l_units(id, company_id) on delete set null (unit_id);
+
+-- ============================================================
+-- SUBSCRIPTION OWNERSHIP
+-- Mirrors migration owner_controlled_subscriptions.
+--
+-- Subscription state used to live on l_settings, which each subscriber's
+-- own manager can edit — so a customer could mark themselves "active"
+-- and renewing in 2030. It now lives in l_subscriptions, writable only
+-- through /api/admin by a platform admin, and readable by the subscriber.
+-- ============================================================
+
+-- Operator of Lintel itself. Deliberately separate from l_user_role,
+-- which only ever describes authority INSIDE one's own company.
+alter table l_users add column if not exists is_platform_admin boolean not null default false;
+
+-- Global plan catalogue (not per-company).
+create table if not exists l_plans (
+    id uuid primary key default gen_random_uuid(),
+    code text not null unique,
+    name text not null,
+    description text,
+    price numeric(12,2) not null default 0,
+    currency text not null default 'GHS',
+    billing_interval text not null default 'monthly',
+    max_properties integer,                     -- null = unlimited
+    max_units integer,
+    max_staff integer,
+    is_active boolean not null default true,
+    sort_order integer not null default 0,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+insert into l_plans (code, name, description, price, currency, billing_interval, max_properties, max_units, max_staff, sort_order)
+values
+  ('trial',      'Free trial', '14-day trial with full access',            0,    'GHS', 'monthly', 2,    10,   3,    0),
+  ('starter',    'Starter',    'For a single building or small portfolio', 250,  'GHS', 'monthly', 3,    25,   5,    1),
+  ('growth',     'Growth',     'For a growing agency',                     600,  'GHS', 'monthly', 10,   150,  15,   2),
+  ('enterprise', 'Enterprise', 'Unlimited portfolio and staff',            1500, 'GHS', 'monthly', null, null, null, 3)
+on conflict (code) do nothing;
+
+-- One per company, controlled by the platform admin.
+create table if not exists l_subscriptions (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null unique references l_companies(id) on delete cascade,
+    plan_id uuid references l_plans(id) on delete set null,
+    status l_subscription_status not null default 'trial',
+    started_on date,
+    trial_ends_on date,
+    renews_on date,
+    -- Snapshot of the agreed price, so editing the catalogue never
+    -- silently rewrites what an existing subscriber is charged.
+    amount numeric(12,2),
+    currency text not null default 'GHS',
+    notes text,                                 -- internal, operator-only
+    updated_by uuid references l_users(id) on delete set null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_l_subscriptions_status on l_subscriptions(status);
+
+alter table l_plans         enable row level security;
+alter table l_subscriptions enable row level security;
+grant select, insert, update, delete on l_plans, l_subscriptions to service_role;
+
+-- Superseded by l_subscriptions; dropped so there is one source of truth.
+alter table l_settings drop column if exists subscription_plan;
+alter table l_settings drop column if exists subscription_status;
+alter table l_settings drop column if exists subscription_started_on;
+alter table l_settings drop column if exists subscription_renews_on;
+alter table l_settings drop column if exists subscription_amount;
+alter table l_settings drop column if exists subscription_currency;

@@ -22,6 +22,7 @@ import BookingRequests from './pages/BookingRequests.jsx';
 import Reports from './pages/Reports.jsx';
 import Staff from './pages/Staff.jsx';
 import SettingsPage from './pages/Settings.jsx';
+import Admin from './pages/Admin.jsx';
 import Showcase from './pages/Showcase.jsx';
 import ShowcaseDetail from './pages/ShowcaseDetail.jsx';
 import DevPanel from './components/DevPanel.jsx';
@@ -69,6 +70,7 @@ function App() {
                     <Route path="/reports" element={<Reports />} />
                     <Route path="/staff" element={<Staff />} />
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/admin" element={<Admin />} />
                   </Routes>
                 </Layout>
               </SettingsProvider>

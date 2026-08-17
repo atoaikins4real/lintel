@@ -11,7 +11,7 @@ const SCOPED_TABLES = [
   'l_renovations', 'l_faults', 'l_booking_inquiries', 'l_tenant_tier_events',
   'l_settings', 'l_users', 'l_tenant_id_counters',
   'l_properties', 'l_tenant_contacts', 'l_tenant_occupants', 'l_tenant_vehicles',
-  'l_access_credentials', 'l_access_events',
+  'l_access_credentials', 'l_access_events', 'l_subscriptions',
 ];
 
 // Queries that are legitimately unscoped, with the reason. Anything not
@@ -21,6 +21,11 @@ const ALLOWED = [
   { file: 'utils/billing.js', match: 'companyId', why: 'optional scope: per-company from UI, all companies from the nightly job' },
   { file: 'utils/seedDemoData.js', match: 'company_id', why: 'seeds one explicit new company' },
   { file: 'routes/public.js', match: 'company.id', why: 'scoped by the company resolved from the URL slug' },
+  // The platform-owner dashboard exists precisely to see across companies.
+  // Every route in that file is behind requirePlatformAdmin, which
+  // re-verifies the flag against the database on each request.
+  { file: 'routes/admin.js', match: 'l_', why: 'platform-owner routes are cross-company by design' },
+  { file: 'middleware/auth.js', match: 'is_platform_admin', why: 'verifies the caller is a platform admin' },
 ];
 
 const SRC = path.join(__dirname, 'src');

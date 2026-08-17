@@ -31,6 +31,7 @@ const companyRouter = require('./routes/company');
 const propertiesRouter = require('./routes/properties');
 const tenantOnboardingRouter = require('./routes/tenantOnboarding');
 const accessRouter = require('./routes/access');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 
@@ -92,6 +93,10 @@ app.use('/api/booking-inquiries', bookingInquiriesRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/company', companyRouter);
+// Platform-owner only. The single place that reads across companies —
+// gated by requirePlatformAdmin, which re-checks the flag in the database
+// on every request rather than trusting the 7-day token.
+app.use('/api/admin', adminRouter);
 
 app.use(notFound);
 app.use(errorHandler);

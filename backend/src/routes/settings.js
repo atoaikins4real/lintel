@@ -20,6 +20,10 @@ function str(value) {
 }
 
 // GET /api/settings
+// Includes the company's subscription READ-ONLY. It lives in
+// l_subscriptions and is writable only through /api/admin by a platform
+// admin — a subscriber's own manager must not be able to mark themselves
+// paid, which is exactly what the old l_settings columns allowed.
 router.get('/', async (req, res, next) => {
   try {
     const { data, error } = await supabase
@@ -28,7 +32,20 @@ router.get('/', async (req, res, next) => {
       .eq('company_id', req.user.company_id)
       .maybeSingle();
     if (error) throw error;
-    res.json({ ...data, supported_currencies: SUPPORTED_CURRENCIES });
+
+    const { data: subscription } = await supabase
+      .from('l_subscriptions')
+      .select('status, started_on, trial_ends_on, renews_on, amount, currency, plan_id, l_plans(code, name, description, max_properties, max_units, max_staff)')
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
+
+    res.json({
+      ...data,
+      supported_currencies: SUPPORTED_CURRENCIES,
+      // `notes` on the subscription is internal to the operator and is
+      // deliberately not selected above.
+      subscription: subscription || null,
+    });
   } catch (err) {
     next(err);
   }
@@ -46,13 +63,11 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       payout_branch,
       payout_mobile_provider,
       payout_mobile_number,
-      subscription_plan,
-      subscription_status,
-      subscription_started_on,
-      subscription_renews_on,
-      subscription_amount,
-      subscription_currency,
     } = req.body;
+    // Subscription fields are deliberately NOT accepted here. They live in
+    // l_subscriptions and are writable only via /api/admin by a platform
+    // admin — anything a subscriber sends about their own plan or status
+    // is ignored rather than trusted.
 
     if (default_currency && !SUPPORTED_CURRENCIES.includes(default_currency)) {
       return res.status(400).json({ error: `Currency must be one of: ${SUPPORTED_CURRENCIES.join(', ')}` });
@@ -70,15 +85,6 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
     if (payout_branch !== undefined) updates.payout_branch = str(payout_branch);
     if (payout_mobile_provider !== undefined) updates.payout_mobile_provider = str(payout_mobile_provider);
     if (payout_mobile_number !== undefined) updates.payout_mobile_number = str(payout_mobile_number);
-    if (subscription_plan !== undefined) updates.subscription_plan = str(subscription_plan) || 'trial';
-    if (subscription_status !== undefined) updates.subscription_status = subscription_status;
-    if (subscription_started_on !== undefined) updates.subscription_started_on = str(subscription_started_on);
-    if (subscription_renews_on !== undefined) updates.subscription_renews_on = str(subscription_renews_on);
-    if (subscription_amount !== undefined) {
-      const n = Number(subscription_amount);
-      updates.subscription_amount = subscription_amount === '' || Number.isNaN(n) ? null : n;
-    }
-    if (subscription_currency !== undefined) updates.subscription_currency = subscription_currency || 'GHS';
 
     const { data: existing, error: findErr } = await supabase
       .from('l_settings')

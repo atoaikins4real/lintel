@@ -157,6 +157,12 @@ export const getPublicUnit = (slug, id) => api.get(`/public/${slug}/units/${id}`
 export const createInquiry = (slug, unitId, payload) =>
   api.post(`/public/${slug}/units/${unitId}/inquiries`, payload).then((r) => r.data);
 
+// Platform owner (admin) — cross-company. 404s for anyone who isn't one.
+export const getSubscribers = () => api.get('/admin/subscribers').then((r) => r.data);
+export const updateSubscription = (companyId, payload) =>
+  api.patch(`/admin/subscribers/${companyId}/subscription`, payload).then((r) => r.data);
+export const updatePlan = (id, payload) => api.put(`/admin/plans/${id}`, payload).then((r) => r.data);
+
 // Company profile
 export const getCompany = () => api.get('/company').then((r) => r.data);
 export const updateCompany = (payload) => api.put('/company', payload).then((r) => r.data);

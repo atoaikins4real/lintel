@@ -258,67 +258,43 @@ export default function Settings() {
         {!form.payout_method && <p className="text-sm text-stone">Choose how you&apos;d like to receive rent.</p>}
       </section>
 
-      {/* Subscription */}
+      {/* Subscription — read-only. Managed by the Lintel operator via
+          /api/admin, so a subscriber can't mark themselves as paid. */}
       <section className="lx-card p-5 sm:p-6">
         <h2 className="font-serif text-lg text-ink mb-1">Your Lintel subscription</h2>
         <p className="text-xs text-stone mb-4">
-          Tracked for your records only — nothing is restricted based on this.
+          Managed by Lintel. Get in touch if anything here looks wrong.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs text-stone mb-1">Plan</label>
-            <input
-              className="lx-input" placeholder="e.g. Starter" disabled={!isManager}
-              value={form.subscription_plan || ''} onChange={(e) => set({ subscription_plan: e.target.value })}
+        {form.subscription ? (
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <Detail label="Plan" value={form.subscription.l_plans?.name || 'No plan assigned'} />
+            <Detail
+              label="Status"
+              value={(form.subscription.status || '').replace('_', ' ')}
+              capitalize
             />
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Status</label>
-            <select
-              className="lx-select" disabled={!isManager}
-              value={form.subscription_status || 'trial'}
-              onChange={(e) => set({ subscription_status: e.target.value })}
-            >
-              <option value="trial">Trial</option>
-              <option value="active">Active</option>
-              <option value="past_due">Past due</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Started on</label>
-            <input
-              type="date" className="lx-input" disabled={!isManager}
-              value={form.subscription_started_on || ''} onChange={(e) => set({ subscription_started_on: e.target.value })}
+            <Detail label="Started" value={form.subscription.started_on} />
+            <Detail label="Trial ends" value={form.subscription.trial_ends_on} />
+            <Detail label="Renews" value={form.subscription.renews_on} />
+            <Detail
+              label="Amount"
+              value={
+                form.subscription.amount
+                  ? `${form.subscription.currency} ${Number(form.subscription.amount).toLocaleString()}`
+                  : null
+              }
             />
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Renews on</label>
-            <input
-              type="date" className="lx-input" disabled={!isManager}
-              value={form.subscription_renews_on || ''} onChange={(e) => set({ subscription_renews_on: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Amount</label>
-            <input
-              type="number" className="lx-input" placeholder="0.00" disabled={!isManager}
-              value={form.subscription_amount ?? ''} onChange={(e) => set({ subscription_amount: e.target.value })}
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Billed in</label>
-            <select
-              className="lx-select" disabled={!isManager}
-              value={form.subscription_currency || 'GHS'}
-              onChange={(e) => set({ subscription_currency: e.target.value })}
-            >
-              {currencies.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+            {form.subscription.l_plans && (
+              <div className="sm:col-span-2 text-xs text-stone pt-1">
+                Includes up to {form.subscription.l_plans.max_properties ?? 'unlimited'} properties,{' '}
+                {form.subscription.l_plans.max_units ?? 'unlimited'} units and{' '}
+                {form.subscription.l_plans.max_staff ?? 'unlimited'} staff.
+              </div>
+            )}
+          </dl>
+        ) : (
+          <p className="text-sm text-stone">No subscription on file yet.</p>
+        )}
       </section>
 
       {isManager && (
@@ -327,5 +303,16 @@ export default function Settings() {
         </button>
       )}
     </form>
+  );
+}
+
+function Detail({ label, value, capitalize }) {
+  return (
+    <div className="flex justify-between gap-3 border-b border-line/60 pb-1.5">
+      <dt className="text-stone">{label}</dt>
+      <dd className={`text-right ${value ? 'text-ink' : 'text-stone-light'} ${capitalize ? 'capitalize' : ''}`}>
+        {value || '—'}
+      </dd>
+    </div>
   );
 }

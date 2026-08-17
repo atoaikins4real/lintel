@@ -20,6 +20,9 @@ const navItems = [
   { to: '/settings', label: 'Settings', icon: IconCog },
 ];
 
+// Only shown to the Lintel operator, never to subscribers.
+const platformAdminItems = [{ to: '/admin', label: 'Subscribers', icon: IconChart }];
+
 const mobileNavItems = navItems.filter((n) => n.primary);
 
 const TITLES = {
@@ -38,6 +41,7 @@ const TITLES = {
   '/reports': 'Reports',
   '/staff': 'Staff & Access',
   '/settings': 'Settings',
+  '/admin': 'Lintel Subscribers',
 };
 
 const ROLE_LABEL = { manager: 'Manager', finance: 'Finance', viewer: 'Viewer' };
@@ -51,7 +55,9 @@ function pageTitle(pathname) {
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isPlatformAdmin } = useAuth();
+  // Subscribers never see the operator's cross-company dashboard.
+  const visibleNav = isPlatformAdmin ? [...navItems, ...platformAdminItems] : navItems;
   const today = new Date().toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'long',
@@ -76,7 +82,7 @@ export default function Layout({ children }) {
           L
         </div>
         <nav className="flex-1 flex flex-col items-center gap-1.5 w-full px-2">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -125,7 +131,7 @@ export default function Layout({ children }) {
           <div className="lx-eyebrow px-2.5 mb-2">Menu</div>
         </div>
         <nav className="flex-1 px-3 space-y-0.5">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
