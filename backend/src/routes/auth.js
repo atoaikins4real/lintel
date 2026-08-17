@@ -4,6 +4,8 @@ const { supabase } = require('../config/supabase');
 const { signToken, requireAuth, requireRole } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
 const { seedDemoData } = require('../utils/seedDemoData');
+const { enforceSubscription } = require('../middleware/subscription');
+const { enforcePlanLimit } = require('../middleware/planLimits');
 
 const router = express.Router();
 
@@ -36,16 +38,28 @@ async function uniqueSlug(name) {
 // POST /api/auth/register — create a colleague's account inside the
 // CALLER'S company. Manager only. The new user always inherits
 // req.user.company_id; a company_id in the request body is ignored.
-router.post('/register', authLimiter, requireAuth, requireRole('manager'), async (req, res, next) => {
-  const { email, password, name, role } = req.body;
-  if (!email || !password || !name) {
-    return res.status(400).json({ error: 'email, password and name are required' });
+// enforceSubscription and enforcePlanLimit are applied here explicitly:
+// this router mounts before the global gates in app.js (because login and
+// signup must stay reachable), so staff creation would otherwise escape
+// both the lapsed-subscription check and the max_staff limit.
+router.post(
+  '/register',
+  authLimiter,
+  requireAuth,
+  requireRole('manager'),
+  enforceSubscription,
+  enforcePlanLimit('staff'),
+  async (req, res, next) => {
+    const { email, password, name, role } = req.body;
+    if (!email || !password || !name) {
+      return res.status(400).json({ error: 'email, password and name are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+    return createUser({ email, password, name, role, companyId: req.user.company_id }, res, next);
   }
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
-  }
-  return createUser({ email, password, name, role, companyId: req.user.company_id }, res, next);
-});
+);
 
 // POST /api/auth/signup — public, self-service. Creates a NEW company
 // workspace, makes the signer its manager, and seeds it with sample data

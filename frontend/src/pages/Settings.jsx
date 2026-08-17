@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { updateSettings, getCompany, updateCompany, readApiError } from '../api/client.js';
+import {
+  updateSettings, getCompany, updateCompany,
+  getProperties, getUnits, getStaffUsers, readApiError,
+} from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { CURRENCY_LABELS } from '../utils/currency.js';
@@ -15,6 +18,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [usage, setUsage] = useState({ properties: 0, units: 0, staff: 0 });
 
   useEffect(() => {
     if (settings) setForm(settings);
@@ -24,6 +28,15 @@ export default function Settings() {
     getCompany()
       .then(setCompanyForm)
       .catch((err) => setError(readApiError(err, 'load your company profile')));
+  }, []);
+
+  // Current usage, so plan limits are visible before they bite.
+  useEffect(() => {
+    Promise.all([getProperties(), getUnits(), getStaffUsers().catch(() => [])])
+      .then(([properties, units, staff]) =>
+        setUsage({ properties: properties.length, units: units.length, staff: staff.length })
+      )
+      .catch(() => {});
   }, []);
 
   if (!form || !companyForm) return <div className="text-stone text-sm">Loading&hellip;</div>;
@@ -285,10 +298,16 @@ export default function Settings() {
               }
             />
             {form.subscription.l_plans && (
-              <div className="sm:col-span-2 text-xs text-stone pt-1">
-                Includes up to {form.subscription.l_plans.max_properties ?? 'unlimited'} properties,{' '}
-                {form.subscription.l_plans.max_units ?? 'unlimited'} units and{' '}
-                {form.subscription.l_plans.max_staff ?? 'unlimited'} staff.
+              <div className="sm:col-span-2 pt-2">
+                <div className="lx-eyebrow mb-2">Plan usage</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <Usage label="Properties" used={usage.properties} limit={form.subscription.l_plans.max_properties} />
+                  <Usage label="Units" used={usage.units} limit={form.subscription.l_plans.max_units} />
+                  <Usage label="Staff" used={usage.staff} limit={form.subscription.l_plans.max_staff} />
+                </div>
+                <p className="text-[11px] text-stone mt-2">
+                  Reaching a limit only stops you adding new records — nothing already entered is affected.
+                </p>
               </div>
             )}
           </dl>
@@ -313,6 +332,26 @@ function Detail({ label, value, capitalize }) {
       <dd className={`text-right ${value ? 'text-ink' : 'text-stone-light'} ${capitalize ? 'capitalize' : ''}`}>
         {value || '—'}
       </dd>
+    </div>
+  );
+}
+
+function Usage({ label, used, limit }) {
+  const unlimited = limit === null || limit === undefined;
+  const atLimit = !unlimited && used >= limit;
+  const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
+  return (
+    <div className="bg-panel rounded-xl px-3 py-2.5">
+      <div className="text-[11px] text-stone mb-0.5">{label}</div>
+      <div className={`font-sans font-bold text-sm ${atLimit ? 'text-rose-700' : 'text-ink'}`}>
+        {used}
+        <span className="font-normal text-stone"> / {unlimited ? '\u221e' : limit}</span>
+      </div>
+      {!unlimited && (
+        <div className="h-1 rounded-full bg-line overflow-hidden mt-1.5">
+          <div className={`h-full rounded-full ${atLimit ? 'bg-rose-500' : 'bg-gold'}`} style={{ width: `${pct}%` }} />
+        </div>
+      )}
     </div>
   );
 }

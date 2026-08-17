@@ -32,6 +32,8 @@ const propertiesRouter = require('./routes/properties');
 const tenantOnboardingRouter = require('./routes/tenantOnboarding');
 const accessRouter = require('./routes/access');
 const adminRouter = require('./routes/admin');
+const { enforceSubscription } = require('./middleware/subscription');
+const { enforcePlanLimit } = require('./middleware/planLimits');
 
 const app = express();
 
@@ -74,13 +76,27 @@ app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 app.use('/api', requireAuth);
 
-app.use('/api/properties', propertiesRouter);
+// Subscription enforcement sits between auth and the data routes.
+// Reads are never blocked; writes are refused once a subscription has
+// lapsed past its grace period. Deliberately mounted BEFORE the data
+// routers but AFTER /api/auth, so signing in and reading your own records
+// keeps working no matter what state the subscription is in.
+//
+// Not applied to /api/admin (mounted below with its own gate) or
+// /api/settings, so a lapsed subscriber can still see their own plan and
+// payout details.
+app.use('/api', (req, res, next) => {
+  if (req.path.startsWith('/settings') || req.path.startsWith('/admin')) return next();
+  return enforceSubscription(req, res, next);
+});
+
+app.use('/api/properties', enforcePlanLimit('properties'), propertiesRouter);
 // Nested under tenants — mounted before the tenants router so its
 // /:id/contacts etc. take precedence over /:id.
 app.use('/api/tenants/:id', tenantOnboardingRouter);
 app.use('/api/tenants', tenantsRouter);
 app.use('/api/access', accessRouter);
-app.use('/api/units', unitsRouter);
+app.use('/api/units', enforcePlanLimit('units'), unitsRouter);
 app.use('/api/leases', leasesRouter);
 app.use('/api/payments', paymentsRouter);
 app.use('/api/expenses', expensesRouter);

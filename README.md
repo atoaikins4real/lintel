@@ -131,9 +131,42 @@ request** rather than trusting the JWT, because tokens live for 7 days and
 revoking operator rights needs to take effect immediately. Non-admins get
 a 404, not a 403, so the admin area's existence isn't advertised.
 
-Still not built: nothing is *enforced* on subscription status (an expired
-account works normally), and no payment provider is connected — see "A
-note on money movement".
+### Enforcement
+
+Lapsed subscriptions and plan limits are now enforced, deliberately as a
+**degradation rather than a lockout**. The rules, in
+`backend/src/middleware/subscription.js` and `planLimits.js`:
+
+1. **Reads are never blocked.** A lapsed subscriber can always see their
+   tenants, leases and payments. Withholding someone's own business
+   records to extract payment isn't acceptable; going read-only is.
+2. **7-day grace period** after the due date, so a payment landing late or
+   a mistyped date doesn't immediately break someone's operations.
+3. **Missing dates never expire.** No `renews_on` means fine, not overdue
+   — absence of data isn't evidence of non-payment.
+4. **Platform admins are never restricted**, so the operator can't lock
+   themselves out of their own tool.
+5. **Failures are open.** If the subscription lookup errors, the request
+   proceeds. An outage in this check must not take every customer down.
+
+Plan limits (`max_properties`, `max_units`, `max_staff`) block only
+*creating new* records. Nothing existing is deleted, hidden or broken — a
+subscriber downgraded below current usage keeps everything and simply
+can't add more. Edits and deletes always work so they can still tidy up.
+
+Blocked writes return **402** with a message naming the cause and the way
+out. The UI warns beforehand: a banner appears 7 days before renewal,
+during grace, and explains the read-only state if it arrives. Settings
+shows usage against each limit.
+
+> The operator's own workspace ("My Company") is deliberately on the
+> Enterprise plan with unlimited limits and no expiry. It was originally
+> left on Free trial with a 2-property limit while already holding 4 —
+> harmless only because platform admins are exempt, which is too fragile a
+> reason to rely on.
+
+Still not built: no payment provider is connected, so nothing charges
+anyone automatically — see "A note on money movement".
 
 ## Security posture
 

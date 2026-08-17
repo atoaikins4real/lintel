@@ -61,6 +61,9 @@ export function readApiError(err, action = 'complete that') {
     return serverMessage || `You don't have permission to ${action}. Ask a manager for access.`;
   }
   if (status === 429) return serverMessage || 'Too many attempts — please wait a moment and try again.';
+  // 402 = subscription lapsed or a plan limit reached. The server's
+  // message explains exactly which, and what to do about it.
+  if (status === 402) return serverMessage || 'Your subscription needs attention before you can add new records.';
   return serverMessage || `Couldn't ${action} (error ${status}). Please try again.`;
 }
 

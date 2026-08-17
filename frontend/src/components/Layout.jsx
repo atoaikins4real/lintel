@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { IconGrid, IconUsers, IconBuilding, IconFile, IconWallet, IconWrench, IconChart, IconCalendar, IconCog, IconShield, IconKey, IconHome, IconLogout } from './icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import SubscriptionBanner from './SubscriptionBanner.jsx';
 
 // `primary` marks the items that also appear in the mobile bottom tab bar
 // — that bar only fits about five before the labels become unreadable, so
@@ -169,7 +170,10 @@ export default function Layout({ children }) {
           </div>
         </header>
         <main className="flex-1 pb-20 md:pb-0">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">{children}</div>
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
+            <SubscriptionBanner />
+            {children}
+          </div>
         </main>
       </div>
 
