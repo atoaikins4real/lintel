@@ -650,3 +650,121 @@ alter table l_units add column if not exists view_orientation text;
 alter table l_units add column if not exists features text[] not null default '{}';
 -- Public-facing blurb. `notes` stays internal and is never shown publicly.
 alter table l_units add column if not exists description text;
+
+-- ============================================================
+-- DATABASE-LEVEL TENANT ISOLATION
+-- Mirrors migration enforce_tenant_isolation_composite_fks.
+--
+-- Isolation has two independent layers:
+--
+--  1. API layer — every query filters on the company_id carried in the
+--     caller's signed JWT (never from the request body). Verified by
+--     backend/audit-scoping.js.
+--
+--  2. THIS layer — every cross-table foreign key includes company_id, so
+--     Postgres itself refuses to let one company's row reference
+--     another's. A lease can only point at a unit in the same company, a
+--     payment only at a lease in the same company, and so on.
+--
+-- Why foreign keys rather than RLS: the backend connects as service_role,
+-- which has BYPASSRLS, so row-level policies would never be evaluated and
+-- would give false confidence. Foreign keys are enforced for every role
+-- including service_role, so this holds even against a buggy query or a
+-- mistake made directly in SQL.
+--
+-- Delete behaviour is unchanged; SET NULL uses the PG15+ column-specific
+-- form so company_id (NOT NULL) is never nulled.
+-- ============================================================
+
+-- Parents need a unique key on (id, company_id) to be referenced that way.
+-- id is already the primary key, so this adds no new restriction.
+alter table l_properties         add constraint l_properties_id_company_key         unique (id, company_id);
+alter table l_units              add constraint l_units_id_company_key              unique (id, company_id);
+alter table l_tenants            add constraint l_tenants_id_company_key            unique (id, company_id);
+alter table l_leases             add constraint l_leases_id_company_key             unique (id, company_id);
+alter table l_users              add constraint l_users_id_company_key              unique (id, company_id);
+alter table l_access_credentials add constraint l_access_credentials_id_company_key unique (id, company_id);
+
+-- Every cross-table reference below carries company_id. On a fresh
+-- install these replace the single-column versions declared earlier.
+alter table l_units               drop constraint if exists l_units_property_id_fkey;
+alter table l_units               add  constraint l_units_property_id_fkey
+  foreign key (property_id, company_id) references l_properties(id, company_id) on delete set null (property_id);
+
+alter table l_leases              drop constraint if exists l_leases_tenant_id_fkey;
+alter table l_leases              add  constraint l_leases_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete restrict;
+alter table l_leases              drop constraint if exists l_leases_unit_id_fkey;
+alter table l_leases              add  constraint l_leases_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete restrict;
+
+alter table l_payments            drop constraint if exists l_payments_lease_id_fkey;
+alter table l_payments            add  constraint l_payments_lease_id_fkey
+  foreign key (lease_id, company_id) references l_leases(id, company_id) on delete cascade;
+alter table l_payments            drop constraint if exists l_payments_tenant_id_fkey;
+alter table l_payments            add  constraint l_payments_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete restrict;
+alter table l_payments            drop constraint if exists l_payments_unit_id_fkey;
+alter table l_payments            add  constraint l_payments_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete restrict;
+
+alter table l_expenses            drop constraint if exists l_expenses_unit_id_fkey;
+alter table l_expenses            add  constraint l_expenses_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete cascade;
+
+alter table l_renovations         drop constraint if exists l_renovations_unit_id_fkey;
+alter table l_renovations         add  constraint l_renovations_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete cascade;
+
+alter table l_faults              drop constraint if exists l_faults_unit_id_fkey;
+alter table l_faults              add  constraint l_faults_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete cascade;
+alter table l_faults              drop constraint if exists l_faults_tenant_id_fkey;
+alter table l_faults              add  constraint l_faults_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete set null (tenant_id);
+
+alter table l_booking_inquiries   drop constraint if exists l_booking_inquiries_unit_id_fkey;
+alter table l_booking_inquiries   add  constraint l_booking_inquiries_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete cascade;
+
+alter table l_tenant_tier_events  drop constraint if exists l_tenant_tier_events_tenant_id_fkey;
+alter table l_tenant_tier_events  add  constraint l_tenant_tier_events_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete cascade;
+
+alter table l_tenant_contacts     drop constraint if exists l_tenant_contacts_tenant_id_fkey;
+alter table l_tenant_contacts     add  constraint l_tenant_contacts_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete cascade;
+
+alter table l_tenant_occupants    drop constraint if exists l_tenant_occupants_tenant_id_fkey;
+alter table l_tenant_occupants    add  constraint l_tenant_occupants_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete cascade;
+
+alter table l_tenant_vehicles     drop constraint if exists l_tenant_vehicles_tenant_id_fkey;
+alter table l_tenant_vehicles     add  constraint l_tenant_vehicles_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete cascade;
+
+alter table l_access_credentials  drop constraint if exists l_access_credentials_property_id_fkey;
+alter table l_access_credentials  add  constraint l_access_credentials_property_id_fkey
+  foreign key (property_id, company_id) references l_properties(id, company_id) on delete cascade;
+alter table l_access_credentials  drop constraint if exists l_access_credentials_tenant_id_fkey;
+alter table l_access_credentials  add  constraint l_access_credentials_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete set null (tenant_id);
+alter table l_access_credentials  drop constraint if exists l_access_credentials_unit_id_fkey;
+alter table l_access_credentials  add  constraint l_access_credentials_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete set null (unit_id);
+alter table l_access_credentials  drop constraint if exists l_access_credentials_issued_by_fkey;
+alter table l_access_credentials  add  constraint l_access_credentials_issued_by_fkey
+  foreign key (issued_by, company_id) references l_users(id, company_id) on delete set null (issued_by);
+alter table l_access_credentials  drop constraint if exists l_access_credentials_replaces_id_fkey;
+alter table l_access_credentials  add  constraint l_access_credentials_replaces_id_fkey
+  foreign key (replaces_id, company_id) references l_access_credentials(id, company_id) on delete set null (replaces_id);
+
+alter table l_access_events       drop constraint if exists l_access_events_credential_id_fkey;
+alter table l_access_events       add  constraint l_access_events_credential_id_fkey
+  foreign key (credential_id, company_id) references l_access_credentials(id, company_id) on delete set null (credential_id);
+alter table l_access_events       drop constraint if exists l_access_events_property_id_fkey;
+alter table l_access_events       add  constraint l_access_events_property_id_fkey
+  foreign key (property_id, company_id) references l_properties(id, company_id) on delete cascade;
+alter table l_access_events       drop constraint if exists l_access_events_unit_id_fkey;
+alter table l_access_events       add  constraint l_access_events_unit_id_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete set null (unit_id);

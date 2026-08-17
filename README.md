@@ -63,9 +63,28 @@ company.
   rows are labelled "Sample data — safe to delete."
 - A manager adds colleagues from the **Staff** page; those accounts join
   the manager's company automatically.
-- Isolation is enforced in the API layer. Every request filters on the
-  `company_id` carried in the caller's signed JWT — never from the request
-  body or a URL parameter, so it can't be spoofed.
+Isolation is enforced in **two independent layers**, so a mistake in one
+doesn't expose data:
+
+**1. API layer.** Every request filters on the `company_id` carried in the
+caller's signed JWT — never from the request body or a URL parameter, so
+it can't be spoofed.
+
+**2. Database layer.** All 23 cross-table foreign keys include
+`company_id`, so Postgres itself refuses to let one company's row
+reference another's. A lease can only point at a unit in the same company,
+a payment only at a lease in the same company, and so on. Verified against
+the live database: cross-company inserts are rejected with a foreign-key
+violation, same-company writes succeed, and even re-pointing a row's
+`company_id` to another company is refused while dependents exist.
+
+> **Why foreign keys rather than RLS.** RLS is enabled on every `l_` table
+> but has no policies, and the backend connects as `service_role`, which
+> has `BYPASSRLS` — so row-level policies would never be evaluated and
+> would give false confidence. Foreign keys are enforced for *every* role
+> including `service_role`, which is why isolation is expressed that way.
+> If the backend is ever moved off `service_role`, adding real RLS
+> policies becomes worthwhile as a third layer.
 - `npm run audit:scoping` (in `backend/`) walks every Supabase query and
   fails if one touches a company-owned table without a `company_id`
   filter. It's verified against a deliberately-broken control, so a green
