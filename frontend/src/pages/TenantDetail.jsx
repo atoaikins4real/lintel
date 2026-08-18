@@ -4,6 +4,7 @@ import { getTenant, recomputeTenant } from '../api/client.js';
 import TierBadge from '../components/TierBadge.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import Documents from '../components/Documents.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function TenantDetail() {
@@ -108,6 +109,14 @@ export default function TenantDetail() {
             <p className="text-sm text-stone">No payments yet.</p>
           )}
         </Section>
+      </div>
+
+      <div className="mt-4 sm:mt-6">
+        <Documents
+          owner={{ tenant_id: id }}
+          defaultKind="id_document"
+          title="Documents & agreements"
+        />
       </div>
     </div>
   );

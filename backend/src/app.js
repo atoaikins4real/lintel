@@ -27,6 +27,7 @@ const billingRouter = require('./routes/billing');
 const reportsRouter = require('./routes/reports');
 const bookingInquiriesRouter = require('./routes/bookingInquiries');
 const uploadsRouter = require('./routes/uploads');
+const documentsRouter = require('./routes/documents');
 const settingsRouter = require('./routes/settings');
 const companyRouter = require('./routes/company');
 const propertiesRouter = require('./routes/properties');
@@ -111,6 +112,7 @@ app.use('/api/billing', billingRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/booking-inquiries', bookingInquiriesRouter);
 app.use('/api/uploads', uploadsRouter);
+app.use('/api/documents', documentsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/company', companyRouter);
 // Platform-owner only. The single place that reads across companies —

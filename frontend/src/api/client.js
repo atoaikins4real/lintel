@@ -200,6 +200,12 @@ export const updateBookingInquiry = (id, status) =>
 // Uploads
 export const uploadPhoto = (payload) => api.post('/uploads/photo', payload).then((r) => r.data);
 
+// Documents — stored privately; downloads use short-lived signed URLs.
+export const getDocuments = (params) => api.get('/documents', { params }).then((r) => r.data);
+export const uploadDocument = (payload) => api.post('/documents', payload).then((r) => r.data);
+export const getDocumentUrl = (id) => api.get(`/documents/${id}/download`).then((r) => r.data);
+export const deleteDocument = (id) => api.delete(`/documents/${id}`).then((r) => r.data);
+
 // Settings — default currency, payout destination, subscription
 export const getSettings = () => api.get('/settings').then((r) => r.data);
 export const updateSettings = (payload) => api.put('/settings', payload).then((r) => r.data);
