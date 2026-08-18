@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   updateSettings, getCompany, updateCompany,
-  getProperties, getUnits, getStaffUsers, readApiError,
+  getProperties, getUnits, getTenants, getStaffUsers, readApiError,
 } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -18,7 +18,7 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [usage, setUsage] = useState({ properties: 0, units: 0, staff: 0 });
+  const [usage, setUsage] = useState({ properties: 0, units: 0, tenants: 0, staff: 0 });
 
   useEffect(() => {
     if (settings) setForm(settings);
@@ -32,9 +32,14 @@ export default function Settings() {
 
   // Current usage, so plan limits are visible before they bite.
   useEffect(() => {
-    Promise.all([getProperties(), getUnits(), getStaffUsers().catch(() => [])])
-      .then(([properties, units, staff]) =>
-        setUsage({ properties: properties.length, units: units.length, staff: staff.length })
+    Promise.all([getProperties(), getUnits(), getTenants(), getStaffUsers().catch(() => [])])
+      .then(([properties, units, tenants, staff]) =>
+        setUsage({
+          properties: properties.length,
+          units: units.length,
+          tenants: tenants.length,
+          staff: staff.length,
+        })
       )
       .catch(() => {});
   }, []);
@@ -300,9 +305,10 @@ export default function Settings() {
             {form.subscription.l_plans && (
               <div className="sm:col-span-2 pt-2">
                 <div className="lx-eyebrow mb-2">Plan usage</div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <Usage label="Properties" used={usage.properties} limit={form.subscription.l_plans.max_properties} />
                   <Usage label="Units" used={usage.units} limit={form.subscription.l_plans.max_units} />
+                  <Usage label="Tenants" used={usage.tenants} limit={form.subscription.l_plans.max_tenants} />
                   <Usage label="Staff" used={usage.staff} limit={form.subscription.l_plans.max_staff} />
                 </div>
                 <p className="text-[11px] text-stone mt-2">

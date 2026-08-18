@@ -14,6 +14,7 @@ const { supabase } = require('../config/supabase');
 const LIMITS = {
   properties: { table: 'l_properties', planField: 'max_properties', label: 'properties' },
   units: { table: 'l_units', planField: 'max_units', label: 'units' },
+  tenants: { table: 'l_tenants', planField: 'max_tenants', label: 'tenants' },
   staff: { table: 'l_users', planField: 'max_staff', label: 'staff accounts' },
 };
 
@@ -29,6 +30,13 @@ function enforcePlanLimit(resource) {
   return async (req, res, next) => {
     try {
       if (req.method !== 'POST') return next();
+
+      // Only the collection root creates a new record. Sub-resource POSTs
+      // under the same router — /tenants/:id/recompute, /:id/tier-events —
+      // must not be blocked by a limit, since they add nothing countable
+      // and blocking them would break maintenance for anyone at capacity.
+      if (req.path !== '/' && req.path !== '') return next();
+
       if (req.user?.is_platform_admin) return next();
       if (!req.user?.company_id) return next();
 

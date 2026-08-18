@@ -94,7 +94,7 @@ app.use('/api/properties', enforcePlanLimit('properties'), propertiesRouter);
 // Nested under tenants — mounted before the tenants router so its
 // /:id/contacts etc. take precedence over /:id.
 app.use('/api/tenants/:id', tenantOnboardingRouter);
-app.use('/api/tenants', tenantsRouter);
+app.use('/api/tenants', enforcePlanLimit('tenants'), tenantsRouter);
 app.use('/api/access', accessRouter);
 app.use('/api/units', enforcePlanLimit('units'), unitsRouter);
 app.use('/api/leases', leasesRouter);

@@ -36,10 +36,11 @@ router.get('/subscribers', async (req, res, next) => {
 
     // Usage counts, fetched once and tallied in memory rather than with a
     // query per company.
-    const [{ data: users }, { data: properties }, { data: units }] = await Promise.all([
+    const [{ data: users }, { data: properties }, { data: units }, { data: tenants }] = await Promise.all([
       supabase.from('l_users').select('company_id'),
       supabase.from('l_properties').select('company_id'),
       supabase.from('l_units').select('company_id'),
+      supabase.from('l_tenants').select('company_id'),
     ]);
 
     const tally = (rows) =>
@@ -47,6 +48,7 @@ router.get('/subscribers', async (req, res, next) => {
     const userCounts = tally(users);
     const propertyCounts = tally(properties);
     const unitCounts = tally(units);
+    const tenantCounts = tally(tenants);
 
     const subsByCompany = Object.fromEntries((subs || []).map((s) => [s.company_id, s]));
     const plansById = Object.fromEntries((plans || []).map((p) => [p.id, p]));
@@ -71,6 +73,7 @@ router.get('/subscribers', async (req, res, next) => {
             staff: userCounts[c.id] || 0,
             properties: propertyCounts[c.id] || 0,
             units: unitCounts[c.id] || 0,
+            tenants: tenantCounts[c.id] || 0,
           },
         };
       })

@@ -122,9 +122,22 @@ in 2030. Now:
 - `/admin` (the "Subscribers" page) lists every company with its plan,
   status, renewal date, computed overdue flag, and real usage (properties,
   units, staff). It's the only place in Lintel that reads across companies.
-- `l_plans` is the catalogue (trial / starter / growth / enterprise with
-  price and limits). Each subscription stores its own agreed `amount`, so
-  changing catalogue pricing never silently rewrites an existing deal.
+- `l_plans` is the catalogue. Each subscription stores its own agreed
+  `amount`, so changing catalogue pricing never silently rewrites an
+  existing deal.
+
+| Plan | Price/mo | Properties | Units | Tenants | Staff |
+|---|---|---|---|---|---|
+| Free trial (30 days) | 0 | 2 | 10 | 5 | 2 |
+| Starter | 250 | 10 | 50 | 10 | 5 |
+| Classic | 600 | 50 | 50 | 50 | 50 |
+| Premium | 1500 | ∞ | ∞ | ∞ | ∞ |
+
+Trial length comes from `l_plans.trial_days`, so changing it is a data
+change rather than a code change. New signups get `trial_ends_on` set from
+it automatically. The demo data seeded into a new workspace (1 property, 3
+apartments, 2 tenants) deliberately sits inside the trial allowance with
+headroom, so a prospect isn't at a limit on day one.
 
 `requirePlatformAdmin` **re-reads the flag from the database on every
 request** rather than trusting the JWT, because tokens live for 7 days and

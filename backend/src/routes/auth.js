@@ -95,6 +95,27 @@ router.post('/signup', authLimiter, async (req, res, next) => {
     // Each company gets its own settings row (currency, payout, etc.).
     await supabase.from('l_settings').insert({ company_id: company.id });
 
+    // Start the trial clock. The length comes from the plan catalogue
+    // rather than a hardcoded number, so changing the trial period is a
+    // data change, not a code change.
+    const { data: trialPlan } = await supabase
+      .from('l_plans')
+      .select('id, trial_days')
+      .eq('code', 'trial')
+      .maybeSingle();
+
+    const trialDays = trialPlan?.trial_days ?? 30;
+    const trialEnds = new Date();
+    trialEnds.setDate(trialEnds.getDate() + trialDays);
+
+    await supabase.from('l_subscriptions').insert({
+      company_id: company.id,
+      plan_id: trialPlan?.id || null,
+      status: 'trial',
+      started_on: new Date().toISOString().slice(0, 10),
+      trial_ends_on: trialEnds.toISOString().slice(0, 10),
+    });
+
     await seedDemoData(company.id);
 
     return createUser(

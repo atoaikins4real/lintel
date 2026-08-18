@@ -114,8 +114,8 @@ export default function Admin() {
                   {new Date(s.created_at).toLocaleDateString()}
                 </div>
                 <div className="text-xs text-stone mt-1">
-                  {s.usage.properties} properties · {s.usage.units} units · {s.usage.staff} staff
-                  {s.plan?.max_units ? ` (limit ${s.plan.max_units} units)` : ''}
+                  {s.usage.properties} properties · {s.usage.units} units · {s.usage.tenants} tenants ·{' '}
+                  {s.usage.staff} staff
                   {s.subscription?.renews_on
                     ? ` · renews ${s.subscription.renews_on}${
                         s.days_until_renewal !== null ? ` (${s.days_until_renewal}d)` : ''

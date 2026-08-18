@@ -841,3 +841,30 @@ alter table l_settings drop column if exists subscription_started_on;
 alter table l_settings drop column if exists subscription_renews_on;
 alter table l_settings drop column if exists subscription_amount;
 alter table l_settings drop column if exists subscription_currency;
+
+-- ------------------------------------------------------------
+-- PLAN TIERS (mirrors migration restructure_plan_tiers)
+-- trial 30 days / starter / classic / premium.
+-- null limit = unlimited.
+-- ------------------------------------------------------------
+alter table l_plans add column if not exists max_tenants integer;
+alter table l_plans add column if not exists trial_days integer;
+
+insert into l_plans (code, name, description, price, currency, billing_interval,
+                     trial_days, max_properties, max_units, max_tenants, max_staff, sort_order)
+values
+  ('trial',   'Free trial', '30-day trial',              0,    'GHS', 'monthly', 30, 2,    10,   5,    2,    0),
+  ('starter', 'Starter',    'For a small portfolio',     250,  'GHS', 'monthly', null, 10,  50,   10,   5,    1),
+  ('classic', 'Classic',    'For an established agency', 600,  'GHS', 'monthly', null, 50,  50,   50,   50,   2),
+  ('premium', 'Premium',    'Unlimited portfolio, tenants and staff',
+                                                          1500, 'GHS', 'monthly', null, null, null, null, null, 3)
+on conflict (code) do update set
+  name            = excluded.name,
+  description     = excluded.description,
+  price           = excluded.price,
+  trial_days      = excluded.trial_days,
+  max_properties  = excluded.max_properties,
+  max_units       = excluded.max_units,
+  max_tenants     = excluded.max_tenants,
+  max_staff       = excluded.max_staff,
+  sort_order      = excluded.sort_order;
