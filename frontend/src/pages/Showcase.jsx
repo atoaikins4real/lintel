@@ -20,6 +20,17 @@ export default function Showcase() {
   const [company, setCompany] = useState(null);
   const [currency, setCurrency] = useState('GHS');
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState('all');
+
+  // 'both' listings appear under either filter, since they genuinely are.
+  const visibleUnits =
+    units?.filter((u) =>
+      filter === 'all'
+        ? true
+        : filter === 'rent'
+        ? u.listing_type !== 'sale'
+        : u.listing_type !== 'rent'
+    ) || null;
 
   useEffect(() => {
     getPublicUnits(slug)
@@ -72,18 +83,55 @@ export default function Showcase() {
         )}
         {!units && !error && <p className="text-stone text-sm">Loading&hellip;</p>}
         {units && units.length === 0 && <p className="text-stone text-sm">No listings available right now.</p>}
+        {units && units.length > 0 && visibleUnits.length === 0 && (
+          <p className="text-stone text-sm">Nothing matching that filter right now.</p>
+        )}
+
+        {/* Only offer the filter when there's actually a mix to filter. */}
+        {units && units.some((u) => u.listing_type !== 'rent') && (
+          <div className="flex gap-2 mb-5">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'rent', label: 'To rent' },
+              { value: 'sale', label: 'For sale' },
+            ].map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className={`px-3.5 py-1.5 rounded-full text-xs transition ${
+                  filter === f.value ? 'bg-ink text-white font-medium' : 'bg-card text-stone hover:text-ink'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {units?.map((u) => {
+          {visibleUnits?.map((u) => {
             const photos = u.photo_urls?.length ? u.photo_urls : u.photo_url ? [u.photo_url] : [];
             const isVacant = u.status === 'vacant';
             return (
               <Link key={u.id} to={`/showcase/${slug}/${u.id}`} className="lx-card overflow-hidden hover:shadow-lift transition block">
                 <Slideshow photos={photos} alt={u.property_name} heightClass="h-48" />
                 <div className="p-5">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                     <span className={`pill uppercase ${CLASS_STYLE[u.class] || CLASS_STYLE.standard}`}>{u.class}</span>
-                    <StatusBadge status={isVacant ? 'vacant' : 'occupied'} />
+                    <div className="flex items-center gap-1.5">
+                      {u.listing_type !== 'rent' && (
+                        <span className={`pill ${
+                          u.sale_status === 'sold' ? 'bg-stone/10 text-stone'
+                          : u.sale_status === 'under_offer' ? 'bg-amber-50 text-amber-700'
+                          : 'bg-gold/10 text-gold'
+                        }`}>
+                          {u.sale_status === 'sold' ? 'Sold'
+                            : u.sale_status === 'under_offer' ? 'Under offer'
+                            : 'For sale'}
+                        </span>
+                      )}
+                      {u.listing_type !== 'sale' && <StatusBadge status={isVacant ? 'vacant' : 'occupied'} />}
+                    </div>
                   </div>
                   <div className="font-serif text-lg text-ink">{u.property_name}</div>
                   <div className="text-sm text-stone">
@@ -101,9 +149,16 @@ export default function Showcase() {
                     ].filter(Boolean).join(' · ') || 'Details coming soon'}
                   </div>
                   <div className="text-xs text-stone mt-3 pt-3 border-t border-line/70">
-                    {u.base_rate_short ? `${formatMoney(u.base_rate_short, currency)}/night` : ''}
-                    {u.base_rate_short && u.base_rate_long ? ' · ' : ''}
-                    {u.base_rate_long ? `${formatMoney(u.base_rate_long, currency)}/mo` : ''}
+                    {u.listing_type !== 'rent' && u.sale_price ? (
+                      <span className="text-ink font-medium">
+                        {formatMoney(u.sale_price, u.sale_currency || currency)}
+                        {u.listing_type === 'both' ? ' to buy' : ''}
+                      </span>
+                    ) : null}
+                    {u.listing_type === 'both' && u.sale_price && (u.base_rate_short || u.base_rate_long) ? ' · ' : ''}
+                    {u.listing_type !== 'sale' && u.base_rate_short ? `${formatMoney(u.base_rate_short, currency)}/night` : ''}
+                    {u.listing_type !== 'sale' && u.base_rate_short && u.base_rate_long ? ' · ' : ''}
+                    {u.listing_type !== 'sale' && u.base_rate_long ? `${formatMoney(u.base_rate_long, currency)}/mo` : ''}
                   </div>
                 </div>
               </Link>

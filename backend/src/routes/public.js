@@ -34,6 +34,7 @@ const inquiryLimiter = rateLimit({
 // public link. `description` is the public-facing blurb.
 const PUBLIC_UNIT_FIELDS = [
   'id, unit_code, property_name, unit_type, class, city, status, description',
+  'listing_type, sale_price, sale_status, sale_currency',
   'bedrooms, bathrooms, rooms, kitchens, halls, balconies, ensuite_bathrooms, store_rooms',
   'floor_area, floor_area_unit, floor_number, storeys, staircases',
   'glass_panel_type, wood_colour, joinery_material, flooring_type, ceiling_type, wall_colour',
@@ -111,7 +112,7 @@ router.post('/:slug/units/:id/inquiries', inquiryLimiter, async (req, res, next)
     const company = await companyBySlug(req.params.slug);
     if (!company) return res.status(404).json({ error: 'Showcase not found' });
 
-    const { name, email, phone, start_date, end_date, message } = req.body;
+    const { name, email, phone, start_date, end_date, message, inquiry_type, offer_amount } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Name is required' });
@@ -119,6 +120,8 @@ router.post('/:slug/units/:id/inquiries', inquiryLimiter, async (req, res, next)
     if (!email?.trim() && !phone?.trim()) {
       return res.status(400).json({ error: 'Provide an email or phone number so we can reach you' });
     }
+
+    const type = inquiry_type === 'purchase' ? 'purchase' : 'booking';
 
     // Confirms the unit belongs to THIS company — stops someone pointing a
     // valid slug at another company's unit id.
@@ -140,9 +143,13 @@ router.post('/:slug/units/:id/inquiries', inquiryLimiter, async (req, res, next)
         name: name.trim(),
         email: email?.trim() || null,
         phone: phone?.trim() || null,
-        start_date: start_date || null,
-        end_date: end_date || null,
+        // A purchase enquiry has no stay dates; keeping them null avoids
+        // meaningless "check-in" values on a sale.
+        start_date: type === 'purchase' ? null : start_date || null,
+        end_date: type === 'purchase' ? null : end_date || null,
         message: message?.trim() || null,
+        inquiry_type: type,
+        offer_amount: type === 'purchase' && offer_amount ? Number(offer_amount) || null : null,
       })
       .select('id, created_at')
       .single();

@@ -14,13 +14,51 @@ const SPEC_NUMBERS = [
   'bedrooms', 'bathrooms', 'base_rate_short', 'base_rate_long',
   'floor_area', 'floor_number', 'storeys', 'staircases', 'rooms',
   'kitchens', 'halls', 'balconies', 'ensuite_bathrooms', 'store_rooms',
+  'sale_price',
 ];
 const SPEC_TEXTS = [
   'address', 'city', 'notes', 'photo_url', 'description',
   'floor_area_unit', 'glass_panel_type', 'wood_colour', 'joinery_material',
   'flooring_type', 'ceiling_type', 'wall_colour', 'view_orientation',
+  'sale_currency',
 ];
 const FURNISHING = ['unfurnished', 'semi_furnished', 'fully_furnished'];
+const LISTING_TYPES = ['rent', 'sale', 'both'];
+const SALE_STATUSES = ['available', 'under_offer', 'sold'];
+
+/**
+ * Validates the sale fields and keeps them coherent: a unit offered for
+ * sale needs a sale_status, and one that isn't for sale shouldn't carry
+ * sale data that would then surface on the public listing.
+ */
+function applySaleFields(target, body) {
+  if (body.listing_type !== undefined) {
+    if (!LISTING_TYPES.includes(body.listing_type)) {
+      return `Listing type must be one of: ${LISTING_TYPES.join(', ')}`;
+    }
+    target.listing_type = body.listing_type;
+  }
+  if (body.sale_status !== undefined && body.sale_status !== '' && body.sale_status !== null) {
+    if (!SALE_STATUSES.includes(body.sale_status)) {
+      return `Sale status must be one of: ${SALE_STATUSES.join(', ')}`;
+    }
+    target.sale_status = body.sale_status;
+  }
+
+  const forSale = ['sale', 'both'].includes(target.listing_type);
+  if (target.listing_type !== undefined) {
+    if (forSale) {
+      // Default the status so a for-sale unit is never in limbo.
+      if (!target.sale_status) target.sale_status = 'available';
+    } else {
+      // Reverting to rent-only clears sale data rather than leaving a
+      // stale asking price that could reappear on the showcase later.
+      target.sale_status = null;
+      target.sale_price = null;
+    }
+  }
+  return null;
+}
 
 
 // GET /api/units?status=vacant&class=luxury
@@ -122,6 +160,9 @@ router.post('/', async (req, res, next) => {
       spec.has_air_conditioning = Boolean(req.body.has_air_conditioning);
     }
 
+    const saleError = applySaleFields(spec, req.body);
+    if (saleError) return res.status(400).json({ error: saleError });
+
     const { data, error } = await supabase
       .from('l_units')
       .insert({
@@ -170,6 +211,9 @@ router.put('/:id', async (req, res, next) => {
     }
     // Empty string isn't a valid enum value.
     if ('furnishing' in updates) updates.furnishing = str(updates.furnishing);
+
+    const saleError = applySaleFields(updates, req.body);
+    if (saleError) return res.status(400).json({ error: saleError });
 
     delete updates.company_id; // never reassignable from the request body
 

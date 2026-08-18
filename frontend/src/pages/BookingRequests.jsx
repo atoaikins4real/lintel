@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { getBookingInquiries, updateBookingInquiry } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 
 // Staff-side review of "Book now" / "Request to be notified" submissions
 // from the public /showcase pages. Viewer role can see this (read-only,
 // same as everywhere else); only manager/finance can approve or decline.
 export default function BookingRequests() {
   const { canEdit } = useAuth();
+  const { money } = useSettings();
   const [inquiries, setInquiries] = useState([]);
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState(null);
@@ -48,6 +50,9 @@ export default function BookingRequests() {
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <span className="font-medium text-ink">{i.name}</span>
                 <StatusBadge status={i.status} />
+                {i.inquiry_type === 'purchase' && (
+                  <span className="pill bg-gold/10 text-gold">Purchase enquiry</span>
+                )}
               </div>
               <div className="text-xs text-stone">
                 {i.l_units?.unit_code}
@@ -55,7 +60,11 @@ export default function BookingRequests() {
               </div>
               <div className="text-xs text-stone mt-1">
                 {[i.email, i.phone].filter(Boolean).join(' · ') || 'No contact info provided'}
-                {(i.start_date || i.end_date) && ` · ${i.start_date || '?'} → ${i.end_date || 'open'}`}
+                {i.inquiry_type === 'purchase'
+                  ? i.offer_amount
+                    ? ` · offered ${money(i.offer_amount)}`
+                    : ' · no offer stated'
+                  : (i.start_date || i.end_date) && ` · ${i.start_date || '?'} → ${i.end_date || 'open'}`}
               </div>
               {i.message && <div className="text-xs text-stone mt-1 italic">&ldquo;{i.message}&rdquo;</div>}
             </div>

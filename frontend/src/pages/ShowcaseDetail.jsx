@@ -17,6 +17,7 @@ export default function ShowcaseDetail() {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(emptyInquiry);
   const [sending, setSending] = useState(false);
+  const [inquiryType, setInquiryType] = useState('booking');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,7 +32,7 @@ export default function ShowcaseDetail() {
     setError('');
     setSending(true);
     try {
-      await createInquiry(slug, id, form);
+      await createInquiry(slug, id, { ...form, inquiry_type: inquiryType });
       setSent(true);
       setShowForm(false);
     } catch (err) {
@@ -89,7 +90,18 @@ export default function ShowcaseDetail() {
 
             {unit.description && <p className="text-sm text-ink/80 mb-5 leading-relaxed">{unit.description}</p>}
 
-            {(unit.base_rate_short || unit.base_rate_long) && (
+            {unit.listing_type !== 'rent' && unit.sale_price && (
+              <div className="mb-6 pb-6 border-b border-line/70">
+                <div className="lx-eyebrow mb-1">
+                  {unit.sale_status === 'sold' ? 'Sold' : unit.sale_status === 'under_offer' ? 'Under offer' : 'For sale'}
+                </div>
+                <div className="font-serif text-2xl text-ink">
+                  {formatMoney(unit.sale_price, unit.sale_currency || unit.currency)}
+                </div>
+              </div>
+            )}
+
+            {unit.listing_type !== 'sale' && (unit.base_rate_short || unit.base_rate_long) && (
               <div className="flex flex-wrap gap-5 text-sm text-stone mb-6 pb-6 border-b border-line/70">
                 {unit.base_rate_short && (
                   <div>
@@ -158,9 +170,14 @@ export default function ShowcaseDetail() {
               </div>
             ) : showForm ? (
               <form onSubmit={handleSubmit} className="space-y-3">
-                {!isVacant && (
+                {inquiryType === 'booking' && !isVacant && (
                   <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                     This unit is currently occupied — send a request and we&apos;ll reach out if it becomes available.
+                  </p>
+                )}
+                {inquiryType === 'purchase' && unit.sale_status === 'under_offer' && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    This property is already under offer — register your interest and we&apos;ll be in touch if that changes.
                   </p>
                 )}
                 {error && (
@@ -189,26 +206,41 @@ export default function ShowcaseDetail() {
                   />
                 </div>
                 <p className="text-xs text-stone">Provide at least an email or phone number so we can reach you.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Stay dates are meaningless on a purchase enquiry, so
+                    the form asks for an offer instead. */}
+                {inquiryType === 'purchase' ? (
                   <div>
-                    <label className="block text-xs text-stone mb-1">Move-in / check-in date</label>
+                    <label className="block text-xs text-stone mb-1">Your offer (optional)</label>
                     <input
-                      type="date"
+                      type="number"
+                      placeholder="Leave blank to simply register interest"
                       className="lx-input"
-                      value={form.start_date}
-                      onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                      value={form.offer_amount || ''}
+                      onChange={(e) => setForm({ ...form, offer_amount: e.target.value })}
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-stone mb-1">Check-out date (optional)</label>
-                    <input
-                      type="date"
-                      className="lx-input"
-                      value={form.end_date}
-                      onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-stone mb-1">Move-in / check-in date</label>
+                      <input
+                        type="date"
+                        className="lx-input"
+                        value={form.start_date}
+                        onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-stone mb-1">Check-out date (optional)</label>
+                      <input
+                        type="date"
+                        className="lx-input"
+                        value={form.end_date}
+                        onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                      />
+                    </div>
                   </div>
-                </div>
+                )}
                 <textarea
                   placeholder="Anything else we should know?"
                   className="lx-input"
@@ -218,7 +250,7 @@ export default function ShowcaseDetail() {
                 />
                 <div className="flex gap-3">
                   <button disabled={sending} className="lx-btn-primary">
-                    {sending ? 'Sending…' : 'Send request'}
+                    {sending ? 'Sending…' : inquiryType === 'purchase' ? 'Send enquiry' : 'Send request'}
                   </button>
                   <button type="button" onClick={() => setShowForm(false)} className="lx-btn-ghost">
                     Cancel
@@ -226,9 +258,21 @@ export default function ShowcaseDetail() {
                 </div>
               </form>
             ) : (
-              <button onClick={() => setShowForm(true)} className="lx-btn-primary">
-                {isVacant ? 'Book now' : 'Request to be notified'}
-              </button>
+              <div className="flex gap-3 flex-wrap">
+                {unit.listing_type !== 'sale' && (
+                  <button onClick={() => { setInquiryType('booking'); setShowForm(true); }} className="lx-btn-primary">
+                    {isVacant ? 'Book now' : 'Request to be notified'}
+                  </button>
+                )}
+                {unit.listing_type !== 'rent' && unit.sale_status !== 'sold' && (
+                  <button
+                    onClick={() => { setInquiryType('purchase'); setShowForm(true); }}
+                    className={unit.listing_type === 'sale' ? 'lx-btn-primary' : 'lx-btn-ghost'}
+                  >
+                    {unit.sale_status === 'under_offer' ? 'Register interest' : 'Enquire about buying'}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>

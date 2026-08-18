@@ -21,6 +21,7 @@ const empty = {
   flooring_type: '', ceiling_type: '', wall_colour: '', view_orientation: '',
   furnishing: '', has_air_conditioning: false, features: [],
   base_rate_short: '', base_rate_long: '',
+  listing_type: 'rent', sale_price: '', sale_status: 'available',
   photo_urls: [], photo_url: '', city: '',
 };
 
@@ -228,20 +229,61 @@ export default function UnitOnboarding() {
       {step === 5 && (
         <WizardStep title="Pricing & availability" hint={`Amounts are in ${currency}.`}
           onBack={() => setStep(4)} onNext={() => saveAndGo(6)} busy={saving}>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <NumField label={`Nightly rate (${currency})`} value={form.base_rate_short}
-              onChange={(v) => set({ base_rate_short: v })} />
-            <NumField label={`Monthly rate (${currency})`} value={form.base_rate_long}
-              onChange={(v) => set({ base_rate_long: v })} />
-            <div>
-              <label className="block text-xs text-stone mb-1">Status</label>
-              <select className="lx-select" value={form.status} onChange={(e) => set({ status: e.target.value })}>
-                <option value="vacant">Vacant</option>
-                <option value="occupied">Occupied</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="off_market">Off market (hidden from showcase)</option>
-              </select>
+          <div>
+            <label className="block text-xs text-stone mb-1.5">This apartment is offered for</label>
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { value: 'rent', label: 'Rent only' },
+                { value: 'sale', label: 'Sale only' },
+                { value: 'both', label: 'Rent or sale' },
+              ].map((o) => (
+                <button
+                  key={o.value} type="button" onClick={() => set({ listing_type: o.value })}
+                  className={`px-4 py-2 rounded-xl text-sm border transition ${
+                    form.listing_type === o.value
+                      ? 'border-gold bg-gold/10 text-ink font-medium'
+                      : 'border-line text-stone hover:border-stone/40'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {form.listing_type !== 'sale' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <NumField label={`Nightly rate (${currency})`} value={form.base_rate_short}
+                onChange={(v) => set({ base_rate_short: v })} />
+              <NumField label={`Monthly rate (${currency})`} value={form.base_rate_long}
+                onChange={(v) => set({ base_rate_long: v })} />
+            </div>
+          )}
+
+          {form.listing_type !== 'rent' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <NumField label={`Asking price (${currency})`} value={form.sale_price}
+                onChange={(v) => set({ sale_price: v })} placeholder="e.g. 950000" />
+              <div>
+                <label className="block text-xs text-stone mb-1">Sale status</label>
+                <select className="lx-select" value={form.sale_status}
+                  onChange={(e) => set({ sale_status: e.target.value })}>
+                  <option value="available">Available</option>
+                  <option value="under_offer">Under offer</option>
+                  <option value="sold">Sold</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="sm:max-w-xs">
+            <label className="block text-xs text-stone mb-1">Occupancy status</label>
+            <select className="lx-select" value={form.status} onChange={(e) => set({ status: e.target.value })}>
+              <option value="vacant">Vacant</option>
+              <option value="occupied">Occupied</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="off_market">Off market (hidden from showcase)</option>
+            </select>
           </div>
         </WizardStep>
       )}
@@ -285,9 +327,13 @@ export default function UnitOnboarding() {
           <Row label="Size" value={form.floor_area ? `${form.floor_area} ${form.floor_area_unit}` : ''} />
           <Row label="Finishes" value={[form.flooring_type, form.ceiling_type, form.wood_colour, form.glass_panel_type].filter(Boolean).join(' · ')} />
           <Row label="Features" value={form.features.join(', ')} />
+          <Row label="Offered for" value={
+            { rent: 'Rent only', sale: 'Sale only', both: 'Rent or sale' }[form.listing_type]
+          } />
           <Row label="Pricing" value={[
-            form.base_rate_short && `${form.base_rate_short}/night`,
-            form.base_rate_long && `${form.base_rate_long}/mo`,
+            form.listing_type !== 'sale' && form.base_rate_short && `${form.base_rate_short}/night`,
+            form.listing_type !== 'sale' && form.base_rate_long && `${form.base_rate_long}/mo`,
+            form.listing_type !== 'rent' && form.sale_price && `${form.sale_price} asking`,
           ].filter(Boolean).join(' · ')} />
           <Row label="Photos" value={`${form.photo_urls.length} uploaded`} />
         </WizardStep>

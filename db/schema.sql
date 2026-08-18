@@ -890,3 +890,30 @@ create index if not exists idx_l_password_resets_expires on l_password_resets(ex
 
 alter table l_password_resets enable row level security;
 grant select, insert, update, delete on l_password_resets to service_role;
+
+-- ------------------------------------------------------------
+-- SALE LISTINGS (mirrors migration add_sale_listings)
+-- Each unit is offered for rent, sale, or both. Existing units default
+-- to 'rent' so nothing already listed changes behaviour.
+-- ------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'l_listing_type') then
+    create type l_listing_type as enum ('rent', 'sale', 'both');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_sale_status') then
+    create type l_sale_status as enum ('available', 'under_offer', 'sold');
+  end if;
+  if not exists (select 1 from pg_type where typname = 'l_inquiry_type') then
+    create type l_inquiry_type as enum ('booking', 'purchase');
+  end if;
+end $$;
+
+alter table l_units add column if not exists listing_type l_listing_type not null default 'rent';
+alter table l_units add column if not exists sale_price numeric(14,2);
+alter table l_units add column if not exists sale_status l_sale_status;
+alter table l_units add column if not exists sale_currency text;
+create index if not exists idx_l_units_listing_type on l_units(listing_type);
+
+alter table l_booking_inquiries add column if not exists inquiry_type l_inquiry_type not null default 'booking';
+alter table l_booking_inquiries add column if not exists offer_amount numeric(14,2);

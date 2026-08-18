@@ -376,6 +376,18 @@ screen).
   **Revenue counts payments marked `paid` only.** Pending and late amounts
   are owed rather than earned; including them would flatter the figures.
   What's owed appears in the Rent roll instead.
+- **Sales as well as rentals** — each apartment is offered for `rent`,
+  `sale` or `both`, with an asking price and a sale status (available /
+  under offer / sold). The showcase badges and prices accordingly, offers
+  a rent/sale filter when there's a mix, and shows an "Enquire about
+  buying" action alongside (or instead of) "Book now". Purchase enquiries
+  ask for an optional offer rather than stay dates, and arrive tagged as
+  such on the Booking Requests page.
+
+  Switching a unit back to rent-only clears its asking price and sale
+  status, so a stale price can't resurface on the public listing later.
+  Existing units all defaulted to `rent`, so nothing already listed
+  changed behaviour.
 - **Public showcase & booking requests** — `/showcase` (whole portfolio)
   and `/showcase/:id` (single unit) are public pages, no login required,
   meant to be shared on social media: photo slideshow, vacant/occupied
@@ -442,8 +454,10 @@ subscription status.
 - Password reset / invitation emails — staff accounts are created with a
   temporary password you share with the person directly
 - Live door hardware integration (see "A note on door hardware")
-- Sales listings — the showcase only supports rentals/bookings today;
-  there's no for-sale flag, asking price, or offer flow
+- A tenant-facing portal (tenants can't log in to see their own statement)
+- Document storage for signed lease agreements
+- Rent escalation / annual review dates
+- Search and filtering beyond the basics (fine at 3 units, painful at 300)
 - Notifications — late payments and booking requests are recorded but
   nobody is emailed or texted about them
 - Password reset and staff invitation emails
