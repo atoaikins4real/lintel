@@ -31,6 +31,13 @@ const ALLOWED = [
   // Every route in that file is behind requirePlatformAdmin, which
   // re-verifies the flag against the database on each request.
   { file: 'routes/admin.js', match: 'l_', why: 'platform-owner routes are cross-company by design' },
+  // The tenant portal has no session. company_id comes from the token
+  // record itself (record.company_id), which is looked up by hash and
+  // pins the request to exactly one tenant of one company.
+  { file: 'routes/tenantPortal.js', match: 'record.company_id', why: 'scoped by the company on the link token, not a session' },
+  { file: 'routes/tenantPortal.js', match: "eq('email'", why: 'tenant lookup by email happens before any token exists' },
+  { file: 'routes/tenantPortal.js', match: 'token_hash', why: 'token lookup is the authorisation step itself' },
+  { file: 'routes/tenantPortal.js', match: 'record.id', why: 'updates the single token row just authenticated' },
   { file: 'middleware/auth.js', match: 'is_platform_admin', why: 'verifies the caller is a platform admin' },
 ];
 

@@ -5,6 +5,7 @@ import RequireAuth from './components/RequireAuth.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
+import MyStatement from './pages/MyStatement.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Tenants from './pages/Tenants.jsx';
 import TenantDetail from './pages/TenantDetail.jsx';
@@ -38,6 +39,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         {/* Public — the token in the URL is the credential */}
         <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Tenant-facing, no login — see routes/tenantPortal.js */}
+        <Route path="/my-statement" element={<MyStatement />} />
         {/* Public — no auth, meant to be shared on social media. The
             company slug identifies whose listings to show, since there's
             no session to read it from. */}

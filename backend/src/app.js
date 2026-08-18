@@ -14,6 +14,7 @@ const { requireAuth } = require('./middleware/auth');
 
 const authRouter = require('./routes/auth');
 const publicRouter = require('./routes/public');
+const tenantPortalRouter = require('./routes/tenantPortal');
 const tenantsRouter = require('./routes/tenants');
 const unitsRouter = require('./routes/units');
 const leasesRouter = require('./routes/leases');
@@ -74,6 +75,9 @@ app.get('/health', (req, res) => res.json({ status: 'ok', time: new Date().toISO
 // reachable with no session — everything else under /api requires one.
 app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
+// Tenant portal — no session; a hashed, expiring link is the whole
+// authorisation, and it only ever reveals one tenant's own statement.
+app.use('/api/tenant-portal', tenantPortalRouter);
 app.use('/api', requireAuth);
 
 // Subscription enforcement sits between auth and the data routes.

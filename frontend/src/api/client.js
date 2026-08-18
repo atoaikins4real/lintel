@@ -181,6 +181,12 @@ export const updateSubscription = (companyId, payload) =>
   api.patch(`/admin/subscribers/${companyId}/subscription`, payload).then((r) => r.data);
 export const updatePlan = (id, payload) => api.put(`/admin/plans/${id}`, payload).then((r) => r.data);
 
+// Tenant portal — public, no session. The link token is the authorisation.
+export const requestTenantLink = (email) =>
+  api.post('/tenant-portal/request', { email }).then((r) => r.data);
+export const getMyStatement = (token) =>
+  api.get('/tenant-portal/statement', { params: { token } }).then((r) => r.data);
+
 // Company profile
 export const getCompany = () => api.get('/company').then((r) => r.data);
 export const updateCompany = (payload) => api.put('/company', payload).then((r) => r.data);

@@ -917,3 +917,33 @@ create index if not exists idx_l_units_listing_type on l_units(listing_type);
 
 alter table l_booking_inquiries add column if not exists inquiry_type l_inquiry_type not null default 'booking';
 alter table l_booking_inquiries add column if not exists offer_amount numeric(14,2);
+
+-- ------------------------------------------------------------
+-- L_TENANT_PORTAL_TOKENS (mirrors add_tenant_portal_tokens)
+-- Tenants view their own statement via a time-limited emailed link
+-- rather than an account with a password — see
+-- backend/src/routes/tenantPortal.js for the reasoning. Only a hash of
+-- the token is stored. Viewing does not burn the link; last_used_at
+-- records activity instead.
+-- ------------------------------------------------------------
+create table if not exists l_tenant_portal_tokens (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    tenant_id uuid not null,
+    token_hash text not null unique,
+    expires_at timestamptz not null,
+    last_used_at timestamptz,
+    revoked_at timestamptz,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists idx_l_tenant_portal_tokens_tenant on l_tenant_portal_tokens(tenant_id);
+create index if not exists idx_l_tenant_portal_tokens_expires on l_tenant_portal_tokens(expires_at);
+
+-- Composite, so a token can never point at a tenant in another company.
+alter table l_tenant_portal_tokens drop constraint if exists l_tenant_portal_tokens_tenant_id_fkey;
+alter table l_tenant_portal_tokens add constraint l_tenant_portal_tokens_tenant_id_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete cascade;
+
+alter table l_tenant_portal_tokens enable row level security;
+grant select, insert, update, delete on l_tenant_portal_tokens to service_role;
