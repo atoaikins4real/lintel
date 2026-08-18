@@ -947,3 +947,74 @@ alter table l_tenant_portal_tokens add constraint l_tenant_portal_tokens_tenant_
 
 alter table l_tenant_portal_tokens enable row level security;
 grant select, insert, update, delete on l_tenant_portal_tokens to service_role;
+
+-- ------------------------------------------------------------
+-- DOCUMENTS, TENANT PORTAL, RENT ESCALATION
+-- Mirrors add_document_storage and add_rent_escalation.
+-- ------------------------------------------------------------
+do $$
+begin
+  if not exists (select 1 from pg_type where typname = 'l_document_kind') then
+    create type l_document_kind as enum ('lease_agreement','id_document','receipt','inspection','invoice','other');
+  end if;
+end $$;
+
+-- Signed agreements and files. PRIVATE bucket — a tenancy agreement must
+-- not be readable by URL, so the API serves short-lived signed links.
+create table if not exists l_documents (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    lease_id uuid, tenant_id uuid, unit_id uuid, property_id uuid,
+    kind l_document_kind not null default 'other',
+    title text not null,
+    file_url text not null,                     -- storage path, never returned to clients
+    mime_type text,
+    size_bytes bigint,
+    notes text,
+    uploaded_by uuid references l_users(id) on delete set null,
+    created_at timestamptz not null default now(),
+    -- A document attached to nothing would be unfindable.
+    constraint l_documents_has_owner check (
+      lease_id is not null or tenant_id is not null
+      or unit_id is not null or property_id is not null)
+);
+
+alter table l_documents add constraint l_documents_lease_fkey
+  foreign key (lease_id, company_id) references l_leases(id, company_id) on delete cascade;
+alter table l_documents add constraint l_documents_tenant_fkey
+  foreign key (tenant_id, company_id) references l_tenants(id, company_id) on delete cascade;
+alter table l_documents add constraint l_documents_unit_fkey
+  foreign key (unit_id, company_id) references l_units(id, company_id) on delete cascade;
+alter table l_documents add constraint l_documents_property_fkey
+  foreign key (property_id, company_id) references l_properties(id, company_id) on delete cascade;
+
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('lintel-documents', 'lintel-documents', false, 15728640)
+on conflict (id) do update set public = false;
+
+-- Rent escalation. Increases are NEVER applied automatically — the
+-- nightly job only surfaces reviews that are due; a person applies them,
+-- and every change is recorded in l_rent_reviews.
+alter table l_leases add column if not exists escalation_percent numeric(5,2);
+alter table l_leases add column if not exists next_review_on date;
+alter table l_leases add column if not exists last_escalated_on date;
+
+create table if not exists l_rent_reviews (
+    id uuid primary key default gen_random_uuid(),
+    company_id uuid not null references l_companies(id) on delete cascade,
+    lease_id uuid not null,
+    previous_rate numeric(12,2) not null,
+    new_rate numeric(12,2) not null,
+    percent_applied numeric(5,2),
+    effective_on date not null,
+    note text,
+    applied_by uuid references l_users(id) on delete set null,
+    created_at timestamptz not null default now()
+);
+
+alter table l_rent_reviews add constraint l_rent_reviews_lease_fkey
+  foreign key (lease_id, company_id) references l_leases(id, company_id) on delete cascade;
+
+alter table l_documents    enable row level security;
+alter table l_rent_reviews enable row level security;
+grant select, insert, update, delete on l_documents, l_rent_reviews to service_role;

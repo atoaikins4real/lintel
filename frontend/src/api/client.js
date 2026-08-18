@@ -124,6 +124,9 @@ export const getLeases = (params) => api.get('/leases', { params }).then((r) => 
 export const createLease = (payload) => api.post('/leases', payload).then((r) => r.data);
 export const updateLease = (id, payload) => api.put(`/leases/${id}`, payload).then((r) => r.data);
 export const deleteLease = (id) => api.delete(`/leases/${id}`).then((r) => r.data);
+export const getDueReviews = () => api.get('/leases/reviews/due').then((r) => r.data);
+export const applyRentReview = (id, payload) =>
+  api.post(`/leases/${id}/apply-review`, payload).then((r) => r.data);
 
 // Payments
 export const getPayments = (params) => api.get('/payments', { params }).then((r) => r.data);

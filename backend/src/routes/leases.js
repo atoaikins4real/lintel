@@ -82,8 +82,8 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const updates = clean(req.body, {
-      numbers: ['agreed_rate'],
-      dates: ['start_date', 'end_date'],
+      numbers: ['agreed_rate', 'escalation_percent'],
+      dates: ['start_date', 'end_date', 'next_review_on'],
       texts: ['source'],
     });
 
@@ -108,6 +108,109 @@ router.put('/:id', async (req, res, next) => {
     }
 
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/leases/reviews/due — leases whose rent review has arrived.
+// Read-only: nothing is changed until someone applies it.
+router.get('/reviews/due', async (req, res, next) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from('l_leases')
+      .select('*, l_tenants(first_name, last_name), l_units(unit_code, property_name)')
+      .eq('company_id', req.user.company_id)
+      .eq('status', 'active')
+      .not('next_review_on', 'is', null)
+      .lte('next_review_on', today)
+      .order('next_review_on', { ascending: true });
+    if (error) throw error;
+    res.json(data || []);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/leases/:id/apply-review
+// Raises the rent by the lease's escalation percent (or an override),
+// records the change, and moves the review date on a year.
+//
+// An explicit action rather than an automatic one — changing what a
+// tenant owes shouldn't happen while nobody is looking.
+router.post('/:id/apply-review', requireRole('manager', 'finance'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const { data: lease } = await supabase
+      .from('l_leases')
+      .select('id, agreed_rate, escalation_percent, next_review_on')
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
+    if (!lease) return res.status(404).json({ error: 'Lease not found' });
+
+    const percent =
+      req.body.percent !== undefined && req.body.percent !== ''
+        ? Number(req.body.percent)
+        : Number(lease.escalation_percent);
+
+    if (!Number.isFinite(percent)) {
+      return res.status(400).json({ error: 'Set an escalation percentage on the lease, or supply one here' });
+    }
+
+    const previous = Number(lease.agreed_rate || 0);
+    // Rounded to 2dp — rents are money, not floating point curiosities.
+    const newRate = Math.round(previous * (1 + percent / 100) * 100) / 100;
+    const effectiveOn = blank(req.body.effective_on) || new Date().toISOString().slice(0, 10);
+
+    // Next review a year on from this one, so the cycle continues without
+    // drifting if it's applied late.
+    const base = lease.next_review_on ? new Date(lease.next_review_on) : new Date(effectiveOn);
+    base.setFullYear(base.getFullYear() + 1);
+
+    const { data: updated, error: updateErr } = await supabase
+      .from('l_leases')
+      .update({
+        agreed_rate: newRate,
+        last_escalated_on: effectiveOn,
+        next_review_on: base.toISOString().slice(0, 10),
+      })
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
+    if (updateErr) throw updateErr;
+
+    await supabase.from('l_rent_reviews').insert({
+      company_id: req.user.company_id,
+      lease_id: id,
+      previous_rate: previous,
+      new_rate: newRate,
+      percent_applied: percent,
+      effective_on: effectiveOn,
+      note: blank(req.body.note),
+      applied_by: req.user.id,
+    });
+
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/leases/:id/reviews — the history of increases on one lease.
+router.get('/:id/reviews', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('l_rent_reviews')
+      .select('*')
+      .eq('lease_id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .order('effective_on', { ascending: false });
+    if (error) throw error;
+    res.json(data || []);
   } catch (err) {
     next(err);
   }

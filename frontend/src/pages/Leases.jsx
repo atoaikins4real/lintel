@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getLeases, createLease, updateLease, deleteLease, getTenants, getUnits, readApiError } from '../api/client.js';
+import {
+  getLeases, createLease, updateLease, deleteLease,
+  getDueReviews, applyRentReview, getTenants, getUnits, readApiError,
+} from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
@@ -9,6 +12,7 @@ import { useSettings } from '../context/SettingsContext.jsx';
 const emptyForm = {
   tenant_id: '', unit_id: '', stay_type: 'short_stay', start_date: '', end_date: '',
   agreed_rate: '', rate_period: 'nightly', source: 'direct',
+  escalation_percent: '', next_review_on: '',
 };
 
 export default function Leases() {
@@ -25,6 +29,22 @@ export default function Leases() {
   const [edit, setEdit] = useState({});
   const [busyId, setBusyId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('');
+  const [dueReviews, setDueReviews] = useState([]);
+
+  const loadReviews = () => getDueReviews().then(setDueReviews).catch(() => {});
+
+  const applyReview = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await applyRentReview(id, {});
+      await Promise.all([load(), loadReviews()]);
+    } catch (err) {
+      setError(readApiError(err, 'apply that rent review'));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const load = () =>
     getLeases()
@@ -37,6 +57,7 @@ export default function Leases() {
 
   useEffect(() => {
     load();
+    loadReviews();
     getTenants().then(setTenants);
     getUnits().then(setUnits);
   }, []);
@@ -155,6 +176,18 @@ export default function Leases() {
             value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
           <input placeholder="Source (direct, airbnb…)" className="lx-input"
             value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
+          <div>
+            <label className="block text-xs text-stone mb-1">Annual increase %</label>
+            <input type="number" step="0.1" placeholder="e.g. 10" className="lx-input"
+              value={form.escalation_percent}
+              onChange={(e) => setForm({ ...form, escalation_percent: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-xs text-stone mb-1">Next rent review</label>
+            <input type="date" className="lx-input"
+              value={form.next_review_on}
+              onChange={(e) => setForm({ ...form, next_review_on: e.target.value })} />
+          </div>
           <button disabled={saving} className="lx-btn-gold sm:col-span-2 lg:col-span-3 justify-self-start w-full sm:w-auto">
             {saving ? 'Saving…' : 'Create Lease'}
           </button>
@@ -163,6 +196,47 @@ export default function Leases() {
 
       {error && (
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      )}
+
+      {/* Reviews that have come due. Nothing changes until someone
+          applies one — rent increases shouldn't happen silently. */}
+      {canEdit && dueReviews.length > 0 && (
+        <div className="lx-card p-5 mb-6 border-l-4 border-gold">
+          <div className="font-serif text-lg text-ink mb-1">
+            Rent review{dueReviews.length === 1 ? '' : 's'} due ({dueReviews.length})
+          </div>
+          <p className="text-xs text-stone mb-3">
+            Nothing has changed yet — applying a review raises the rent and records the change.
+          </p>
+          <ul className="divide-y divide-line/70">
+            {dueReviews.map((r) => (
+              <li key={r.id} className="py-2.5 flex items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-0 text-sm">
+                  <span className="text-ink">
+                    {r.l_tenants ? `${r.l_tenants.first_name} ${r.l_tenants.last_name}` : 'Tenant'}
+                  </span>
+                  <span className="text-stone"> · {r.l_units?.unit_code || 'Unit'}</span>
+                  <div className="text-xs text-stone">
+                    Due {r.next_review_on} · currently {money(r.agreed_rate)}/{r.rate_period}
+                    {r.escalation_percent ? ` · +${r.escalation_percent}%` : ' · no percentage set'}
+                  </div>
+                </div>
+                <button
+                  disabled={busyId === r.id || !r.escalation_percent}
+                  onClick={() => applyReview(r.id)}
+                  className="lx-btn-ghost text-xs px-3 py-1.5"
+                  title={!r.escalation_percent ? 'Set an escalation percentage on this lease first' : undefined}
+                >
+                  {busyId === r.id
+                    ? 'Applying…'
+                    : r.escalation_percent
+                    ? `Apply +${r.escalation_percent}%`
+                    : 'No % set'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <SearchBar
