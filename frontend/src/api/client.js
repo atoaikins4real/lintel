@@ -82,6 +82,7 @@ export const getTenants = (params) => api.get('/tenants', { params }).then((r) =
 export const getTenant = (id) => api.get(`/tenants/${id}`).then((r) => r.data);
 export const createTenant = (payload) => api.post('/tenants', payload).then((r) => r.data);
 export const updateTenant = (id, payload) => api.put(`/tenants/${id}`, payload).then((r) => r.data);
+export const deleteTenant = (id) => api.delete(`/tenants/${id}`).then((r) => r.data);
 export const recomputeTenant = (id) => api.post(`/tenants/${id}/recompute`).then((r) => r.data);
 export const getUpgradeEligible = () => api.get('/tenants/upgrade-eligible').then((r) => r.data);
 export const addTierEvent = (id, payload) => api.post(`/tenants/${id}/tier-events`, payload).then((r) => r.data);
@@ -119,11 +120,13 @@ export const updateUnit = (id, payload) => api.put(`/units/${id}`, payload).then
 export const getLeases = (params) => api.get('/leases', { params }).then((r) => r.data);
 export const createLease = (payload) => api.post('/leases', payload).then((r) => r.data);
 export const updateLease = (id, payload) => api.put(`/leases/${id}`, payload).then((r) => r.data);
+export const deleteLease = (id) => api.delete(`/leases/${id}`).then((r) => r.data);
 
 // Payments
 export const getPayments = (params) => api.get('/payments', { params }).then((r) => r.data);
 export const createPayment = (payload) => api.post('/payments', payload).then((r) => r.data);
 export const updatePayment = (id, payload) => api.put(`/payments/${id}`, payload).then((r) => r.data);
+export const deletePayment = (id) => api.delete(`/payments/${id}`).then((r) => r.data);
 
 // Expenses
 export const getExpenses = (params) => api.get('/expenses', { params }).then((r) => r.data);
@@ -137,6 +140,11 @@ export const createRenovation = (payload) => api.post('/renovations', payload).t
 export const getFaults = (params) => api.get('/faults', { params }).then((r) => r.data);
 export const createFault = (payload) => api.post('/faults', payload).then((r) => r.data);
 export const updateFault = (id, payload) => api.put(`/faults/${id}`, payload).then((r) => r.data);
+export const deleteFault = (id) => api.delete(`/faults/${id}`).then((r) => r.data);
+export const updateRenovation = (id, payload) => api.put(`/renovations/${id}`, payload).then((r) => r.data);
+export const deleteRenovation = (id) => api.delete(`/renovations/${id}`).then((r) => r.data);
+export const deleteStaffUser = (id) => api.delete(`/auth/users/${id}`).then((r) => r.data);
+export const deleteCredential = (id) => api.delete(`/access/credentials/${id}`).then((r) => r.data);
 
 // Performance
 export const getUnitsPerformance = (params) => api.get('/performance/units', { params }).then((r) => r.data);

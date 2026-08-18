@@ -189,4 +189,21 @@ router.get('/events', async (req, res, next) => {
   }
 });
 
+// DELETE /api/access/credentials/:id — manager only.
+// Revoking is usually the right action (it keeps the audit trail of who
+// held what); deleting is for cards entered in error.
+router.delete('/credentials/:id', requireRole('manager'), async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('l_access_credentials')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

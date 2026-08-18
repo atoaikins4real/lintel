@@ -2,7 +2,7 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 
 const { gateMutations } = require('../middleware/auth');
-const { blank, toNumber } = require('../utils/sanitize');
+const { blank, toNumber, clean } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -45,6 +45,45 @@ router.post('/', async (req, res, next) => {
 
     if (error) throw error;
     res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Renovations have no dependants, so both editing and deleting are safe.
+router.put('/:id', async (req, res, next) => {
+  try {
+    const updates = clean(req.body, {
+      numbers: ['cost', 'rate_before', 'rate_after'],
+      dates: ['start_date', 'end_date'],
+      texts: ['description'],
+    });
+    delete updates.company_id;
+
+    const { data, error } = await supabase
+      .from('l_renovations')
+      .update(updates)
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Renovation not found' });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('l_renovations')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

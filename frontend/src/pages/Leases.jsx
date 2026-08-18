@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getLeases, createLease, getTenants, getUnits } from '../api/client.js';
+import { getLeases, createLease, updateLease, deleteLease, getTenants, getUnits, readApiError } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
+import RowActions from '../components/RowActions.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -18,8 +19,19 @@ export default function Leases() {
   const [form, setForm] = useState(emptyForm);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [edit, setEdit] = useState({});
+  const [busyId, setBusyId] = useState(null);
 
-  const load = () => getLeases().then(setLeases);
+  const load = () =>
+    getLeases()
+      .then(setLeases)
+      .catch((err) => setError(readApiError(err, 'load leases')));
+
+  // Units are reloaded after any change, because ending a lease can flip
+  // its unit back to vacant and the label should reflect that.
+  const reloadAll = () => Promise.all([load(), getUnits().then(setUnits)]);
 
   useEffect(() => {
     load();
@@ -29,14 +41,55 @@ export default function Leases() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
       await createLease({ ...form, end_date: form.end_date || null });
       setForm(emptyForm);
       setShowForm(false);
-      load();
+      reloadAll();
+    } catch (err) {
+      setError(readApiError(err, 'create that lease'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const startEdit = (l) => {
+    if (editingId === l.id) return setEditingId(null);
+    setEditingId(l.id);
+    setEdit({
+      start_date: l.start_date || '',
+      end_date: l.end_date || '',
+      agreed_rate: l.agreed_rate ?? '',
+      status: l.status,
+    });
+  };
+
+  const save = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await updateLease(id, edit);
+      setEditingId(null);
+      await reloadAll();
+    } catch (err) {
+      setError(readApiError(err, 'update that lease'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await deleteLease(id);
+      await reloadAll();
+    } catch (err) {
+      setError(readApiError(err, 'delete that lease'));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -98,6 +151,10 @@ export default function Leases() {
         </form>
       )}
 
+      {error && (
+        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      )}
+
       <div className="lx-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full lx-table min-w-[680px]">
@@ -109,6 +166,7 @@ export default function Leases() {
                 <th>Dates</th>
                 <th className="text-right">Rate</th>
                 <th>Status</th>
+                {canEdit && <th className="text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -117,12 +175,61 @@ export default function Leases() {
                   <td>{tenantLabel(l.tenant_id)}</td>
                   <td>{unitLabel(l.unit_id)}</td>
                   <td className="capitalize">{l.stay_type.replace('_', ' ')}</td>
-                  <td>{l.start_date} → {l.end_date || 'ongoing'}</td>
-                  <td className="text-right">{money(l.agreed_rate)}/{l.rate_period}</td>
-                  <td><StatusBadge status={l.status} /></td>
+                  <td>
+                    {editingId === l.id ? (
+                      <div className="flex gap-1.5">
+                        <input type="date" className="lx-input !py-1 text-xs"
+                          value={edit.start_date || ''} onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
+                        <input type="date" className="lx-input !py-1 text-xs"
+                          value={edit.end_date || ''} onChange={(e) => setEdit({ ...edit, end_date: e.target.value })} />
+                      </div>
+                    ) : (
+                      <>{l.start_date} → {l.end_date || 'ongoing'}</>
+                    )}
+                  </td>
+                  <td className="text-right">
+                    {editingId === l.id ? (
+                      <input type="number" className="lx-input !py-1 text-xs w-24 text-right"
+                        value={edit.agreed_rate ?? ''} onChange={(e) => setEdit({ ...edit, agreed_rate: e.target.value })} />
+                    ) : (
+                      <>{money(l.agreed_rate)}/{l.rate_period}</>
+                    )}
+                  </td>
+                  <td>
+                    {editingId === l.id ? (
+                      <select className="lx-select !py-1 text-xs" value={edit.status}
+                        onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
+                        <option value="active">Active</option>
+                        <option value="pending">Pending</option>
+                        <option value="completed">Completed (frees the unit)</option>
+                        <option value="cancelled">Cancelled (frees the unit)</option>
+                      </select>
+                    ) : (
+                      <StatusBadge status={l.status} />
+                    )}
+                  </td>
+                  {canEdit && (
+                    <td>
+                      <div className="flex items-center justify-end gap-2">
+                        {editingId === l.id && (
+                          <button onClick={() => save(l.id)} disabled={busyId === l.id}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-ink text-white">
+                            {busyId === l.id ? 'Saving…' : 'Save'}
+                          </button>
+                        )}
+                        <RowActions
+                          editing={editingId === l.id}
+                          busy={busyId === l.id}
+                          onEdit={() => startEdit(l)}
+                          onDelete={() => remove(l.id)}
+                          deleteLabel="Delete this lease?"
+                        />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
-              {leases.length === 0 && <tr><td colSpan={6} className="px-5 py-10 text-center text-stone">No leases yet.</td></tr>}
+              {leases.length === 0 && <tr><td colSpan={canEdit ? 7 : 6} className="px-5 py-10 text-center text-stone">No leases yet.</td></tr>}
             </tbody>
           </table>
         </div>

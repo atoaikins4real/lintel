@@ -76,4 +76,18 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('l_faults')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

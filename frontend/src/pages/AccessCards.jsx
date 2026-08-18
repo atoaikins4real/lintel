@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
-  getCredentials, issueCredential, updateCredential, getAccessEvents,
+  getCredentials, issueCredential, updateCredential, deleteCredential, getAccessEvents,
   getProperties, getUnits, getTenants, readApiError,
 } from '../api/client.js';
+import RowActions from '../components/RowActions.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const TYPES = [
@@ -70,6 +71,19 @@ export default function AccessCards() {
       setError(readApiError(err, 'issue that card'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const remove = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await deleteCredential(id);
+      load();
+    } catch (err) {
+      setError(readApiError(err, 'delete that card'));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -225,12 +239,17 @@ export default function AccessCards() {
                 </div>
               )}
               {canEdit && c.status !== 'active' && (
-                <button
-                  disabled={busyId === c.id} onClick={() => setStatus(c.id, 'active')}
-                  className="lx-btn-ghost text-xs px-3 py-1.5 shrink-0"
-                >
-                  Reactivate
-                </button>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    disabled={busyId === c.id} onClick={() => setStatus(c.id, 'active')}
+                    className="lx-btn-ghost text-xs px-3 py-1.5"
+                  >
+                    Reactivate
+                  </button>
+                  {/* Revoking keeps the audit trail; deleting is for cards
+                      entered in error. */}
+                  <RowActions onDelete={() => remove(c.id)} busy={busyId === c.id} deleteLabel="Delete this card record?" />
+                </div>
               )}
             </div>
           );

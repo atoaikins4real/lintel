@@ -328,4 +328,52 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
   }
 });
 
+// DELETE /api/auth/users/:id — remove a staff account (manager only).
+// This is how an ex-employee loses access; previously roles could be
+// changed but accounts never revoked.
+router.delete('/users/:id', requireAuth, requireRole('manager'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Deleting yourself would immediately invalidate your own session and
+    // could orphan the company's administration.
+    if (req.user.id === id) {
+      return res.status(400).json({ error: "You can't remove your own account. Ask another manager to do it." });
+    }
+
+    const { data: target } = await supabase
+      .from('l_users')
+      .select('id, role')
+      .eq('id', id)
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    // Never leave a company with no manager.
+    if (target.role === 'manager') {
+      const { count } = await supabase
+        .from('l_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', req.user.company_id)
+        .eq('role', 'manager');
+      if ((count || 0) <= 1) {
+        return res.status(400).json({
+          error: 'That is the only manager on this account — promote someone else before removing them.',
+        });
+      }
+    }
+
+    const { error } = await supabase
+      .from('l_users')
+      .delete()
+      .eq('id', id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

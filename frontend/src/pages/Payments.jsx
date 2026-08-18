@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
-import { getPayments, createPayment, getLeases, getBillingSummary, generateCharges, flagLatePayments, readApiError } from '../api/client.js';
+import {
+  getPayments, createPayment, updatePayment, deletePayment,
+  getLeases, getBillingSummary, generateCharges, flagLatePayments, readApiError,
+} from '../api/client.js';
 import { CURRENCY_LABELS } from '../utils/currency.js';
 import StatusBadge from '../components/StatusBadge.jsx';
+import RowActions from '../components/RowActions.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -21,6 +25,50 @@ export default function Payments() {
   const [billingBusy, setBillingBusy] = useState(false);
   const [billingMsg, setBillingMsg] = useState('');
   const [error, setError] = useState('');
+  const [editingId, setEditingId] = useState(null);
+  const [edit, setEdit] = useState({});
+  const [busyId, setBusyId] = useState(null);
+
+  const startEdit = (p) => {
+    if (editingId === p.id) return setEditingId(null);
+    setEditingId(p.id);
+    setEdit({
+      amount: p.amount ?? '',
+      status: p.status,
+      method: p.method || '',
+      payment_date: p.payment_date || '',
+      due_date: p.due_date || '',
+    });
+  };
+
+  const saveEdit = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await updatePayment(id, edit);
+      setEditingId(null);
+      load();
+      loadSummary();
+    } catch (err) {
+      setError(readApiError(err, 'update that payment'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await deletePayment(id);
+      load();
+      loadSummary();
+    } catch (err) {
+      setError(readApiError(err, 'delete that payment'));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const load = () => getPayments().then(setPayments);
   const loadSummary = () => getBillingSummary().then(setSummary);
@@ -187,18 +235,80 @@ export default function Payments() {
                 <th className="text-right">Amount</th>
                 <th>Status</th>
                 <th>Method</th>
+                {canEdit && <th className="text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
               {payments.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.payment_date || p.due_date}</td>
-                  <td className="text-right">{money(p.amount, p.currency)}</td>
-                  <td><StatusBadge status={p.status} /></td>
-                  <td className="capitalize">{p.method?.replace('_', ' ') || '—'}</td>
+                  <td>
+                    {editingId === p.id ? (
+                      <input type="date" className="lx-input !py-1 text-xs"
+                        value={edit.payment_date || ''}
+                        onChange={(e) => setEdit({ ...edit, payment_date: e.target.value })} />
+                    ) : (
+                      p.payment_date || p.due_date
+                    )}
+                  </td>
+                  <td className="text-right">
+                    {editingId === p.id ? (
+                      <input type="number" className="lx-input !py-1 text-xs w-28 text-right"
+                        value={edit.amount ?? ''}
+                        onChange={(e) => setEdit({ ...edit, amount: e.target.value })} />
+                    ) : (
+                      money(p.amount, p.currency)
+                    )}
+                  </td>
+                  <td>
+                    {editingId === p.id ? (
+                      <select className="lx-select !py-1 text-xs" value={edit.status}
+                        onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
+                        <option value="paid">Paid</option>
+                        <option value="partial">Partial</option>
+                        <option value="late">Late</option>
+                        <option value="pending">Pending</option>
+                        <option value="refunded">Refunded</option>
+                      </select>
+                    ) : (
+                      <StatusBadge status={p.status} />
+                    )}
+                  </td>
+                  <td className="capitalize">
+                    {editingId === p.id ? (
+                      <select className="lx-select !py-1 text-xs" value={edit.method || ''}
+                        onChange={(e) => setEdit({ ...edit, method: e.target.value })}>
+                        <option value="">—</option>
+                        <option value="mobile_money">Mobile money</option>
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bank_transfer">Bank transfer</option>
+                      </select>
+                    ) : (
+                      p.method?.replace('_', ' ') || '—'
+                    )}
+                  </td>
+                  {canEdit && (
+                    <td>
+                      <div className="flex items-center justify-end gap-2">
+                        {editingId === p.id && (
+                          <button onClick={() => saveEdit(p.id)} disabled={busyId === p.id}
+                            className="text-xs px-2.5 py-1 rounded-lg bg-ink text-white">
+                            {busyId === p.id ? 'Saving…' : 'Save'}
+                          </button>
+                        )}
+                        <RowActions
+                          editing={editingId === p.id}
+                          busy={busyId === p.id}
+                          onEdit={() => startEdit(p)}
+                          onDelete={() => remove(p.id)}
+                          deleteLabel="Delete this payment?"
+                        />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
-              {payments.length === 0 && <tr><td colSpan={4} className="px-5 py-10 text-center text-stone">No payments yet.</td></tr>}
+              {payments.length === 0 && <tr><td colSpan={canEdit ? 5 : 4} className="px-5 py-10 text-center text-stone">No payments yet.</td></tr>}
             </tbody>
           </table>
         </div>

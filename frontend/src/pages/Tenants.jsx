@@ -1,13 +1,28 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getTenants, createTenant, readApiError } from '../api/client.js';
+import { getTenants, createTenant, deleteTenant, readApiError } from '../api/client.js';
 import TierBadge from '../components/TierBadge.jsx';
+import RowActions from '../components/RowActions.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const emptyForm = { first_name: '', last_name: '', email: '', phone: '', nationality: '' };
 
 export default function Tenants() {
-  const { canEdit } = useAuth();
+  const { canEdit, isManager } = useAuth();
+  const [busyId, setBusyId] = useState(null);
+
+  const remove = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await deleteTenant(id);
+      load();
+    } catch (err) {
+      setError(readApiError(err, 'delete that tenant'));
+    } finally {
+      setBusyId(null);
+    }
+  };
   const [tenants, setTenants] = useState([]);
   const [search, setSearch] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -100,6 +115,7 @@ export default function Tenants() {
                 <th className="text-right">Score</th>
                 <th className="text-right">Stays</th>
                 <th className="text-right">On-time %</th>
+                {canEdit && <th className="text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -124,10 +140,26 @@ export default function Tenants() {
                   <td className="text-right">{t.score}</td>
                   <td className="text-right">{t.total_stays}</td>
                   <td className="text-right">{t.on_time_payment_rate}%</td>
+                  {canEdit && (
+                    <td>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link to={`/tenants/${t.id}/onboard`} className="text-xs text-stone hover:text-ink px-2 py-1">
+                          Edit
+                        </Link>
+                        {isManager && (
+                          <RowActions
+                            onDelete={() => remove(t.id)}
+                            busy={busyId === t.id}
+                            deleteLabel="Delete this tenant?"
+                          />
+                        )}
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
               {tenants.length === 0 && (
-                <tr><td colSpan={7} className="px-5 py-10 text-center text-stone">No tenants yet.</td></tr>
+                <tr><td colSpan={canEdit ? 8 : 7} className="px-5 py-10 text-center text-stone">No tenants yet.</td></tr>
               )}
             </tbody>
           </table>

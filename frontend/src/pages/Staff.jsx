@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getStaffUsers, register, updateUserRole, readApiError } from '../api/client.js';
+import { getStaffUsers, register, updateUserRole, deleteStaffUser, readApiError } from '../api/client.js';
+import RowActions from '../components/RowActions.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const ROLE_HELP = {
@@ -44,6 +45,22 @@ export default function Staff() {
       setError(readApiError(err, 'create that account'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Revoking access for someone who has left — previously impossible, so
+  // an ex-employee kept their login indefinitely.
+  const removeUser = async (id) => {
+    setError('');
+    setNotice('');
+    setBusyId(id);
+    try {
+      await deleteStaffUser(id);
+      load();
+    } catch (err) {
+      setError(readApiError(err, 'remove that account'));
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -126,16 +143,27 @@ export default function Staff() {
               <div className="text-xs text-stone">{u.email}</div>
             </div>
             {isManager ? (
-              <select
-                className="lx-select w-full sm:w-56 shrink-0"
-                disabled={busyId === u.id}
-                value={u.role}
-                onChange={(e) => changeRole(u.id, e.target.value)}
-              >
-                <option value="viewer">Viewer — read-only</option>
-                <option value="finance">Finance — can edit records</option>
-                <option value="manager">Manager — full access</option>
-              </select>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <select
+                  className="lx-select flex-1 sm:w-56"
+                  disabled={busyId === u.id}
+                  value={u.role}
+                  onChange={(e) => changeRole(u.id, e.target.value)}
+                >
+                  <option value="viewer">Viewer — read-only</option>
+                  <option value="finance">Finance — can edit records</option>
+                  <option value="manager">Manager — full access</option>
+                </select>
+                {/* Removing your own account would end your session, so
+                    that's blocked server-side and hidden here. */}
+                {u.id !== user?.id && (
+                  <RowActions
+                    onDelete={() => removeUser(u.id)}
+                    busy={busyId === u.id}
+                    deleteLabel={`Remove ${u.name}?`}
+                  />
+                )}
+              </div>
             ) : (
               <span className="pill bg-stone/10 text-stone capitalize shrink-0">{u.role}</span>
             )}

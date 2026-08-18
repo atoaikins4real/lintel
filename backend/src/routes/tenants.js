@@ -3,7 +3,7 @@ const { supabase } = require('../config/supabase');
 const { generateLintelId } = require('../utils/lintelId');
 const { computeScore, computeTier, isUpgradeEligible } = require('../utils/tenantScore');
 
-const { gateMutations } = require('../middleware/auth');
+const { gateMutations, requireRole } = require('../middleware/auth');
 // Blank form inputs arrive as '' — store them as NULL instead, so "no
 // email on file" is unambiguous. See utils/sanitize.js.
 const { blank: str } = require('../utils/sanitize');
@@ -267,6 +267,47 @@ router.post('/:id/tier-events', async (req, res, next) => {
 
     if (error) throw error;
     res.status(201).json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/tenants/:id
+// Refuses while the tenant has leases or payments. Their financial
+// history is the record of what happened — silently cascading it away
+// because someone clicked delete would destroy the audit trail. Onboarding
+// sub-records (contacts, occupants, vehicles) do cascade, since those only
+// describe the tenant.
+router.delete('/:id', requireRole('manager'), async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const [{ count: leaseCount }, { count: paymentCount }] = await Promise.all([
+      supabase
+        .from('l_leases')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', id)
+        .eq('company_id', req.user.company_id),
+      supabase
+        .from('l_payments')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', id)
+        .eq('company_id', req.user.company_id),
+    ]);
+
+    if ((leaseCount || 0) > 0 || (paymentCount || 0) > 0) {
+      return res.status(409).json({
+        error: `This tenant has ${leaseCount || 0} lease(s) and ${paymentCount || 0} payment(s) on record. Remove those first if you really need to delete them — their history can't be silently discarded.`,
+      });
+    }
+
+    const { error } = await supabase
+      .from('l_tenants')
+      .delete()
+      .eq('id', id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

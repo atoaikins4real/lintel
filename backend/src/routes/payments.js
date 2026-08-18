@@ -1,7 +1,7 @@
 const express = require('express');
 const { supabase } = require('../config/supabase');
 
-const { gateMutations } = require('../middleware/auth');
+const { gateMutations, requireRole } = require('../middleware/auth');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -100,6 +100,22 @@ router.put('/:id', async (req, res, next) => {
     if (!data) return res.status(404).json({ error: 'Payment not found' });
     if (error) throw error;
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/payments/:id — manager only. Deleting money records is
+// consequential, so it sits above the finance role.
+router.delete('/:id', requireRole('manager'), async (req, res, next) => {
+  try {
+    const { error } = await supabase
+      .from('l_payments')
+      .delete()
+      .eq('id', req.params.id)
+      .eq('company_id', req.user.company_id);
+    if (error) throw error;
+    res.status(204).send();
   } catch (err) {
     next(err);
   }
