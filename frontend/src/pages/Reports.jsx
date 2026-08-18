@@ -4,6 +4,9 @@ import StatCard from '../components/StatCard.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { IconWallet, IconTrendUp, IconTrendDown, IconChart } from '../components/icons.jsx';
 import { downloadCsv } from '../utils/csv.js';
+import PropertyPnl from './reports/PropertyPnl.jsx';
+import RentRoll from './reports/RentRoll.jsx';
+import TenantStatement from './reports/TenantStatement.jsx';
 
 const MONTH_LABEL = (key) => {
   const [y, m] = key.split('-');
@@ -12,7 +15,7 @@ const MONTH_LABEL = (key) => {
 
 const CATEGORY_LABEL = (c) => c.replace(/_/g, ' ').replace(/^\w/, (ch) => ch.toUpperCase());
 
-export default function Reports() {
+function Overview() {
   const { money } = useSettings();
   const [monthly, setMonthly] = useState([]);
   const [breakdown, setBreakdown] = useState([]);
@@ -165,6 +168,42 @@ export default function Reports() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------
+// Reports is now a set of tabs. The original portfolio charts became the
+// Overview tab; P&L, Rent roll and Statements are new.
+// ---------------------------------------------------------------------
+const TABS = [
+  { key: 'overview', label: 'Overview', render: () => <Overview /> },
+  { key: 'pnl', label: 'Property P&L', render: () => <PropertyPnl /> },
+  { key: 'rentroll', label: 'Rent roll', render: () => <RentRoll /> },
+  { key: 'statement', label: 'Statements', render: () => <TenantStatement /> },
+];
+
+export default function Reports() {
+  const [tab, setTab] = useState('overview');
+  const active = TABS.find((t) => t.key === tab) || TABS[0];
+
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 mb-6 overflow-x-auto pb-1 print:hidden">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap transition ${
+              t.key === tab ? 'bg-ink text-white font-medium' : 'bg-panel text-stone hover:text-ink'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {active.render()}
     </div>
   );
 }

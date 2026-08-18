@@ -361,8 +361,21 @@ screen).
   before/after rate to prove ROI)
 - Per-unit performance dashboard: revenue, costs, net yield, occupancy,
   open faults — sorted worst-to-best so problem units surface first
-- **Reports page** — monthly revenue vs. costs (chart + table), expense
-  breakdown by category, all-time portfolio totals, CSV export
+- **Reports** — four tabs, each with CSV export:
+  - *Overview* — monthly revenue vs costs, expense breakdown by category,
+    all-time portfolio totals
+  - *Property P&L* — profit and loss per building over any date range:
+    revenue, expenses, renovations, fault costs, net and margin. Units not
+    yet attached to a property appear as "Unassigned" rather than having
+    their figures silently dropped.
+  - *Rent roll* — every active lease with its contracted rate, plus
+    outstanding and overdue amounts, sorted worst-first
+  - *Statements* — a full ledger per tenant with company header, tenancy
+    history and totals, laid out to print or save as PDF
+
+  **Revenue counts payments marked `paid` only.** Pending and late amounts
+  are owed rather than earned; including them would flatter the figures.
+  What's owed appears in the Rent roll instead.
 - **Public showcase & booking requests** — `/showcase` (whole portfolio)
   and `/showcase/:id` (single unit) are public pages, no login required,
   meant to be shared on social media: photo slideshow, vacant/occupied

@@ -163,6 +163,10 @@ export const flagLatePayments = () => api.post('/billing/flag-late').then((r) =>
 export const getMonthlyReport = (params) => api.get('/reports/monthly', { params }).then((r) => r.data);
 export const getExpenseBreakdown = (params) => api.get('/reports/expense-breakdown', { params }).then((r) => r.data);
 export const getReportsSummary = () => api.get('/reports/summary').then((r) => r.data);
+export const getPropertyPnl = (params) => api.get('/reports/property-pnl', { params }).then((r) => r.data);
+export const getRentRoll = () => api.get('/reports/rent-roll').then((r) => r.data);
+export const getTenantStatement = (tenantId) =>
+  api.get(`/reports/tenant-statement/${tenantId}`).then((r) => r.data);
 
 // Public showcase — no auth required. The company is identified by its
 // slug in the URL, since there's no session to read it from.
