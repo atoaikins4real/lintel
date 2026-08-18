@@ -34,8 +34,6 @@ requests — fine at this app's scale, but worth knowing if traffic grows.
 In Netlify's site settings, set these environment variables:
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET` — same values as
   your local `backend/.env`
-- `DEV_MODE=false` — keep the dev-only `/api/auth/dev-login` route disabled
-  in production
 - `VITE_API_URL=/api` — relative path, since the API now lives on the same
   domain as the frontend (this is **different** from the `http://localhost:4000/api`
   used for local dev — see `frontend/.env.example`)
@@ -100,6 +98,21 @@ violation, same-company writes succeed, and even re-pointing a row's
 Tokens issued before multi-tenancy carry no `company_id` and are rejected
 with a "please sign in again" message rather than being defaulted into
 someone's data — so **everyone must log in again after this deploys.**
+
+### Running a trial with testers
+
+Send testers to the site and have them use **"Start your free trial"** —
+signing up creates them a brand-new company, its own settings row, its own
+30-day trial subscription, and its own seeded sample data. They land in a
+working system and can see nothing of yours.
+
+Do **not** add a tester from the Staff page: that creates a user *inside
+your* company, who can then read your live records. Staff invites are for
+a subscriber's own colleagues.
+
+There is deliberately no "log in as another role" shortcut. To see the
+finance or viewer experience, sign up a throwaway workspace and add staff
+to it — the same path a real customer takes.
 
 ## Subscriptions (platform owner)
 

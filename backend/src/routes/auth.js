@@ -237,58 +237,16 @@ router.get('/me', requireAuth, async (req, res, next) => {
   }
 });
 
-// POST /api/auth/dev-login — INSTANT role switching for local testing only.
-// Completely disabled unless DEV_MODE=true is set in .env. Issues a real
-// token for a dedicated dev account (dev-manager@lintel.local etc.),
-// creating that account the first time each role is requested, so the
-// backend's actual authorization logic is exercised — not just the UI.
-router.post('/dev-login', async (req, res, next) => {
-  try {
-    if (process.env.DEV_MODE !== 'true') {
-      return res.status(404).json({ error: `Not found: POST /api/auth/dev-login` });
-    }
-
-    const { role } = req.body;
-    const allowedRoles = ['manager', 'finance', 'viewer'];
-    if (!allowedRoles.includes(role)) {
-      return res.status(400).json({ error: `role must be one of: ${allowedRoles.join(', ')}` });
-    }
-
-    const email = `dev-${role}@lintel.local`;
-    const { data: existing, error: findErr } = await supabase
-      .from('l_users')
-      .select('id, email, name, role, created_at, company_id')
-      .eq('email', email)
-      .maybeSingle();
-    if (findErr) throw findErr;
-
-    let user = existing;
-    if (!user) {
-      // Dev accounts join the default company so they exercise the same
-      // scoping rules as a real user.
-      const { data: company } = await supabase.from('l_companies').select('id').eq('slug', 'main').maybeSingle();
-      const password_hash = await bcrypt.hash(`dev-${role}-${Date.now()}`, 10);
-      const { data: created, error: createErr } = await supabase
-        .from('l_users')
-        .insert({
-          email,
-          password_hash,
-          name: `Dev ${role.charAt(0).toUpperCase()}${role.slice(1)}`,
-          role,
-          company_id: company?.id,
-        })
-        .select('id, email, name, role, created_at, company_id')
-        .single();
-      if (createErr) throw createErr;
-      user = created;
-    }
-
-    const token = signToken(user);
-    res.json({ token, user });
-  } catch (err) {
-    next(err);
-  }
-});
+// There was once a POST /api/auth/dev-login here — an unauthenticated
+// route that minted a real manager token for the 'main' company so roles
+// could be switched instantly while developing. It was gated behind
+// DEV_MODE=true, but a gate is only as good as the environment it runs
+// in: a single stray env var on the host would have turned it into a
+// complete authentication bypass into the operator's own workspace.
+// Deleted outright before opening the app to external testers. Do not
+// reintroduce it — use a real account, or seed one directly in the
+// database, so no shipped code path can ever issue a token without a
+// password.
 
 // GET /api/auth/users — manager only, staff directory
 router.get('/users', requireAuth, requireRole('manager'), async (req, res, next) => {

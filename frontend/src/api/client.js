@@ -78,8 +78,6 @@ export const resetPassword = (token, password) =>
   api.post('/auth/reset-password', { token, password }).then((r) => r.data);
 export const getStaffUsers = () => api.get('/auth/users').then((r) => r.data);
 export const updateUserRole = (id, role) => api.patch(`/auth/users/${id}`, { role }).then((r) => r.data);
-export const devLogin = (role) => api.post('/auth/dev-login', { role }).then((r) => r.data);
-
 // Tenants
 export const getTenants = (params) => api.get('/tenants', { params }).then((r) => r.data);
 export const getTenant = (id) => api.get(`/tenants/${id}`).then((r) => r.data);

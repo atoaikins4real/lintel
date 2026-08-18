@@ -27,14 +27,10 @@ import SettingsPage from './pages/Settings.jsx';
 import Admin from './pages/Admin.jsx';
 import Showcase from './pages/Showcase.jsx';
 import ShowcaseDetail from './pages/ShowcaseDetail.jsx';
-import DevPanel from './components/DevPanel.jsx';
-
-const showDevPanel = import.meta.env.DEV && import.meta.env.VITE_DEV_MODE === 'true';
 
 function App() {
   return (
     <AuthProvider>
-      {showDevPanel && <DevPanel />}
       <Routes>
         <Route path="/login" element={<Login />} />
         {/* Public — the token in the URL is the credential */}
