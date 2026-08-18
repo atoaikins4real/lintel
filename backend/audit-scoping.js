@@ -18,6 +18,12 @@ const SCOPED_TABLES = [
 // listed here must carry a company_id constraint.
 const ALLOWED = [
   { file: 'routes/auth.js', match: "eq('email'", why: 'login/signup lookup by email happens before a session exists' },
+  // Password reset runs with no session, so there is no company_id to
+  // scope by. The single-use token IS the authorization: it is looked up
+  // by hash and yields exactly one user_id, which this then updates. No
+  // caller-supplied identifier is involved, so it cannot reach another
+  // user's row.
+  { file: 'routes/auth.js', match: 'record.user_id', why: 'password reset is authorised by a single-use token, not a session' },
   { file: 'utils/billing.js', match: 'companyId', why: 'optional scope: per-company from UI, all companies from the nightly job' },
   { file: 'utils/seedDemoData.js', match: 'company_id', why: 'seeds one explicit new company' },
   { file: 'routes/public.js', match: 'company.id', why: 'scoped by the company resolved from the URL slug' },

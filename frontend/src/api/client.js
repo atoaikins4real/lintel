@@ -73,6 +73,9 @@ export const login = (payload) => api.post('/auth/login', payload).then((r) => r
 export const register = (payload) => api.post('/auth/register', payload).then((r) => r.data);
 export const signup = (payload) => api.post('/auth/signup', payload).then((r) => r.data);
 export const getMe = () => api.get('/auth/me').then((r) => r.data);
+export const forgotPassword = (email) => api.post('/auth/forgot-password', { email }).then((r) => r.data);
+export const resetPassword = (token, password) =>
+  api.post('/auth/reset-password', { token, password }).then((r) => r.data);
 export const getStaffUsers = () => api.get('/auth/users').then((r) => r.data);
 export const updateUserRole = (id, role) => api.patch(`/auth/users/${id}`, { role }).then((r) => r.data);
 export const devLogin = (role) => api.post('/auth/dev-login', { role }).then((r) => r.data);

@@ -4,6 +4,7 @@ import { SettingsProvider } from './context/SettingsContext.jsx';
 import RequireAuth from './components/RequireAuth.jsx';
 import Layout from './components/Layout.jsx';
 import Login from './pages/Login.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Tenants from './pages/Tenants.jsx';
 import TenantDetail from './pages/TenantDetail.jsx';
@@ -35,6 +36,8 @@ function App() {
       {showDevPanel && <DevPanel />}
       <Routes>
         <Route path="/login" element={<Login />} />
+        {/* Public — the token in the URL is the credential */}
+        <Route path="/reset-password" element={<ResetPassword />} />
         {/* Public — no auth, meant to be shared on social media. The
             company slug identifies whose listings to show, since there's
             no session to read it from. */}

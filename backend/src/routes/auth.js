@@ -1,5 +1,7 @@
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
+const mailer = require('../utils/mailer');
 const { supabase } = require('../config/supabase');
 const { signToken, requireAuth, requireRole } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
@@ -57,6 +59,28 @@ router.post(
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
+    // Email the new colleague their credentials. Best-effort: if mail
+    // isn't configured the account is still created and the manager can
+    // pass the password on directly, exactly as before.
+    const { data: company } = await supabase
+      .from('l_companies')
+      .select('name')
+      .eq('id', req.user.company_id)
+      .maybeSingle();
+
+    if (String(email).includes('@')) {
+      mailer.send({
+        to: email,
+        ...mailer.templates.staffInvite({
+          name,
+          companyName: company?.name || 'your team',
+          email,
+          password,
+          loginUrl: `${mailer.APP_URL}/login`,
+        }),
+      });
+    }
+
     return createUser({ email, password, name, role, companyId: req.user.company_id }, res, next);
   }
 );
@@ -323,6 +347,126 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
     if (!data) return res.status(404).json({ error: 'User not found' });
 
     res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------------------------------------------------------------
+// PASSWORD RESET
+//
+// Replaces the previous "ask your manager" dead end. Design notes:
+//  - The response is identical whether or not the address exists, so this
+//    can't be used to discover who has an account.
+//  - Only a hash of the token is stored; the raw value lives only in the
+//    emailed link, so a database leak can't be used to reset passwords.
+//  - Tokens expire and are single-use.
+//  - Rate limited, since it sends mail on demand.
+// ---------------------------------------------------------------------
+const RESET_TTL_MINUTES = 60;
+
+function hashToken(raw) {
+  return crypto.createHash('sha256').update(raw).digest('hex');
+}
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', authLimiter, async (req, res, next) => {
+  // Same reply in every branch below.
+  const genericReply = () =>
+    res.json({
+      message: "If that account exists, we've sent a reset link. Check your inbox and spam folder.",
+    });
+
+  try {
+    const email = String(req.body?.email || '').toLowerCase().trim();
+    if (!email) return res.status(400).json({ error: 'Enter your email or username' });
+
+    const { data: user } = await supabase
+      .from('l_users')
+      .select('id, name, email')
+      .eq('email', email)
+      .maybeSingle();
+
+    // Unknown address: reply as though it worked.
+    if (!user) return genericReply();
+
+    // An account created with a username rather than an email address has
+    // nowhere to send to. Still reply generically.
+    if (!user.email.includes('@')) return genericReply();
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + RESET_TTL_MINUTES * 60 * 1000);
+
+    const { error: insertErr } = await supabase.from('l_password_resets').insert({
+      user_id: user.id,
+      token_hash: hashToken(rawToken),
+      expires_at: expiresAt.toISOString(),
+      requested_ip:
+        req.headers['x-nf-client-connection-ip'] ||
+        req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+        null,
+    });
+    if (insertErr) throw insertErr;
+
+    const resetUrl = `${mailer.APP_URL}/reset-password?token=${rawToken}`;
+    await mailer.send({
+      to: user.email,
+      ...mailer.templates.passwordReset({
+        name: user.name,
+        resetUrl,
+        expiresMinutes: RESET_TTL_MINUTES,
+      }),
+    });
+
+    return genericReply();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/auth/reset-password
+router.post('/reset-password', authLimiter, async (req, res, next) => {
+  try {
+    const { token, password } = req.body || {};
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and new password are required' });
+    }
+    if (String(password).length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const { data: record } = await supabase
+      .from('l_password_resets')
+      .select('id, user_id, expires_at, used_at')
+      .eq('token_hash', hashToken(String(token)))
+      .maybeSingle();
+
+    // One message for invalid, already-used and expired, so probing tells
+    // an attacker nothing.
+    const invalid = () =>
+      res.status(400).json({ error: 'That reset link is invalid or has expired. Please request a new one.' });
+
+    if (!record) return invalid();
+    if (record.used_at) return invalid();
+    if (new Date(record.expires_at) < new Date()) return invalid();
+
+    const password_hash = await bcrypt.hash(String(password), 10);
+
+    const { error: updateErr } = await supabase
+      .from('l_users')
+      .update({ password_hash })
+      .eq('id', record.user_id);
+    if (updateErr) throw updateErr;
+
+    // Burn this token, and any other outstanding ones for the same user —
+    // resetting the password should invalidate every pending request.
+    await supabase
+      .from('l_password_resets')
+      .update({ used_at: new Date().toISOString() })
+      .eq('user_id', record.user_id)
+      .is('used_at', null);
+
+    res.json({ message: 'Your password has been changed. You can sign in with it now.' });
   } catch (err) {
     next(err);
   }

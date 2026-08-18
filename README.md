@@ -181,6 +181,51 @@ shows usage against each limit.
 Still not built: no payment provider is connected, so nothing charges
 anyone automatically — see "A note on money movement".
 
+## Email
+
+Provider-agnostic — choosing one is a config change, not a code change:
+
+```
+MAIL_PROVIDER=resend   MAIL_API_KEY=re_xxx        # recommended
+MAIL_PROVIDER=smtp     MAIL_SMTP_URL=smtps://…    # any host (npm i nodemailer)
+MAIL_PROVIDER unset                               # logs to server output
+```
+
+**With nothing configured the app still works** — messages are printed to
+the server log, including password-reset links, so the whole flow is
+testable before you sign up to anything. Nothing silently pretends to have
+sent mail.
+
+Two rules hold everywhere: sending never throws into the caller, and every
+failure is logged. A booking request is saved even if the notification
+email fails — losing a customer's enquiry because a mail server was down
+would be far worse than a missing email.
+
+What gets sent:
+
+| Trigger | To | Notes |
+|---|---|---|
+| Forgot password | the user | Single-use link, expires in 60 min |
+| Staff account created | the new colleague | Username + temporary password |
+| Booking request submitted | managers & finance | Previously landed silently |
+| Payment flagged late | managers & finance | From the nightly job |
+| Trial ending | company contact, else managers | At 7, 3, 1 and 0 days only |
+
+### Password reset
+
+Replaces the old "ask your manager" dead end. Deliberate choices:
+
+- The response is **identical whether or not the address exists**, so it
+  can't be used to discover who has an account.
+- Only a **SHA-256 hash of the token** is stored — the raw value exists
+  only in the emailed link, so a database leak yields nothing usable.
+- Tokens are **single-use and expire**; resetting also burns every other
+  outstanding token for that user.
+- Rate limited, since it sends mail on demand.
+- Accounts created with a username rather than an email address have
+  nowhere to send to — they get the same generic reply, and a manager
+  still has to help.
+
 ## Security posture
 
 Built assuming strangers on the internet will hit this deployment (see

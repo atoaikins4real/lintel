@@ -12,6 +12,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { supabase } = require('../config/supabase');
+const mailer = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -147,10 +148,59 @@ router.post('/:slug/units/:id/inquiries', inquiryLimiter, async (req, res, next)
       .single();
     if (error) throw error;
 
+    // Tell the company a request has arrived. Previously these landed
+    // silently and were only seen if someone happened to open the page.
+    //
+    // Deliberately not awaited: the visitor's request is already saved,
+    // and they shouldn't wait on an email — nor lose their enquiry if the
+    // mail provider is down.
+    notifyCompanyOfInquiry(company, unit.id, req.body).catch((mailErr) =>
+      console.error('Booking notification failed (inquiry was still saved):', mailErr?.message || mailErr)
+    );
+
     res.status(201).json({ id: data.id, created_at: data.created_at });
   } catch (err) {
     next(err);
   }
 });
+
+/**
+ * Emails the company's managers and finance staff about a new booking
+ * request. Viewers are excluded — they can't action it.
+ */
+async function notifyCompanyOfInquiry(company, unitId, body) {
+  const [{ data: staff }, { data: unit }] = await Promise.all([
+    supabase
+      .from('l_users')
+      .select('email, name')
+      .eq('company_id', company.id)
+      .in('role', ['manager', 'finance']),
+    supabase
+      .from('l_units')
+      .select('unit_code, property_name')
+      .eq('id', unitId)
+      .eq('company_id', company.id)
+      .maybeSingle(),
+  ]);
+
+  const recipients = (staff || []).map((s) => s.email).filter((e) => e && e.includes('@'));
+  if (!recipients.length) return;
+
+  const unitLabel = unit ? `${unit.unit_code} — ${unit.property_name}` : 'a listing';
+
+  await mailer.send({
+    to: recipients,
+    ...mailer.templates.bookingRequest({
+      unitLabel,
+      name: body.name,
+      email: body.email,
+      phone: body.phone,
+      startDate: body.start_date,
+      endDate: body.end_date,
+      message: body.message,
+      appUrl: mailer.APP_URL,
+    }),
+  });
+}
 
 module.exports = router;

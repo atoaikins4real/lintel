@@ -868,3 +868,25 @@ on conflict (code) do update set
   max_tenants     = excluded.max_tenants,
   max_staff       = excluded.max_staff,
   sort_order      = excluded.sort_order;
+
+-- ------------------------------------------------------------
+-- L_PASSWORD_RESETS (mirrors migration add_password_reset_tokens)
+-- Only a SHA-256 hash of the token is stored, never the token itself, so
+-- a leaked database dump can't be used to reset anyone's password. The
+-- raw token exists solely in the emailed link. Single use + expiry.
+-- ------------------------------------------------------------
+create table if not exists l_password_resets (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid not null references l_users(id) on delete cascade,
+    token_hash text not null unique,
+    expires_at timestamptz not null,
+    used_at timestamptz,
+    requested_ip text,
+    created_at timestamptz not null default now()
+);
+
+create index if not exists idx_l_password_resets_user on l_password_resets(user_id);
+create index if not exists idx_l_password_resets_expires on l_password_resets(expires_at);
+
+alter table l_password_resets enable row level security;
+grant select, insert, update, delete on l_password_resets to service_role;
