@@ -186,10 +186,17 @@ anyone automatically — see "A note on money movement".
 Provider-agnostic — choosing one is a config change, not a code change:
 
 ```
-MAIL_PROVIDER=resend   MAIL_API_KEY=re_xxx        # recommended
-MAIL_PROVIDER=smtp     MAIL_SMTP_URL=smtps://…    # any host (npm i nodemailer)
+MAIL_PROVIDER=resend   MAIL_API_KEY=re_xxx        # recommended — no extra package
+MAIL_PROVIDER=smtp     MAIL_SMTP_URL=smtps://…    # any host; needs `npm i nodemailer`
 MAIL_PROVIDER unset                               # logs to server output
 ```
+
+> The SMTP adapter loads its package through a **runtime-computed module
+> name**. That looks odd but is deliberate: Netlify's function bundler
+> resolves `require()` statically, before any code runs, so naming an
+> uninstalled package as a literal fails the entire deploy — even inside a
+> try/catch that would never execute. `npm run audit:deps` in `backend/`
+> catches that class of mistake before it reaches Netlify.
 
 **With nothing configured the app still works** — messages are printed to
 the server log, including password-reset links, so the whole flow is

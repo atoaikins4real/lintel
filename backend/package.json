@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "audit:scoping": "node audit-scoping.js"
+    "audit:scoping": "node audit-scoping.js",
+    "audit:deps": "node audit-deps.js",
+    "audit": "npm run audit:scoping && npm run audit:deps"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

@@ -52,14 +52,26 @@ async function sendViaResend({ to, subject, html, text }) {
 }
 
 async function sendViaSmtp({ to, subject, html, text }) {
-  // nodemailer is an optional dependency — only required when SMTP is
-  // actually selected, so the package isn't needed for Resend or console.
+  // nodemailer is genuinely optional — only needed if MAIL_PROVIDER=smtp.
+  // Resend (the recommended path) uses fetch and needs no package at all.
+  //
+  // The module name is built at runtime on purpose. Netlify's function
+  // bundler resolves require() calls STATICALLY, before any code runs, so
+  // naming the package as a literal fails the whole deploy with "Cannot
+  // find module" even when it sits inside a try/catch that would never
+  // execute. A computed name is invisible to that analysis, which is what
+  // makes the dependency actually optional rather than merely
+  // optional-looking. (This exact mistake broke a deploy once already.)
+  const moduleName = ['node', 'mailer'].join('');
   let nodemailer;
   try {
-    // eslint-disable-next-line global-require
-    nodemailer = require('nodemailer');
+    // eslint-disable-next-line global-require, import/no-dynamic-require
+    nodemailer = require(moduleName);
   } catch {
-    throw new Error("MAIL_PROVIDER=smtp requires the 'nodemailer' package (npm i nodemailer)");
+    throw new Error(
+      "MAIL_PROVIDER=smtp requires the 'nodemailer' package. Run `npm i nodemailer` in backend/, " +
+        'or use MAIL_PROVIDER=resend which needs no extra package.'
+    );
   }
   const transport = nodemailer.createTransport(process.env.MAIL_SMTP_URL);
   return transport.sendMail({ from: FROM, to, subject, html, text });
