@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getProperties, createProperty, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import { PROPERTY_TYPES as TYPES, AMENITIES as AMENITY_LIST } from '../data/specs.js';
 
 // Single source of truth lives in data/specs.js — re-exported here so the
@@ -22,6 +23,10 @@ export default function Properties() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const { query, setQuery, results: shownProperties } = useSearch(
+    properties,
+    ['name', 'city', 'region', 'country', 'property_type']
+  );
 
   const load = () =>
     getProperties()
@@ -183,8 +188,15 @@ export default function Properties() {
         </form>
       )}
 
+      {properties.length > 0 && (
+        <SearchBar
+          value={query} onChange={setQuery} placeholder="Search properties, city…"
+          count={shownProperties.length} total={properties.length}
+        />
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {properties.map((p) => (
+        {shownProperties.map((p) => (
           <Link key={p.id} to={`/properties/${p.id}`} className="lx-card overflow-hidden hover:shadow-lift transition block">
             {p.photo_url ? (
               <div className="h-36 w-full overflow-hidden">

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getLeases, createLease, updateLease, deleteLease, getTenants, getUnits, readApiError } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
+import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -23,6 +24,7 @@ export default function Leases() {
   const [editingId, setEditingId] = useState(null);
   const [edit, setEdit] = useState({});
   const [busyId, setBusyId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('');
 
   const load = () =>
     getLeases()
@@ -102,6 +104,14 @@ export default function Leases() {
     return u ? u.unit_code : id;
   };
 
+  // Searches the resolved tenant and unit labels, not the raw ids, so
+  // typing a tenant's name or a unit code actually finds the lease.
+  const { query, setQuery, results: shownLeases } = useSearch(
+    leases,
+    [(l) => tenantLabel(l.tenant_id), (l) => unitLabel(l.unit_id), 'source', 'stay_type'],
+    (l) => !statusFilter || l.status === statusFilter
+  );
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -155,6 +165,19 @@ export default function Leases() {
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
       )}
 
+      <SearchBar
+        value={query} onChange={setQuery} placeholder="Search tenant, unit, source…"
+        count={shownLeases.length} total={leases.length}
+      >
+        <select className="lx-select !py-2 text-sm w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Any status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </SearchBar>
+
       <div className="lx-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full lx-table min-w-[680px]">
@@ -170,7 +193,7 @@ export default function Leases() {
               </tr>
             </thead>
             <tbody>
-              {leases.map((l) => (
+              {shownLeases.map((l) => (
                 <tr key={l.id}>
                   <td>{tenantLabel(l.tenant_id)}</td>
                   <td>{unitLabel(l.unit_id)}</td>
@@ -229,7 +252,13 @@ export default function Leases() {
                   )}
                 </tr>
               ))}
-              {leases.length === 0 && <tr><td colSpan={canEdit ? 7 : 6} className="px-5 py-10 text-center text-stone">No leases yet.</td></tr>}
+              {shownLeases.length === 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 7 : 6} className="px-5 py-10 text-center text-stone">
+                    {leases.length === 0 ? 'No leases yet.' : 'Nothing matches that search.'}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

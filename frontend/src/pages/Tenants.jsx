@@ -3,13 +3,41 @@ import { Link } from 'react-router-dom';
 import { getTenants, createTenant, deleteTenant, readApiError } from '../api/client.js';
 import TierBadge from '../components/TierBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
+import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const emptyForm = { first_name: '', last_name: '', email: '', phone: '', nationality: '' };
 
 export default function Tenants() {
   const { canEdit, isManager } = useAuth();
+  const [tenants, setTenants] = useState([]);
+  const [form, setForm] = useState(emptyForm);
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [tierFilter, setTierFilter] = useState('');
+  const [onboardingFilter, setOnboardingFilter] = useState('');
+
+  // Filtering happens in the browser now rather than refetching on every
+  // keystroke — the list is already loaded, so this is instant.
+  const { query, setQuery, results: shownTenants } = useSearch(
+    tenants,
+    ['lintel_id', 'first_name', 'last_name', 'email', 'phone', 'nationality',
+      (t) => `${t.first_name} ${t.last_name}`],
+    (t) =>
+      (!tierFilter || t.tier === tierFilter) &&
+      (!onboardingFilter || t.onboarding_status === onboardingFilter)
+  );
+
+  const load = () =>
+    getTenants()
+      .then(setTenants)
+      .catch((err) => setError(readApiError(err, 'load tenants')));
+
+  useEffect(() => {
+    load();
+  }, []);
 
   const remove = async (id) => {
     setError('');
@@ -23,22 +51,6 @@ export default function Tenants() {
       setBusyId(null);
     }
   };
-  const [tenants, setTenants] = useState([]);
-  const [search, setSearch] = useState('');
-  const [form, setForm] = useState(emptyForm);
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const load = () =>
-    getTenants(search ? { search } : undefined)
-      .then(setTenants)
-      .catch((err) => setError(readApiError(err, 'load tenants')));
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -96,12 +108,24 @@ export default function Tenants() {
         </form>
       )}
 
-      <input
-        placeholder="Search by name, email, or Lintel ID…"
-        className="lx-input mb-5 sm:max-w-sm"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <SearchBar
+        value={query} onChange={setQuery}
+        placeholder="Search name, email, phone, Lintel ID…"
+        count={shownTenants.length} total={tenants.length}
+      >
+        <select className="lx-select !py-2 text-sm w-auto" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
+          <option value="">Any tier</option>
+          <option value="guest">Guest</option>
+          <option value="returning">Returning</option>
+          <option value="resident">Resident</option>
+          <option value="exclusive">Exclusive</option>
+        </select>
+        <select className="lx-select !py-2 text-sm w-auto" value={onboardingFilter} onChange={(e) => setOnboardingFilter(e.target.value)}>
+          <option value="">Any onboarding</option>
+          <option value="in_progress">Setup unfinished</option>
+          <option value="complete">Complete</option>
+        </select>
+      </SearchBar>
 
       <div className="lx-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -119,7 +143,7 @@ export default function Tenants() {
               </tr>
             </thead>
             <tbody>
-              {tenants.map((t) => (
+              {shownTenants.map((t) => (
                 <tr key={t.id}>
                   <td>
                     <Link to={`/tenants/${t.id}`} className="font-medium text-ink hover:text-gold transition">
@@ -158,8 +182,12 @@ export default function Tenants() {
                   )}
                 </tr>
               ))}
-              {tenants.length === 0 && (
-                <tr><td colSpan={canEdit ? 8 : 7} className="px-5 py-10 text-center text-stone">No tenants yet.</td></tr>
+              {shownTenants.length === 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 8 : 7} className="px-5 py-10 text-center text-stone">
+                    {tenants.length === 0 ? 'No tenants yet.' : 'Nothing matches that search.'}
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

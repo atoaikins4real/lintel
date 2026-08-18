@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getUnits, createUnit, getProperties, readApiError } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import { STOCK_PHOTOS, suggestedPhotos } from '../data/stockPhotos.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -31,6 +32,15 @@ export default function Units() {
   const [error, setError] = useState('');
 
   const [properties, setProperties] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [listingFilter, setListingFilter] = useState('');
+  const { query, setQuery, results: shownUnits } = useSearch(
+    units,
+    ['unit_code', 'property_name', 'city', 'unit_type', 'class'],
+    (u) =>
+      (!statusFilter || u.status === statusFilter) &&
+      (!listingFilter || u.listing_type === listingFilter || u.listing_type === 'both')
+  );
 
   const load = () =>
     getUnits()
@@ -255,8 +265,26 @@ export default function Units() {
         </form>
       )}
 
+      <SearchBar
+        value={query} onChange={setQuery} placeholder="Search units, property, city…"
+        count={shownUnits.length} total={units.length}
+      >
+        <select className="lx-select !py-2 text-sm w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Any status</option>
+          <option value="vacant">Vacant</option>
+          <option value="occupied">Occupied</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="off_market">Off market</option>
+        </select>
+        <select className="lx-select !py-2 text-sm w-auto" value={listingFilter} onChange={(e) => setListingFilter(e.target.value)}>
+          <option value="">Rent or sale</option>
+          <option value="rent">To rent</option>
+          <option value="sale">For sale</option>
+        </select>
+      </SearchBar>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {units.map((u) => (
+        {shownUnits.map((u) => (
           <Link key={u.id} to={`/units/${u.id}`} className="lx-card overflow-hidden hover:shadow-lift transition block">
             {u.photo_url ? (
               <div className="h-36 w-full overflow-hidden">
@@ -280,6 +308,9 @@ export default function Units() {
             </div>
           </Link>
         ))}
+        {units.length > 0 && shownUnits.length === 0 && (
+          <div className="text-stone col-span-full text-sm">Nothing matches that search.</div>
+        )}
         {units.length === 0 && <div className="text-stone col-span-full">No units yet.</div>}
       </div>
     </div>

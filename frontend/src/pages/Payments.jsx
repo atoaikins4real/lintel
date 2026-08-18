@@ -6,6 +6,7 @@ import {
 import { CURRENCY_LABELS } from '../utils/currency.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
+import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -28,6 +29,7 @@ export default function Payments() {
   const [editingId, setEditingId] = useState(null);
   const [edit, setEdit] = useState({});
   const [busyId, setBusyId] = useState(null);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
 
   const startEdit = (p) => {
     if (editingId === p.id) return setEditingId(null);
@@ -72,6 +74,12 @@ export default function Payments() {
 
   const load = () => getPayments().then(setPayments);
   const loadSummary = () => getBillingSummary().then(setSummary);
+
+  const { query, setQuery, results: shownPayments } = useSearch(
+    payments,
+    ['reference', 'method', 'notes', 'status', 'payment_date', 'due_date'],
+    (p) => !paymentStatusFilter || p.status === paymentStatusFilter
+  );
 
   useEffect(() => {
     load();
@@ -226,6 +234,21 @@ export default function Payments() {
         </form>
       )}
 
+      <SearchBar
+        value={query} onChange={setQuery} placeholder="Search reference, method, notes…"
+        count={shownPayments.length} total={payments.length}
+      >
+        <select className="lx-select !py-2 text-sm w-auto" value={paymentStatusFilter}
+          onChange={(e) => setPaymentStatusFilter(e.target.value)}>
+          <option value="">Any status</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="late">Late</option>
+          <option value="partial">Partial</option>
+          <option value="refunded">Refunded</option>
+        </select>
+      </SearchBar>
+
       <div className="lx-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full lx-table min-w-[500px]">
@@ -239,7 +262,7 @@ export default function Payments() {
               </tr>
             </thead>
             <tbody>
-              {payments.map((p) => (
+              {shownPayments.map((p) => (
                 <tr key={p.id}>
                   <td>
                     {editingId === p.id ? (
@@ -308,7 +331,13 @@ export default function Payments() {
                   )}
                 </tr>
               ))}
-              {payments.length === 0 && <tr><td colSpan={canEdit ? 5 : 4} className="px-5 py-10 text-center text-stone">No payments yet.</td></tr>}
+              {shownPayments.length === 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 5 : 4} className="px-5 py-10 text-center text-stone">
+                    {payments.length === 0 ? 'No payments yet.' : 'Nothing matches that search.'}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
