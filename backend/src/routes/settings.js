@@ -63,6 +63,7 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       payout_branch,
       payout_mobile_provider,
       payout_mobile_number,
+      exchange_rates,
     } = req.body;
     // Subscription fields are deliberately NOT accepted here. They live in
     // l_subscriptions and are writable only via /api/admin by a platform
@@ -76,7 +77,36 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       return res.status(400).json({ error: `Payout method must be one of: ${PAYOUT_METHODS.join(', ')}` });
     }
 
+    // Rates back the *indicative* converted totals on the dashboard and
+    // reports. They never rewrite a stored amount, so a wrong rate makes a
+    // roll-up misleading but can't corrupt anything. Validated here as
+    // well as by the database CHECK constraint, so the user gets a clear
+    // message instead of a raw constraint violation.
+    let cleanedRates;
+    if (exchange_rates !== undefined) {
+      if (exchange_rates === null || typeof exchange_rates !== 'object' || Array.isArray(exchange_rates)) {
+        return res.status(400).json({ error: 'exchange_rates must be an object like { "USD": 15.2 }' });
+      }
+      const cleaned = {};
+      for (const [code, value] of Object.entries(exchange_rates)) {
+        const upper = String(code).trim().toUpperCase();
+        if (!SUPPORTED_CURRENCIES.includes(upper)) {
+          return res.status(400).json({ error: `Unknown currency in exchange rates: ${code}` });
+        }
+        // An empty box means "no rate set" — drop it rather than storing
+        // 0, which would silently value that currency at nothing.
+        if (value === '' || value === null || value === undefined) continue;
+        const rate = Number(value);
+        if (!Number.isFinite(rate) || rate <= 0) {
+          return res.status(400).json({ error: `Exchange rate for ${upper} must be a positive number` });
+        }
+        cleaned[upper] = rate;
+      }
+      cleanedRates = cleaned;
+    }
+
     const updates = {};
+    if (cleanedRates !== undefined) updates.exchange_rates = cleanedRates;
     if (default_currency !== undefined) updates.default_currency = default_currency;
     if (payout_method !== undefined) updates.payout_method = str(payout_method);
     if (payout_bank_name !== undefined) updates.payout_bank_name = str(payout_bank_name);

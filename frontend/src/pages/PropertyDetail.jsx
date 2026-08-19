@@ -7,12 +7,13 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import Slideshow from '../components/Slideshow.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import { PROPERTY_TYPES, AMENITIES } from './Properties.jsx';
+import { CurrencyField } from '../components/Money.jsx';
 
 export default function PropertyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { canEdit } = useAuth();
-  const { money } = useSettings();
+  const { money, currency } = useSettings();
   const [property, setProperty] = useState(null);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
@@ -131,6 +132,13 @@ export default function PropertyDetail() {
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
+            <CurrencyField
+              label="Rent currency"
+              value={form.currency}
+              onChange={(value) => setForm({ ...form, currency: value })}
+              inheritedFrom="company default"
+              inheritedValue={currency}
+            />
             <input
               className="lx-input sm:col-span-2" placeholder="Street address"
               value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })}

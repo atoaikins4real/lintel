@@ -202,6 +202,69 @@ const templates = {
        ${button(appUrl, 'Open Lintel')}`
     ),
   }),
+
+  // Paid subscribers used to get no warning at all before a renewal —
+  // only trials were ever emailed, so the first sign of a renewal was the
+  // charge itself (or, worse, a lapse).
+  renewalUpcoming: ({ companyName, daysLeft, renewsOn, amount, currency, planName, appUrl }) => {
+    const when =
+      daysLeft > 1 ? `in ${daysLeft} days` : daysLeft === 1 ? 'tomorrow' : 'today';
+    const price = amount ? `${currency || 'GHS'} ${Number(amount).toLocaleString()}` : null;
+    return {
+      subject: `Your Lintel subscription renews ${when}`,
+      text:
+        `${companyName}'s Lintel subscription (${planName || 'current plan'}) renews on ${renewsOn}` +
+        `${price ? ` at ${price}` : ''}. Get in touch if anything needs to change.`,
+      html: wrap(
+        `Your subscription renews ${when}`,
+        `<p style="line-height:1.6">Hi ${companyName},</p>
+         <p style="line-height:1.6">Your <strong>${planName || 'Lintel'}</strong> subscription renews on
+         <strong>${renewsOn}</strong>${price ? ` at <strong>${price}</strong>` : ''}.</p>
+         <p style="line-height:1.6">Nothing is needed from you if everything is in order — this is
+         just so the date isn't a surprise. Get in touch if you'd like to change plan or cancel.</p>
+         ${button(appUrl, 'Open Lintel')}`
+      ),
+    };
+  },
+
+  // Operator-facing digest. Sent to whoever runs Lintel, not to the
+  // subscriber, so renewals and expiring trials can be chased before they
+  // lapse rather than after.
+  operatorDigest: ({ items, appUrl }) => {
+    const line = (i) =>
+      `${i.companyName} — ${i.kind === 'trial' ? 'trial ends' : 'renews'} ${i.date} (${
+        i.daysLeft <= 0 ? 'today' : `in ${i.daysLeft} day${i.daysLeft === 1 ? '' : 's'}`
+      })${i.amount ? ` · ${i.currency || 'GHS'} ${Number(i.amount).toLocaleString()}` : ''}`;
+
+    return {
+      subject: `Lintel: ${items.length} subscription${items.length === 1 ? '' : 's'} need attention`,
+      text: items.map(line).join('\n'),
+      html: wrap(
+        'Subscriptions needing attention',
+        `<table style="width:100%;border-collapse:collapse;font-size:14px">
+           <tr style="text-align:left;color:#78716c;font-size:12px">
+             <th style="padding:6px 8px 6px 0">Subscriber</th>
+             <th style="padding:6px 8px">What</th>
+             <th style="padding:6px 0 6px 8px">When</th>
+           </tr>
+           ${items
+             .map(
+               (i) => `<tr style="border-top:1px solid #eee">
+                 <td style="padding:8px 8px 8px 0">${i.companyName}</td>
+                 <td style="padding:8px">${i.kind === 'trial' ? 'Trial ends' : 'Renews'}${
+                 i.amount ? ` · ${i.currency || 'GHS'} ${Number(i.amount).toLocaleString()}` : ''
+               }</td>
+                 <td style="padding:8px 0 8px 8px">${i.date} (${
+                 i.daysLeft <= 0 ? 'today' : `${i.daysLeft}d`
+               })</td>
+               </tr>`
+             )
+             .join('')}
+         </table>
+         ${button(`${appUrl}/admin`, 'Open the subscriber dashboard')}`
+      ),
+    };
+  },
 };
 
 module.exports = { send, templates, APP_URL, isConfigured: PROVIDER === 'resend' || PROVIDER === 'smtp' };

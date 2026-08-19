@@ -1,5 +1,12 @@
 const express = require('express');
 const { supabase } = require('../config/supabase');
+const {
+  companyCurrency,
+  currencyByUnit,
+  summariseMoney,
+  indicativeTotal,
+  totalByCurrency,
+} = require('../utils/currency');
 
 const router = express.Router();
 
@@ -26,40 +33,80 @@ router.get('/monthly', async (req, res, next) => {
     const keys = lastNMonthKeys(months);
     const earliest = `${keys[0]}-01`;
 
-    const [{ data: payments, error: payErr }, { data: expenses, error: expErr }, { data: renovations, error: renoErr }] =
-      await Promise.all([
-        supabase.from('l_payments').select('amount, payment_date, status').eq('company_id', req.user.company_id).eq('status', 'paid').gte('payment_date', earliest),
-        supabase.from('l_expenses').select('amount, expense_date').eq('company_id', req.user.company_id).gte('expense_date', earliest),
-        supabase.from('l_renovations').select('cost, start_date').eq('company_id', req.user.company_id).gte('start_date', earliest),
-      ]);
+    const companyId = req.user.company_id;
+    const [
+      { data: payments, error: payErr },
+      { data: expenses, error: expErr },
+      { data: renovations, error: renoErr },
+      { currency: defaultCurrency, rates },
+      unitCurrency,
+    ] = await Promise.all([
+      supabase.from('l_payments').select('amount, currency, payment_date, status').eq('company_id', companyId).eq('status', 'paid').gte('payment_date', earliest),
+      supabase.from('l_expenses').select('amount, unit_id, expense_date').eq('company_id', companyId).gte('expense_date', earliest),
+      supabase.from('l_renovations').select('cost, unit_id, start_date').eq('company_id', companyId).gte('start_date', earliest),
+      companyCurrency(companyId),
+      currencyByUnit(companyId),
+    ]);
     if (payErr) throw payErr;
     if (expErr) throw expErr;
     if (renoErr) throw renoErr;
+
+    // A trend chart needs one comparable number per month, so unlike the
+    // tables this endpoint *must* convert. It therefore tracks which
+    // currencies it could not convert and returns them, so the chart can
+    // be labelled honestly rather than quietly plotting a short series.
+    const missingRates = new Set();
+    const toDefault = (amount, code) => {
+      const value = Number(amount);
+      if (!Number.isFinite(value)) return 0;
+      const currency = code || defaultCurrency;
+      if (currency === defaultCurrency) return value;
+      const rate = Number(rates?.[currency]);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        missingRates.add(currency);
+        return 0;
+      }
+      return value * rate;
+    };
 
     const buckets = Object.fromEntries(keys.map((k) => [k, { month: k, revenue: 0, expenses: 0, renovations: 0 }]));
 
     (payments || []).forEach((p) => {
       if (!p.payment_date) return;
       const k = monthKey(p.payment_date);
-      if (buckets[k]) buckets[k].revenue += Number(p.amount);
+      if (buckets[k]) buckets[k].revenue += toDefault(p.amount, p.currency);
     });
     (expenses || []).forEach((e) => {
       const k = monthKey(e.expense_date);
-      if (buckets[k]) buckets[k].expenses += Number(e.amount);
+      if (buckets[k]) buckets[k].expenses += toDefault(e.amount, unitCurrency[e.unit_id]);
     });
     (renovations || []).forEach((r) => {
       if (!r.start_date) return;
       const k = monthKey(r.start_date);
-      if (buckets[k]) buckets[k].renovations += Number(r.cost);
+      if (buckets[k]) buckets[k].renovations += toDefault(r.cost, unitCurrency[r.unit_id]);
     });
 
+    const round = (n) => Math.round(n * 100) / 100;
     const series = keys.map((k) => {
       const b = buckets[k];
       const costs = b.expenses + b.renovations;
-      return { ...b, costs, net: b.revenue - costs };
+      return {
+        month: k,
+        revenue: round(b.revenue),
+        expenses: round(b.expenses),
+        renovations: round(b.renovations),
+        costs: round(costs),
+        net: round(b.revenue - costs),
+      };
     });
 
-    res.json(series);
+    res.json({
+      series,
+      currency: defaultCurrency,
+      // True whenever anything was converted, so the chart can say so.
+      converted: Object.keys(rates || {}).length > 0 || missingRates.size > 0,
+      missing_rates: [...missingRates],
+    });
   } catch (err) {
     next(err);
   }
@@ -95,24 +142,95 @@ router.get('/expense-breakdown', async (req, res, next) => {
 });
 
 // GET /api/reports/summary — all-time portfolio totals
+//
+// Returns money in two forms, and the distinction is the whole point:
+//
+//   *_by_currency — the truth. One figure per currency, never added
+//                   across currencies, always safe to quote.
+//   indicative_*  — those figures converted to the company's default
+//                   currency using the manually-maintained rates in
+//                   Settings, purely so there's a single number to glance
+//                   at. Carries `complete: false` and a `missing` list
+//                   whenever a rate wasn't configured, so the UI can say
+//                   so instead of quietly under-reporting.
+//
+// The legacy flat `revenue`/`expenses`/`costs`/`net` fields are kept so
+// nothing that already reads this endpoint breaks; they now hold the
+// indicative values.
 router.get('/summary', async (req, res, next) => {
   try {
-    const [{ data: payments, error: payErr }, { data: expenses, error: expErr }, { data: renovations, error: renoErr }] =
-      await Promise.all([
-        supabase.from('l_payments').select('amount').eq('company_id', req.user.company_id).eq('status', 'paid'),
-        supabase.from('l_expenses').select('amount').eq('company_id', req.user.company_id),
-        supabase.from('l_renovations').select('cost').eq('company_id', req.user.company_id),
-      ]);
+    const companyId = req.user.company_id;
+    const [
+      { data: payments, error: payErr },
+      { data: expenses, error: expErr },
+      { data: renovations, error: renoErr },
+      { currency: defaultCurrency, rates },
+      unitCurrency,
+    ] = await Promise.all([
+      supabase.from('l_payments').select('amount, currency').eq('company_id', companyId).eq('status', 'paid'),
+      supabase.from('l_expenses').select('amount, unit_id').eq('company_id', companyId),
+      supabase.from('l_renovations').select('cost, unit_id').eq('company_id', companyId),
+      companyCurrency(companyId),
+      currencyByUnit(companyId),
+    ]);
     if (payErr) throw payErr;
     if (expErr) throw expErr;
     if (renoErr) throw renoErr;
 
-    const revenue = (payments || []).reduce((s, p) => s + Number(p.amount), 0);
-    const expenseTotal = (expenses || []).reduce((s, e) => s + Number(e.amount), 0);
-    const renovationTotal = (renovations || []).reduce((s, r) => s + Number(r.cost), 0);
-    const costs = expenseTotal + renovationTotal;
+    // Costs have no currency column — they take their unit's. See
+    // currencyByUnit() for why, and what that trade-off costs.
+    const withUnitCurrency = (rows, amountKey) =>
+      (rows || []).map((r) => ({
+        amount: r[amountKey],
+        currency: unitCurrency[r.unit_id] || defaultCurrency,
+      }));
 
-    res.json({ revenue, expenses: expenseTotal, renovations: renovationTotal, costs, net: revenue - costs });
+    const opts = { defaultCurrency, rates };
+    const revenue = summariseMoney(payments || [], opts);
+    const expenseTotal = summariseMoney(withUnitCurrency(expenses, 'amount'), opts);
+    const renovationTotal = summariseMoney(withUnitCurrency(renovations, 'cost'), opts);
+
+    // Costs and net are computed per currency first, so nothing is ever
+    // summed across currencies on the way to the answer.
+    const costsByCurrency = {};
+    for (const source of [expenseTotal.by_currency, renovationTotal.by_currency]) {
+      for (const [code, value] of Object.entries(source)) {
+        costsByCurrency[code] = Math.round(((costsByCurrency[code] || 0) + value) * 100) / 100;
+      }
+    }
+    const netByCurrency = {};
+    for (const code of new Set([...Object.keys(revenue.by_currency), ...Object.keys(costsByCurrency)])) {
+      netByCurrency[code] =
+        Math.round(((revenue.by_currency[code] || 0) - (costsByCurrency[code] || 0)) * 100) / 100;
+    }
+
+    const costsIndicative = indicativeTotal(costsByCurrency, opts);
+    const netIndicative = indicativeTotal(netByCurrency, opts);
+
+    res.json({
+      default_currency: defaultCurrency,
+
+      revenue_by_currency: revenue.by_currency,
+      expenses_by_currency: expenseTotal.by_currency,
+      renovations_by_currency: renovationTotal.by_currency,
+      costs_by_currency: costsByCurrency,
+      net_by_currency: netByCurrency,
+
+      indicative: {
+        revenue: revenue.indicative,
+        expenses: expenseTotal.indicative,
+        renovations: renovationTotal.indicative,
+        costs: costsIndicative,
+        net: netIndicative,
+      },
+
+      // Back-compatible flat fields.
+      revenue: revenue.indicative.amount,
+      expenses: expenseTotal.indicative.amount,
+      renovations: renovationTotal.indicative.amount,
+      costs: costsIndicative.amount,
+      net: netIndicative.amount,
+    });
   } catch (err) {
     next(err);
   }
@@ -131,9 +249,10 @@ router.get('/property-pnl', async (req, res, next) => {
     const { from, to } = req.query;
     const companyId = req.user.company_id;
 
-    const [{ data: properties }, { data: units }] = await Promise.all([
-      supabase.from('l_properties').select('id, name, city').eq('company_id', companyId),
-      supabase.from('l_units').select('id, unit_code, property_id, status').eq('company_id', companyId),
+    const [{ data: properties }, { data: units }, { currency: defaultCurrency, rates }] = await Promise.all([
+      supabase.from('l_properties').select('id, name, city, currency').eq('company_id', companyId),
+      supabase.from('l_units').select('id, unit_code, property_id, status, currency').eq('company_id', companyId),
+      companyCurrency(companyId),
     ]);
 
     // Date range applied against the column that means "when this
@@ -200,6 +319,10 @@ router.get('/property-pnl', async (req, res, next) => {
         net: b.revenue - costs,
         // Guarded against divide-by-zero for a property with no revenue.
         margin_pct: b.revenue > 0 ? Math.round(((b.revenue - costs) / b.revenue) * 1000) / 10 : null,
+        // A property is denominated in exactly one currency, so every
+        // figure on this row — revenue and costs alike — is in it, and
+        // `net` is a valid subtraction rather than a mix.
+        currency: p.currency || defaultCurrency,
       };
     });
 
@@ -218,25 +341,40 @@ router.get('/property-pnl', async (req, res, next) => {
         costs,
         net: b.revenue - costs,
         margin_pct: b.revenue > 0 ? Math.round(((b.revenue - costs) / b.revenue) * 1000) / 10 : null,
+        currency: defaultCurrency,
       });
     }
 
     rows.sort((a, b) => b.net - a.net);
 
-    const totals = rows.reduce(
-      (acc, r) => {
-        acc.revenue += r.revenue;
-        acc.expenses += r.expenses;
-        acc.renovations += r.renovations;
-        acc.fault_costs += r.fault_costs;
-        acc.costs += r.costs;
-        acc.net += r.net;
-        return acc;
-      },
-      { revenue: 0, expenses: 0, renovations: 0, fault_costs: 0, costs: 0, net: 0 }
+    // Portfolio totals per currency. Sorting rows by `net` above still
+    // compares raw numbers across currencies, which is imprecise — but
+    // it only affects display order, never a reported figure.
+    const opts = { defaultCurrency, rates };
+    const field = (key) => totalByCurrency(rows, { amountKey: key, fallback: defaultCurrency });
+    const totalsByCurrency = {
+      revenue: field('revenue'),
+      expenses: field('expenses'),
+      renovations: field('renovations'),
+      fault_costs: field('fault_costs'),
+      costs: field('costs'),
+      net: field('net'),
+    };
+
+    const indicative = Object.fromEntries(
+      Object.entries(totalsByCurrency).map(([key, value]) => [key, indicativeTotal(value, opts)])
     );
 
-    res.json({ rows, totals, from: from || null, to: to || null });
+    res.json({
+      rows,
+      default_currency: defaultCurrency,
+      totals_by_currency: totalsByCurrency,
+      indicative,
+      // Back-compatible flat totals.
+      totals: Object.fromEntries(Object.entries(indicative).map(([k, v]) => [k, v.amount])),
+      from: from || null,
+      to: to || null,
+    });
   } catch (err) {
     next(err);
   }
@@ -250,11 +388,20 @@ router.get('/rent-roll', async (req, res, next) => {
     const companyId = req.user.company_id;
     const today = new Date().toISOString().slice(0, 10);
 
-    const [{ data: leases }, { data: tenants }, { data: units }, { data: payments }] = await Promise.all([
+    const [
+      { data: leases },
+      { data: tenants },
+      { data: units },
+      { data: payments },
+      { currency: defaultCurrency, rates },
+      unitCurrency,
+    ] = await Promise.all([
       supabase.from('l_leases').select('*').eq('company_id', companyId).eq('status', 'active'),
       supabase.from('l_tenants').select('id, lintel_id, first_name, last_name, phone, email').eq('company_id', companyId),
       supabase.from('l_units').select('id, unit_code, property_name').eq('company_id', companyId),
-      supabase.from('l_payments').select('lease_id, amount, status, due_date').eq('company_id', companyId),
+      supabase.from('l_payments').select('lease_id, amount, currency, status, due_date').eq('company_id', companyId),
+      companyCurrency(companyId),
+      currencyByUnit(companyId),
     ]);
 
     const tenantById = Object.fromEntries((tenants || []).map((t) => [t.id, t]));
@@ -285,22 +432,42 @@ router.get('/rent-roll', async (req, res, next) => {
         end_date: l.end_date,
         outstanding,
         overdue,
+        // Each row states its own currency so a mixed rent roll is
+        // readable line by line, not just in aggregate.
+        currency: l.currency || unitCurrency[l.unit_id] || defaultCurrency,
       };
     });
 
     rows.sort((a, b) => b.overdue - a.overdue || b.outstanding - a.outstanding);
 
-    const totals = rows.reduce(
-      (acc, r) => {
-        acc.contracted += r.rate;
-        acc.outstanding += r.outstanding;
-        acc.overdue += r.overdue;
-        return acc;
-      },
-      { contracted: 0, outstanding: 0, overdue: 0 }
-    );
+    // Totals are per currency. Adding a USD rent to a GHS rent would
+    // produce a number that looks authoritative and means nothing.
+    const opts = { defaultCurrency, rates };
+    const contracted = totalByCurrency(rows, { amountKey: 'rate', fallback: defaultCurrency });
+    const outstandingTotal = totalByCurrency(rows, { amountKey: 'outstanding', fallback: defaultCurrency });
+    const overdueTotal = totalByCurrency(rows, { amountKey: 'overdue', fallback: defaultCurrency });
 
-    res.json({ rows, totals, active_leases: rows.length });
+    res.json({
+      rows,
+      default_currency: defaultCurrency,
+      totals_by_currency: {
+        contracted,
+        outstanding: outstandingTotal,
+        overdue: overdueTotal,
+      },
+      indicative: {
+        contracted: indicativeTotal(contracted, opts),
+        outstanding: indicativeTotal(outstandingTotal, opts),
+        overdue: indicativeTotal(overdueTotal, opts),
+      },
+      // Back-compatible flat totals, now indicative rather than a blind sum.
+      totals: {
+        contracted: indicativeTotal(contracted, opts).amount,
+        outstanding: indicativeTotal(outstandingTotal, opts).amount,
+        overdue: indicativeTotal(overdueTotal, opts).amount,
+      },
+      active_leases: rows.length,
+    });
   } catch (err) {
     next(err);
   }
@@ -349,11 +516,24 @@ router.get('/tenant-statement/:tenantId', async (req, res, next) => {
       reference: p.reference,
     }));
 
-    const charged = lines.reduce((s, l) => s + l.amount, 0);
-    const paid = lines.filter((l) => l.status === 'paid').reduce((s, l) => s + l.amount, 0);
-    const outstanding = lines
-      .filter((l) => ['pending', 'late', 'partial'].includes(l.status))
-      .reduce((s, l) => s + l.amount, 0);
+    // These three used to be flat reduce()s over `amount`, ignoring the
+    // currency each line was actually in. Harmless while a portfolio was
+    // single-currency, and silently wrong the moment it wasn't — this is
+    // a document handed to a tenant or an accountant, so it has to state
+    // each currency separately.
+    const { currency: defaultCurrency, rates } = await companyCurrency(companyId);
+    const opts = { defaultCurrency, rates };
+    const byCurrency = (rows) => totalByCurrency(rows, { fallback: defaultCurrency });
+
+    const chargedByCurrency = byCurrency(lines);
+    const paidByCurrency = byCurrency(lines.filter((l) => l.status === 'paid'));
+    const outstandingByCurrency = byCurrency(
+      lines.filter((l) => ['pending', 'late', 'partial'].includes(l.status))
+    );
+
+    const charged = indicativeTotal(chargedByCurrency, opts);
+    const paid = indicativeTotal(paidByCurrency, opts);
+    const outstanding = indicativeTotal(outstandingByCurrency, opts);
 
     res.json({
       company,
@@ -373,9 +553,18 @@ router.get('/tenant-statement/:tenantId', async (req, res, next) => {
         rate: Number(l.agreed_rate || 0),
         rate_period: l.rate_period,
         status: l.status,
+        currency: l.currency || defaultCurrency,
       })),
       lines,
-      totals: { charged, paid, outstanding },
+      default_currency: defaultCurrency,
+      totals_by_currency: {
+        charged: chargedByCurrency,
+        paid: paidByCurrency,
+        outstanding: outstandingByCurrency,
+      },
+      indicative: { charged, paid, outstanding },
+      // Back-compatible flat totals.
+      totals: { charged: charged.amount, paid: paid.amount, outstanding: outstanding.amount },
       generated_at: new Date().toISOString(),
     });
   } catch (err) {

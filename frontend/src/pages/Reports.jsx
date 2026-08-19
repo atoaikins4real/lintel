@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getMonthlyReport, getExpenseBreakdown, getReportsSummary } from '../api/client.js';
+import { MoneyTotal } from '../components/Money.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { IconWallet, IconTrendUp, IconTrendDown, IconChart } from '../components/icons.jsx';
@@ -18,6 +19,7 @@ const CATEGORY_LABEL = (c) => c.replace(/_/g, ' ').replace(/^\w/, (ch) => ch.toU
 function Overview() {
   const { money } = useSettings();
   const [monthly, setMonthly] = useState([]);
+  const [monthlyMeta, setMonthlyMeta] = useState(null);
   const [breakdown, setBreakdown] = useState([]);
   const [summary, setSummary] = useState(null);
   const [months, setMonths] = useState(6);
@@ -27,7 +29,11 @@ function Overview() {
     setLoading(true);
     Promise.all([getMonthlyReport({ months }), getExpenseBreakdown({ months }), getReportsSummary()])
       .then(([m, b, s]) => {
-        setMonthly(m);
+        // /monthly now returns { series, currency, missing_rates } rather
+        // than a bare array, because a trend chart has to convert to one
+        // currency and the page needs to say so when it couldn't.
+        setMonthly(Array.isArray(m) ? m : m?.series || []);
+        setMonthlyMeta(Array.isArray(m) ? null : m);
         setBreakdown(b);
         setSummary(s);
       })
@@ -65,10 +71,28 @@ function Overview() {
       </div>
 
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <StatCard label="All-time revenue" value={money(summary.revenue)} icon={IconTrendUp} />
-          <StatCard label="All-time costs" value={money(summary.costs)} icon={IconTrendDown} />
-          <StatCard label="Net" value={money(summary.net)} icon={IconWallet} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="lx-card p-4 sm:p-5">
+            <MoneyTotal label="All-time revenue" byCurrency={summary.revenue_by_currency}
+              indicative={summary.indicative?.revenue} />
+          </div>
+          <div className="lx-card p-4 sm:p-5">
+            <MoneyTotal label="All-time costs" byCurrency={summary.costs_by_currency}
+              indicative={summary.indicative?.costs} />
+          </div>
+          <div className="lx-card p-4 sm:p-5">
+            <MoneyTotal label="Net" byCurrency={summary.net_by_currency}
+              indicative={summary.indicative?.net} />
+          </div>
+        </div>
+      )}
+
+      {monthlyMeta?.missing_rates?.length > 0 && (
+        <div className="mb-6 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-3">
+          The chart below converts everything to {monthlyMeta.currency}, but no exchange rate is set
+          for {monthlyMeta.missing_rates.join(', ')} — money in{' '}
+          {monthlyMeta.missing_rates.length === 1 ? 'that currency is' : 'those currencies is'} not
+          included. Add a rate in Settings to see the full picture.
         </div>
       )}
 

@@ -1018,3 +1018,44 @@ alter table l_rent_reviews add constraint l_rent_reviews_lease_fkey
 alter table l_documents    enable row level security;
 alter table l_rent_reviews enable row level security;
 grant select, insert, update, delete on l_documents, l_rent_reviews to service_role;
+
+
+-- ---------------------------------------------------------------------
+-- MULTI-CURRENCY
+--
+-- Currency resolves down a chain, each level falling back to the one
+-- above it:
+--
+--     lease -> unit -> property -> l_settings.default_currency
+--
+-- Every column below is NULLABLE and NULL means "inherit", not
+-- "unknown". If these defaulted to a concrete code instead, changing a
+-- property's currency later would silently leave its existing units
+-- pinned to the old one — inheritance has to be expressed as absence.
+-- ---------------------------------------------------------------------
+ALTER TABLE l_properties ADD COLUMN IF NOT EXISTS currency text;
+ALTER TABLE l_units      ADD COLUMN IF NOT EXISTS currency text;
+ALTER TABLE l_leases     ADD COLUMN IF NOT EXISTS currency text;
+
+-- Rates back the INDICATIVE converted totals on the dashboard and
+-- reports only. A stored amount is never converted: money is kept and
+-- shown in the currency it was actually agreed or received in.
+-- Shape: {"USD": 15.2} — one USD buys 15.2 of default_currency.
+ALTER TABLE l_settings ADD COLUMN IF NOT EXISTS exchange_rates jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- A zero or negative rate would produce nonsense totals that still look
+-- authoritative, so it is rejected at the database. CHECK constraints
+-- cannot contain a subquery, hence the immutable helper.
+CREATE OR REPLACE FUNCTION l_exchange_rates_valid(rates jsonb)
+RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
+  SELECT rates IS NULL
+      OR jsonb_typeof(rates) = 'object'
+     AND NOT EXISTS (
+           SELECT 1 FROM jsonb_each(rates) AS r(k, v)
+            WHERE jsonb_typeof(v) <> 'number' OR (v #>> '{}')::numeric <= 0
+         );
+$$;
+
+ALTER TABLE l_settings DROP CONSTRAINT IF EXISTS l_settings_exchange_rates_positive;
+ALTER TABLE l_settings ADD CONSTRAINT l_settings_exchange_rates_positive
+  CHECK (l_exchange_rates_valid(exchange_rates));

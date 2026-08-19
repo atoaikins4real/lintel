@@ -4,10 +4,15 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 const { gateMutations } = require('../middleware/auth');
 const { blank, toNumber, clean } = require('../utils/sanitize');
+const { parseCurrency } = require('../utils/currency');
 
 const router = express.Router();
 router.use(gateMutations);
 
+// NOTE: `currency` is deliberately NOT in TEXTS. blank()/clean() would
+// pass an unrecognised code straight through to the database, and a typo
+// like "USDD" would then quietly label real money with a currency no
+// formatter knows. It gets validated explicitly on both paths instead.
 const TEXTS = [
   'address', 'city', 'region', 'country', 'digital_address', 'description', 'photo_url', 'notes',
   // Building specifications — shown on the public showcase.
@@ -89,6 +94,12 @@ router.post('/', async (req, res, next) => {
     for (const f of TEXTS) payload[f] = blank(req.body[f]);
     for (const f of NUMBERS) payload[f] = toNumber(req.body[f]);
 
+    // null = inherit the company default, which is the case for every
+    // property created before multi-currency existed.
+    const currency = parseCurrency(req.body.currency);
+    if (!currency.ok) return res.status(400).json({ error: currency.error });
+    payload.currency = currency.value === undefined ? null : currency.value;
+
     const { data, error } = await supabase
       .from('l_properties')
       .insert({ ...payload, company_id: req.user.company_id })
@@ -116,6 +127,14 @@ router.put('/:id', async (req, res, next) => {
     if ('name' in updates) {
       if (!String(updates.name || '').trim()) return res.status(400).json({ error: 'Property name is required' });
       updates.name = String(updates.name).trim();
+    }
+    if ('currency' in req.body) {
+      const currency = parseCurrency(req.body.currency);
+      if (!currency.ok) return res.status(400).json({ error: currency.error });
+      // Changing this re-denominates the units that inherit from it. It
+      // does NOT touch amounts already recorded on payments — those keep
+      // the currency they were actually taken in.
+      updates.currency = currency.value;
     }
 
     const { data, error } = await supabase

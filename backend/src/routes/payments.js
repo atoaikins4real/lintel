@@ -10,12 +10,13 @@ router.use(gateMutations);
 // optional un-filled date would otherwise fail the whole insert.
 const { blank: str, toNumber: num } = require('../utils/sanitize');
 
-// The account's configured currency (Settings page) is the source of
-// truth; DEFAULT_CURRENCY env var stays as a fallback for local dev.
-async function defaultCurrency(companyId) {
-  const { data } = await supabase.from('l_settings').select('default_currency').eq('company_id', companyId).maybeSingle();
-  return data?.default_currency || process.env.DEFAULT_CURRENCY || 'GHS';
-}
+// A payment inherits the currency of the LEASE it settles — not the
+// company default. Those are usually the same, but not always, and the
+// difference matters: a lease agreed in USD inside a GHS portfolio must
+// record USD, and if the company default were used the payment would be
+// mislabelled by a factor of the exchange rate. Using the default would
+// also mean that changing it later silently relabelled past payments.
+const { parseCurrency, currencyForLease } = require('../utils/currency');
 
 
 // GET /api/payments?tenant_id=&unit_id=&lease_id=&status=
@@ -54,6 +55,13 @@ router.post('/', async (req, res, next) => {
     if (leaseError) throw leaseError;
     if (!lease) return res.status(404).json({ error: 'Lease not found' });
 
+    // An explicit currency wins (a one-off settled in another currency),
+    // otherwise resolve the lease's own down the inheritance chain.
+    const requested = parseCurrency(currency);
+    if (!requested.ok) return res.status(400).json({ error: requested.error });
+    const resolvedCurrency =
+      requested.value || (await currencyForLease(lease_id, req.user.company_id));
+
     const { data, error } = await supabase
       .from('l_payments')
       .insert({
@@ -62,7 +70,7 @@ router.post('/', async (req, res, next) => {
         tenant_id: lease.tenant_id,
         unit_id: lease.unit_id,
         amount: num(amount),
-        currency: currency || (await defaultCurrency(req.user.company_id)),
+        currency: resolvedCurrency,
         due_date: str(due_date),
         payment_date: str(payment_date),
         status: status || 'pending',

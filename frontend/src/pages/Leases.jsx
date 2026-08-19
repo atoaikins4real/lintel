@@ -6,10 +6,13 @@ import {
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import { CurrencyField } from '../components/Money.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyForm = {
+  // null = inherit from the apartment / property / company default.
+  currency: null,
   tenant_id: '', unit_id: '', stay_type: 'short_stay', start_date: '', end_date: '',
   agreed_rate: '', rate_period: 'nightly', source: 'direct',
   escalation_percent: '', next_review_on: '',
@@ -170,6 +173,14 @@ export default function Leases() {
           </select>
           <input type="number" required placeholder="Agreed rate" className="lx-input"
             value={form.agreed_rate} onChange={(e) => setForm({ ...form, agreed_rate: e.target.value })} />
+          {/* Per-tenant override. Left blank the lease follows its
+              apartment, then the property, then the company default. */}
+          <CurrencyField
+            label="Currency"
+            value={form.currency}
+            onChange={(value) => setForm({ ...form, currency: value })}
+            inheritedFrom="the apartment"
+          />
           <input type="date" required className="lx-input"
             value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
           <input type="date" placeholder="End date (optional)" className="lx-input"

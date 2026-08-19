@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createProperty, getProperty, updateProperty, readApiError } from '../api/client.js';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import { StepChips, WizardStep, NumField, ComboField, ChipGroup } from '../components/WizardShell.jsx';
+import { CurrencyField } from '../components/Money.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 import {
   PROPERTY_TYPES, AMENITIES, STAIRCASE_TYPES, GLASS_PANEL_TYPES,
   ROOFING_TYPES, WALL_MATERIALS, EXTERIOR_FINISHES, WATER_SOURCES, POWER_BACKUP,
@@ -12,6 +14,8 @@ const STEPS = ['Basics', 'Location', 'Building', 'Finishes', 'Amenities', 'Photo
 
 const empty = {
   name: '', property_type: 'apartment_block', description: '',
+  // null = inherit the company default currency.
+  currency: null,
   address: '', city: '', region: '', country: '', digital_address: '',
   storeys: '', floors: '', staircases: '', staircase_type: '',
   year_built: '', total_units: '', parking_spaces: '',
@@ -25,6 +29,7 @@ const empty = {
 // part-finished entry is saved and resumable, matching tenant onboarding.
 export default function PropertyOnboarding() {
   const { id: routeId } = useParams();
+  const { currency } = useSettings();
   const navigate = useNavigate();
 
   const [propertyId, setPropertyId] = useState(routeId || null);
@@ -116,6 +121,16 @@ export default function PropertyOnboarding() {
             </div>
             <NumField label="Total units in this property" value={form.total_units}
               onChange={(v) => set({ total_units: v })} />
+            {/* Set here so a portfolio can mix currencies property by
+                property. Apartments and leases inside this property
+                inherit it unless they override it themselves. */}
+            <CurrencyField
+              label="Rent currency"
+              value={form.currency}
+              onChange={(value) => set({ currency: value })}
+              inheritedFrom="company default"
+              inheritedValue={currency}
+            />
           </div>
           <textarea
             className="lx-input" rows={3}

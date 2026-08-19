@@ -5,6 +5,7 @@ const { gateMutations } = require('../middleware/auth');
 // See utils/sanitize.js — '' from an untouched form field is rejected by
 // Postgres for integer/numeric columns and fails the whole insert.
 const { blank, blank: str, toNumber: num } = require('../utils/sanitize');
+const { parseCurrency } = require('../utils/currency');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -20,8 +21,11 @@ const SPEC_TEXTS = [
   'address', 'city', 'notes', 'photo_url', 'description',
   'floor_area_unit', 'glass_panel_type', 'wood_colour', 'joinery_material',
   'flooring_type', 'ceiling_type', 'wall_colour', 'view_orientation',
-  'sale_currency',
 ];
+// `currency` (rent) and `sale_currency` are handled by applyCurrencyFields
+// rather than listed above: str() would let an unrecognised code through
+// to the database, and a typo would then label real money with a currency
+// no formatter recognises.
 const FURNISHING = ['unfurnished', 'semi_furnished', 'fully_furnished'];
 const LISTING_TYPES = ['rent', 'sale', 'both'];
 const SALE_STATUSES = ['available', 'under_offer', 'sold'];
@@ -56,6 +60,26 @@ function applySaleFields(target, body) {
       target.sale_status = null;
       target.sale_price = null;
     }
+  }
+  return null;
+}
+
+/**
+ * Validates the rent currency and the sale currency. Both are optional
+ * and both use null to mean "inherit from the property, then the company
+ * default" — never a hardcoded fallback, so re-denominating a property
+ * carries its units with it.
+ *
+ * Returns an error string, or null when everything is fine.
+ */
+function applyCurrencyFields(target, body) {
+  for (const field of ['currency', 'sale_currency']) {
+    if (!(field in body)) continue;
+    const parsed = parseCurrency(body[field]);
+    if (!parsed.ok) {
+      return field === 'sale_currency' ? `Sale ${parsed.error.toLowerCase()}` : parsed.error;
+    }
+    target[field] = parsed.value === undefined ? null : parsed.value;
   }
   return null;
 }
@@ -163,6 +187,9 @@ router.post('/', async (req, res, next) => {
     const saleError = applySaleFields(spec, req.body);
     if (saleError) return res.status(400).json({ error: saleError });
 
+    const currencyError = applyCurrencyFields(spec, req.body);
+    if (currencyError) return res.status(400).json({ error: currencyError });
+
     const { data, error } = await supabase
       .from('l_units')
       .insert({
@@ -214,6 +241,9 @@ router.put('/:id', async (req, res, next) => {
 
     const saleError = applySaleFields(updates, req.body);
     if (saleError) return res.status(400).json({ error: saleError });
+
+    const currencyError = applyCurrencyFields(updates, req.body);
+    if (currencyError) return res.status(400).json({ error: currencyError });
 
     delete updates.company_id; // never reassignable from the request body
 

@@ -116,6 +116,9 @@ export const getUnits = (params) => api.get('/units', { params }).then((r) => r.
 export const getUnit = (id) => api.get(`/units/${id}`).then((r) => r.data);
 export const createUnit = (payload) => api.post('/units', payload).then((r) => r.data);
 export const updateUnit = (id, payload) => api.put(`/units/${id}`, payload).then((r) => r.data);
+// The backend has supported DELETE /units/:id all along; this helper was
+// simply never added, so a unit could not be deleted from the interface.
+export const deleteUnit = (id) => api.delete(`/units/${id}`).then((r) => r.data);
 
 // Leases
 export const getLeases = (params) => api.get('/leases', { params }).then((r) => r.data);

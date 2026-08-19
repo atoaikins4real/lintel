@@ -198,6 +198,43 @@ export default function Settings() {
             </option>
           ))}
         </select>
+
+        <div className="mt-6 pt-5 border-t border-line">
+          <h3 className="text-sm font-medium text-ink mb-1">Exchange rates</h3>
+          <p className="text-xs text-stone mb-4 leading-relaxed">
+            Only used to show a single estimated total when your portfolio spans several currencies.
+            Amounts are always stored and displayed in the currency they were agreed or received in —
+            a rate here never changes a recorded figure. Leave a rate blank and that currency is
+            reported on its own instead of being folded into an estimate.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {currencies
+              .filter((c) => c !== (form.default_currency || 'GHS'))
+              .map((c) => (
+                <label key={c} className="flex items-center gap-3">
+                  <span className="text-xs text-stone w-28 shrink-0">1 {c} =</span>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    className="lx-input flex-1"
+                    disabled={!isManager}
+                    placeholder={`— no rate set —`}
+                    value={form.exchange_rates?.[c] ?? ''}
+                    onChange={(e) =>
+                      set({
+                        exchange_rates: {
+                          ...(form.exchange_rates || {}),
+                          [c]: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                  <span className="text-xs text-stone shrink-0">{form.default_currency || 'GHS'}</span>
+                </label>
+              ))}
+          </div>
+        </div>
       </section>
 
       {/* Payout */}

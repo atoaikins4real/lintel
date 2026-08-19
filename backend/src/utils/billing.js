@@ -1,4 +1,68 @@
 const { supabase } = require('../config/supabase');
+const { pickCurrency, FALLBACK } = require('./currency');
+
+/**
+ * Resolves the currency for many leases at once.
+ *
+ * Auto-generated charges previously set no currency at all and fell back
+ * to the column default, so a lease agreed in USD produced charges
+ * labelled GHS every month — silently, and in a background job nobody
+ * watches. The chain (lease -> unit -> property -> company default) has
+ * to be honoured here exactly as it is on a manually entered payment.
+ *
+ * Batched deliberately: this runs nightly across every company, and three
+ * extra round trips per lease would turn a quick job into a slow one.
+ */
+async function currenciesForLeases(leases) {
+  const unitIds = [...new Set(leases.map((l) => l.unit_id).filter(Boolean))];
+  const companyIds = [...new Set(leases.map((l) => l.company_id).filter(Boolean))];
+
+  // Every read below is constrained to the companies these leases belong
+  // to. The ids already come from company-scoped leases, and the composite
+  // foreign keys make a cross-company reference impossible anyway — but an
+  // unfiltered `.in('id', ...)` is precisely the shape audit-scoping.js
+  // exists to reject, and hiding a legitimate query behind an exception
+  // would blunt the check for the next person.
+  const { data: units } = unitIds.length
+    ? await supabase
+        .from('l_units')
+        .select('id, currency, property_id')
+        .in('id', unitIds)
+        .in('company_id', companyIds)
+    : { data: [] };
+
+  const propertyIds = [...new Set((units || []).map((u) => u.property_id).filter(Boolean))];
+  const { data: properties } = propertyIds.length
+    ? await supabase
+        .from('l_properties')
+        .select('id, currency')
+        .in('id', propertyIds)
+        .in('company_id', companyIds)
+    : { data: [] };
+
+  const { data: settings } = companyIds.length
+    ? await supabase.from('l_settings').select('company_id, default_currency').in('company_id', companyIds)
+    : { data: [] };
+
+  const unitById = Object.fromEntries((units || []).map((u) => [u.id, u]));
+  const propertyById = Object.fromEntries((properties || []).map((p) => [p.id, p]));
+  const defaultByCompany = Object.fromEntries(
+    (settings || []).map((s) => [s.company_id, s.default_currency || FALLBACK])
+  );
+
+  const byLease = {};
+  for (const lease of leases) {
+    const unit = unitById[lease.unit_id];
+    const property = unit ? propertyById[unit.property_id] : null;
+    byLease[lease.id] = pickCurrency(
+      lease.currency,
+      unit?.currency,
+      property?.currency,
+      defaultByCompany[lease.company_id]
+    );
+  }
+  return byLease;
+}
 
 function periodKey(date, ratePeriod) {
   const d = new Date(date);
@@ -35,6 +99,10 @@ async function generateCharges(companyId = null) {
   const created = [];
   const skipped = [];
 
+  // Resolved up front, in one batch, so each generated charge carries the
+  // currency its lease is actually denominated in.
+  const currencyByLease = await currenciesForLeases(leases || []);
+
   for (const lease of leases) {
     if (lease.start_date && lease.start_date > todayIso) { skipped.push({ lease_id: lease.id, reason: 'not started yet' }); continue; }
     if (lease.end_date && lease.end_date < todayIso) { skipped.push({ lease_id: lease.id, reason: 'ended' }); continue; }
@@ -59,6 +127,7 @@ async function generateCharges(companyId = null) {
         tenant_id: lease.tenant_id,
         unit_id: lease.unit_id,
         amount: lease.agreed_rate,
+        currency: currencyByLease[lease.id],
         due_date: todayIso,
         status: 'pending',
         method: null,

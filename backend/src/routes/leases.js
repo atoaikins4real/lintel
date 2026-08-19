@@ -3,6 +3,7 @@ const { supabase } = require('../config/supabase');
 
 const { gateMutations, requireRole } = require('../middleware/auth');
 const { blank, toNumber, clean } = require('../utils/sanitize');
+const { parseCurrency } = require('../utils/currency');
 const router = express.Router();
 router.use(gateMutations);
 
@@ -50,6 +51,12 @@ router.post('/', async (req, res, next) => {
       });
     }
 
+    // Per-tenant currency override. Left null, the lease inherits from
+    // its unit, then the property, then the company default — resolved at
+    // read time, so re-denominating a property carries its leases with it.
+    const currency = parseCurrency(req.body.currency);
+    if (!currency.ok) return res.status(400).json({ error: currency.error });
+
     const { data, error } = await supabase
       .from('l_leases')
       .insert({
@@ -64,6 +71,7 @@ router.post('/', async (req, res, next) => {
         agreed_rate: toNumber(agreed_rate),
         rate_period,
         source: blank(source),
+        currency: currency.value === undefined ? null : currency.value,
       })
       .select()
       .single();
@@ -88,6 +96,16 @@ router.put('/:id', async (req, res, next) => {
     });
 
     delete updates.company_id;
+
+    // clean() coerces the fields it's told about but passes the rest of
+    // the body through, so currency has to be validated explicitly or an
+    // unrecognised code would reach the column unchecked.
+    if ('currency' in updates) {
+      const currency = parseCurrency(updates.currency);
+      if (!currency.ok) return res.status(400).json({ error: currency.error });
+      updates.currency = currency.value;
+    }
+
     const { data, error } = await supabase
       .from('l_leases')
       .update(updates)

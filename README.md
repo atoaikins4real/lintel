@@ -99,6 +99,57 @@ Tokens issued before multi-tenancy carry no `company_id` and are rejected
 with a "please sign in again" message rather than being defaulted into
 someone's data — so **everyone must log in again after this deploys.**
 
+## Currency
+
+A portfolio can mix currencies. Currency resolves down a chain, each
+level falling back to the one above it:
+
+```
+lease  ->  unit  ->  property  ->  company default (Settings)
+```
+
+Each level stores `NULL` to mean **inherit**, so re-denominating a
+property carries its apartments and leases with it. Set the currency when
+adding a property; override it on an individual apartment or on a single
+lease when one tenant pays in something else.
+
+Two rules hold throughout, and most of `backend/src/utils/currency.js`
+exists to enforce them:
+
+1. **An amount is never converted on the way into or out of the
+   database.** Rent agreed in USD is stored and displayed as USD for ever.
+   A payment inherits the currency of the *lease* it settles, not the
+   company default — so changing that default later cannot relabel
+   history.
+2. **Amounts in different currencies are never added together.** Totals
+   are returned per currency (`*_by_currency`). Summing GHS and USD into
+   one figure isn't a rounding error, it's a fabricated number.
+
+Reports additionally return an `indicative` roll-up converted to the
+company default using the rates in Settings, purely so there's one number
+to glance at. It carries `complete: false` and a `missing` list whenever a
+rate wasn't configured, and the UI says so rather than quietly
+under-reporting. Rates never alter a stored amount, so a wrong rate makes
+an estimate misleading but cannot corrupt anything.
+
+Expenses, renovations and fault repair costs have no currency column;
+they take their unit's. That's a deliberate trade-off — a cost genuinely
+incurred in another currency will be labelled with the building's — and it
+buys the guarantee that a property's revenue and costs are always in the
+same currency, so its P&L is a valid subtraction.
+
+## Subscription notices
+
+The in-app banner covers trials and paid renewals alike (≤7 days, plus
+overdue). By email, the nightly job warns at **7, 3 and 1 days** before a
+trial ends or a paid subscription renews, and sends the operator a single
+digest of everything in that window.
+
+Set `OPERATOR_EMAIL` to receive the digest. Without it the job falls back
+to platform-admin accounts — but those may be usernames rather than
+addresses (ours are), in which case there is nobody to email and the job
+logs that instead of pretending it sent.
+
 ### Running a trial with testers
 
 Send testers to the site and have them use **"Start your free trial"** —

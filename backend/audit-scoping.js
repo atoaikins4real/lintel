@@ -40,6 +40,13 @@ const ALLOWED = [
   { file: 'routes/tenantPortal.js', match: 'token_hash', why: 'token lookup is the authorisation step itself' },
   { file: 'routes/tenantPortal.js', match: 'record.id', why: 'updates the single token row just authenticated' },
   { file: 'middleware/auth.js', match: 'is_platform_admin', why: 'verifies the caller is a platform admin' },
+  // The nightly job emails the OPERATOR a digest of subscriptions ending
+  // across every subscriber. Finding who the operator is means reading
+  // platform admins, which is cross-company by definition. Narrowed to
+  // that exact match so any other unscoped l_users query in this file is
+  // still caught — only the recipient lookup is exempt, and it reads
+  // nothing but email addresses.
+  { file: 'scheduledBilling.js', match: 'is_platform_admin', why: 'operator digest recipients span all companies by design' },
 ];
 
 const SRC = path.join(__dirname, 'src');
