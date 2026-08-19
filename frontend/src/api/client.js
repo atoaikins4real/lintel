@@ -138,6 +138,11 @@ export const deletePayment = (id) => api.delete(`/payments/${id}`).then((r) => r
 // Expenses
 export const getExpenses = (params) => api.get('/expenses', { params }).then((r) => r.data);
 export const createExpense = (payload) => api.post('/expenses', payload).then((r) => r.data);
+export const updateExpense = (id, payload) => api.put(`/expenses/${id}`, payload).then((r) => r.data);
+// DELETE /expenses/:id has existed on the backend since the beginning;
+// this helper was simply never written, so nothing could call it. Same
+// omission as deleteUnit.
+export const deleteExpense = (id) => api.delete(`/expenses/${id}`).then((r) => r.data);
 
 // Renovations
 export const getRenovations = (params) => api.get('/renovations', { params }).then((r) => r.data);

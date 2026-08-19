@@ -49,6 +49,27 @@ In Netlify's site settings, set these environment variables:
   backend on a non-Netlify host, set `NODE_ENV=production` there instead —
   `CONTEXT` won't exist outside Netlify.)
 
+## The database is a shared building
+
+This Supabase project hosts **two applications**. Another app (Tractor)
+occupies the ground floor with roughly 43 tables of its own; Lintel is
+upstairs and marks everything it owns with an **`l_` prefix**. Storage
+buckets share one namespace too — Lintel's are `lintel-photos` and
+`lintel-documents`.
+
+**Never create, alter, drop or write anything without that prefix.**
+
+The hazard isn't a typo, it's the near-misses. Lintel has `l_users`,
+`l_companies` and `l_subscriptions`; the other app has `users`,
+`companies` and `subscriptions`. Dropping the prefix on any one of those
+reads and writes a different live application's production data, and
+Postgres raises no objection — the query is valid, just aimed at the
+wrong floor. It would not surface as a Lintel bug at all.
+
+`npm run audit:floor` (in `backend/`, and part of `npm run audit`) fails
+if any query names a non-`l_` table or a bucket outside `lintel-`. It's
+verified against negative controls, so a green result means something.
+
 ## Multi-tenancy
 
 Lintel is multi-tenant: **a company is one subscriber**, and its units,
@@ -515,21 +536,29 @@ subscription status.
 
 ## Not yet built (next phases)
 
-- Fine-grained accounting (VAT, withholding, formal statements/exports
-  beyond the current CSV)
+> This list had drifted badly — it claimed six shipped features were
+> missing (tenant portal, document storage, rent escalation, search,
+> notifications, password-reset emails) and repeated three entries. A
+> "not built" list that names built things is worse than no list, because
+> it gets trusted. Corrected 2026-08-19; keep it honest.
+
+- **Actually processing payments** — the significant one. Nothing charges
+  anyone automatically; Lintel records money, it doesn't move it. Needs a
+  payment provider (Paystack/Flutterwave) and a merchant account. See
+  "A note on money movement" above.
+- Fine-grained accounting: VAT, withholding tax, formal statements and
+  exports beyond the current CSV
 - Short-stay OTA sync (Airbnb/Booking.com) and dynamic pricing
-- Automated late-payment reminders (email/SMS) — late payments are
-  currently flagged, not yet messaged
-- Actually processing payments (see "A note on money movement" above) —
-  needs a payment provider integration and merchant account
-- Password reset / invitation emails — staff accounts are created with a
-  temporary password you share with the person directly
-- Live door hardware integration (see "A note on door hardware")
-- A tenant-facing portal (tenants can't log in to see their own statement)
-- Document storage for signed lease agreements
-- Rent escalation / annual review dates
-- Search and filtering beyond the basics (fine at 3 units, painful at 300)
-- Notifications — late payments and booking requests are recorded but
-  nobody is emailed or texted about them
-- Password reset and staff invitation emails
-- A tenant-facing portal (tenants can't log in to see their own statement)
+- Live door hardware integration — access cards are recorded, no lock is
+  actually driven. See "A note on door hardware".
+- SMS as a channel: everything currently goes by email only
+- Self-serve plan changes — subscribers can't upgrade, downgrade or
+  cancel themselves; only a platform admin can, through /admin
+- An automated test suite. There are two audit scripts
+  (`npm run audit`) that are verified against negative controls, but no
+  unit or integration tests.
+- Immediate revocation of a session. `company_id` and `role` are read
+  from the signed JWT and never re-checked, and tokens live 7 days — so
+  moving someone between companies or demoting them can take up to a
+  week to take effect. Rotating `JWT_SECRET` is the blunt fix; a
+  `session_valid_from` column would be the proper one.

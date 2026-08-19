@@ -9,7 +9,8 @@
     "start": "node src/index.js",
     "audit:scoping": "node audit-scoping.js",
     "audit:deps": "node audit-deps.js",
-    "audit": "npm run audit:scoping && npm run audit:deps"
+    "audit:floor": "node audit-floor.js",
+    "audit": "npm run audit:scoping && npm run audit:deps && npm run audit:floor"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

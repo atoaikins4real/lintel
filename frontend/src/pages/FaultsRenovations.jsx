@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   getFaults, createFault, updateFault, deleteFault,
   getRenovations, createRenovation, deleteRenovation,
+  getExpenses, createExpense, updateExpense, deleteExpense,
   getUnits, readApiError,
 } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
@@ -11,6 +12,19 @@ import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyFault = { unit_id: '', description: '', severity: 'low', caused_by: 'unknown', reported_date: '', cost: '' };
 const emptyReno = { unit_id: '', description: '', cost: '', start_date: '', end_date: '', rate_before: '', rate_after: '' };
+const emptyExpense = { unit_id: '', category: 'utilities', amount: '', expense_date: '', description: '' };
+
+// Matches the l_expense_category enum in the database.
+const EXPENSE_CATEGORIES = [
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'maintenance', label: 'Maintenance' },
+  { value: 'management_fee', label: 'Management fee' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'tax', label: 'Tax' },
+  { value: 'cleaning', label: 'Cleaning' },
+  { value: 'other', label: 'Other' },
+];
+const categoryLabel = (v) => EXPENSE_CATEGORIES.find((c) => c.value === v)?.label || v;
 
 export default function FaultsRenovations() {
   const { canEdit } = useAuth();
@@ -25,13 +39,73 @@ export default function FaultsRenovations() {
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
 
+  // Operating costs — utilities, management fees, insurance, tax,
+  // cleaning. These feed the P&L and the expense-breakdown chart, but
+  // until now there was no way to record one: createExpense existed in
+  // the API client and was called from nowhere, so every subscriber's
+  // cost figures would have stayed at zero for ever.
+  const [expenses, setExpenses] = useState([]);
+  const [expenseForm, setExpenseForm] = useState(emptyExpense);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+
   useEffect(() => {
     getUnits().then(setUnits);
     getFaults().then(setFaults);
     getRenovations().then(setRenovations);
+    getExpenses().then(setExpenses).catch(() => setExpenses([]));
   }, []);
 
   const unitLabel = (id) => units.find((u) => u.id === id)?.unit_code || id;
+
+  const submitExpense = async (e) => {
+    e.preventDefault();
+    setError('');
+    try {
+      if (editingExpenseId) {
+        await updateExpense(editingExpenseId, expenseForm);
+      } else {
+        await createExpense(expenseForm);
+      }
+      setExpenseForm(emptyExpense);
+      setShowExpenseForm(false);
+      setEditingExpenseId(null);
+      getExpenses().then(setExpenses);
+    } catch (err) {
+      setError(readApiError(err, editingExpenseId ? 'update that expense' : 'record that expense'));
+    }
+  };
+
+  const startEditExpense = (x) => {
+    setEditingExpenseId(x.id);
+    setShowExpenseForm(true);
+    setExpenseForm({
+      unit_id: x.unit_id || '',
+      category: x.category || 'utilities',
+      amount: x.amount ?? '',
+      expense_date: x.expense_date || '',
+      description: x.description || '',
+    });
+  };
+
+  const cancelExpense = () => {
+    setShowExpenseForm(false);
+    setEditingExpenseId(null);
+    setExpenseForm(emptyExpense);
+  };
+
+  const removeExpense = async (id) => {
+    setError('');
+    setBusyId(id);
+    try {
+      await deleteExpense(id);
+      getExpenses().then(setExpenses);
+    } catch (err) {
+      setError(readApiError(err, 'delete that expense'));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const submitFault = async (e) => {
     e.preventDefault();
@@ -232,6 +306,93 @@ export default function FaultsRenovations() {
             {renovations.length === 0 && <p className="text-stone text-sm">No renovations logged.</p>}
           </ul>
         </div>
+      </div>
+
+      {/* Operating costs. Separate from faults and renovations because
+          these are recurring running costs rather than one-off repairs,
+          but they land in the same P&L. */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="font-serif text-xl text-ink">Operating expenses</div>
+            <p className="text-stone text-xs mt-0.5">
+              Utilities, management fees, insurance, tax and cleaning. These feed your P&amp;L and the
+              expense breakdown in Reports.
+            </p>
+          </div>
+          {canEdit && (
+            <button
+              onClick={() => (showExpenseForm ? cancelExpense() : setShowExpenseForm(true))}
+              className="lx-btn-ghost !px-3 !py-1.5 text-xs shrink-0"
+            >
+              {showExpenseForm ? 'Cancel' : '+ Record Expense'}
+            </button>
+          )}
+        </div>
+
+        {canEdit && showExpenseForm && (
+          <form onSubmit={submitExpense} className="lx-card p-5 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <select required className="lx-select" value={expenseForm.unit_id}
+              onChange={(e) => setExpenseForm({ ...expenseForm, unit_id: e.target.value })}>
+              <option value="">Select apartment…</option>
+              {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
+            </select>
+            <select required className="lx-select" value={expenseForm.category}
+              onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>
+              {EXPENSE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+            <input type="number" min="0" step="any" required placeholder="Amount" className="lx-input"
+              value={expenseForm.amount}
+              onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+            <input type="date" required className="lx-input"
+              value={expenseForm.expense_date}
+              onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} />
+            <input placeholder="Description (optional)" className="lx-input sm:col-span-2"
+              value={expenseForm.description}
+              onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} />
+            <div className="sm:col-span-2 flex gap-3">
+              <button className="lx-btn-gold">
+                {editingExpenseId ? 'Save changes' : 'Record Expense'}
+              </button>
+              <button type="button" onClick={cancelExpense} className="lx-btn-ghost">Cancel</button>
+            </div>
+          </form>
+        )}
+
+        <ul className="space-y-2.5">
+          {expenses.map((x) => (
+            <li key={x.id} className="lx-card p-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="font-medium text-ink text-sm mb-0.5">
+                    {unitLabel(x.unit_id)}
+                    <span className="pill bg-stone/10 text-stone ml-2">{categoryLabel(x.category)}</span>
+                  </div>
+                  {x.description && <div className="text-sm text-ink/80">{x.description}</div>}
+                  <div className="text-stone text-xs mt-1">
+                    {money(x.amount)}{x.expense_date ? ` · ${x.expense_date}` : ''}
+                  </div>
+                </div>
+              </div>
+              {canEdit && (
+                <div className="flex justify-end mt-2.5 pt-2.5 border-t border-line/70">
+                  <RowActions
+                    onEdit={() => startEditExpense(x)}
+                    editing={editingExpenseId === x.id}
+                    onDelete={() => removeExpense(x.id)}
+                    busy={busyId === x.id}
+                    deleteLabel="Delete this expense?"
+                  />
+                </div>
+              )}
+            </li>
+          ))}
+          {expenses.length === 0 && (
+            <p className="text-stone text-sm">
+              No expenses recorded yet — your P&amp;L will show zero costs until you add some.
+            </p>
+          )}
+        </ul>
       </div>
     </div>
   );

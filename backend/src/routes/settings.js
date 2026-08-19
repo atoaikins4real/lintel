@@ -8,6 +8,7 @@
 const express = require('express');
 const { supabase } = require('../config/supabase');
 const { requireRole } = require('../middleware/auth');
+const mailer = require('../utils/mailer');
 
 const router = express.Router();
 
@@ -45,6 +46,17 @@ router.get('/', async (req, res, next) => {
       // `notes` on the subscription is internal to the operator and is
       // deliberately not selected above.
       subscription: subscription || null,
+      // Whether a mail provider is actually configured on this server.
+      //
+      // With none set, the app still works but every message — including
+      // password-reset links — is written to the server log instead of
+      // being delivered. That fails silently and looks identical to
+      // success from the browser, so someone who forgets their password
+      // is simply locked out with no explanation. Surfacing it is the
+      // only way anyone finds out before a user does.
+      //
+      // A boolean only: no provider name, no key, nothing exploitable.
+      mail_configured: mailer.isConfigured,
     });
   } catch (err) {
     next(err);

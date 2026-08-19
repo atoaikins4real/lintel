@@ -179,6 +179,25 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* Email delivery status. Only managers see it — it's an operational
+          warning, not something a viewer can act on. */}
+      {isManager && form.mail_configured === false && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5 sm:p-6">
+          <h2 className="font-serif text-lg text-amber-900 mb-1">Email is not being sent</h2>
+          <p className="text-sm text-amber-900/80 leading-relaxed">
+            No mail provider is configured on the server, so Lintel is writing messages to its log
+            instead of delivering them. Everything still appears to work from here — but{' '}
+            <strong>password reset links never arrive</strong>, so anyone who forgets their password
+            is locked out, and tenant statement links and booking notifications go nowhere.
+          </p>
+          <p className="text-sm text-amber-900/80 mt-2 leading-relaxed">
+            Set <code className="text-xs bg-amber-100 px-1 py-0.5 rounded">MAIL_PROVIDER</code> and{' '}
+            <code className="text-xs bg-amber-100 px-1 py-0.5 rounded">MAIL_API_KEY</code> in your
+            hosting environment variables to fix it.
+          </p>
+        </section>
+      )}
+
       {/* Currency */}
       <section className="lx-card p-5 sm:p-6">
         <h2 className="font-serif text-lg text-ink mb-1">Currency</h2>
