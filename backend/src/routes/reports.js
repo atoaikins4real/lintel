@@ -501,7 +501,7 @@ router.get('/tenant-statement/:tenantId', async (req, res, next) => {
       supabase.from('l_leases').select('*').eq('tenant_id', tenantId).eq('company_id', companyId),
       supabase
         .from('l_payments')
-        .select('*')
+        .select('*, l_utility_types(name)')
         .eq('tenant_id', tenantId)
         .eq('company_id', companyId)
         .order('due_date', { ascending: true }),
@@ -515,7 +515,13 @@ router.get('/tenant-statement/:tenantId', async (req, res, next) => {
       date: p.payment_date || p.due_date,
       due_date: p.due_date,
       payment_date: p.payment_date,
-      description: `${unitById[p.unit_id]?.unit_code || 'Unit'} — ${p.notes || 'Rent'}`,
+      // Name the charge. A statement reading "Rent 12,000 / Electricity
+      // 340" is answerable; one showing two bare amounts is not.
+      charge_type: p.charge_type || 'rent',
+      utility_name: p.l_utility_types?.name || null,
+      description: `${unitById[p.unit_id]?.unit_code || 'Unit'} — ${
+        p.charge_type === 'utility' ? p.l_utility_types?.name || 'Utility' : p.notes || 'Rent'
+      }`,
       amount: Number(p.amount || 0),
       currency: p.currency,
       status: p.status,

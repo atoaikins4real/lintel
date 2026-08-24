@@ -35,6 +35,22 @@ const DEFAULT_EXPENSE_CATEGORIES = [
 
 
 
+// The utilities a new company starts with. Only names — the amount for
+// each is set per apartment, because a service charge differs between two
+// flats in the same block.
+const DEFAULT_UTILITY_TYPES = [
+  { name: 'Electricity', sort_order: 10 },
+  { name: 'Water', sort_order: 20 },
+  { name: 'Gas', sort_order: 30 },
+  { name: 'Waste & Recycling', sort_order: 40 },
+  { name: 'Sewerage', sort_order: 50 },
+  { name: 'Service charge', sort_order: 60 },
+  { name: 'Security', sort_order: 70 },
+  { name: 'Generator / diesel', sort_order: 80 },
+  { name: 'Internet', sort_order: 90 },
+  { name: 'DSTV', sort_order: 100 },
+];
+
 // GET /api/auth/bootstrap-status
 // Retained for the frontend's benefit. Since every signup now creates its
 // own company, there's no global "first user" state any more — this always
@@ -149,6 +165,11 @@ router.post('/signup', authLimiter, async (req, res, next) => {
     // dropdown would simply be empty with nothing explaining why.
     await supabase.from('l_expense_categories').insert(
       DEFAULT_EXPENSE_CATEGORIES.map((c) => ({ ...c, company_id: company.id }))
+    );
+
+    // Same reasoning for the utility list.
+    await supabase.from('l_utility_types').insert(
+      DEFAULT_UTILITY_TYPES.map((u) => ({ ...u, company_id: company.id }))
     );
 
     // Start the trial clock. The length comes from the plan catalogue

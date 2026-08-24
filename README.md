@@ -181,6 +181,42 @@ Two behaviours worth knowing:
   places would let the same spend be recorded twice and double-count in
   the P&L.
 
+## Utilities
+
+Subscribers hold different stock — long-let flats, bought units in
+high-rise blocks, self-built houses — and each carries a different set of
+utilities at different amounts. So:
+
+- The **list** of utilities is per company (Settings). It starts as
+  Electricity, Water, Gas, Waste & Recycling, Sewerage, Service charge,
+  Security, Generator / diesel, Internet, DSTV, and the subscriber adds
+  their own.
+- The **amount** is per apartment, on that apartment's page. A service
+  charge differs between two flats in the same block, so setting it at
+  property level would be wrong more often than right.
+
+Each utility on a unit carries a fixed amount per period (monthly,
+quarterly or yearly) and a **bill to tenant** flag. Utilities the
+subscriber absorbs are still recorded — they're a real cost of running
+the apartment — but no charge is raised against the tenant.
+
+The nightly billing run raises each billable utility as its **own payment
+row**, so a statement reads "Rent 12,000 / Electricity 340" rather than
+one unexplained larger figure. `l_payments.charge_type` distinguishes
+them.
+
+> One thing to know if you change this code: the "already billed this
+> period" check is restricted to `charge_type = 'rent'`. Counting every
+> payment would mean a utility charge raised this month looked like rent
+> had already been billed — and the rent would silently never generate.
+> Each utility is likewise tracked on its own cycle, so a monthly
+> electricity charge and a yearly service charge don't suppress each
+> other.
+
+Amounts are fixed per period rather than metered. Meter readings would
+slot into `l_unit_utilities` as extra columns without disturbing any of
+this.
+
 ## Subscription notices
 
 The in-app banner covers trials and paid renewals alike (≤7 days, plus

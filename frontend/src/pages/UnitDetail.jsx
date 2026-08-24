@@ -5,6 +5,7 @@ import {
   updateUnit, deleteUnit, getProperties, readApiError,
 } from '../api/client.js';
 import { CurrencyField } from '../components/Money.jsx';
+import UnitUtilities from '../components/UnitUtilities.jsx';
 import StatCard from '../components/StatCard.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
@@ -189,6 +190,12 @@ export default function UnitDetail() {
           {error}
         </div>
       )}
+
+      <UnitUtilities
+        unitId={id}
+        canEdit={canEdit}
+        currency={unit.currency || parentProperty?.currency || currency}
+      />
 
       {canEdit && form && (
         <form onSubmit={save} className="lx-card p-5 mb-6">

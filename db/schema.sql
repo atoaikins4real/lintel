@@ -1097,3 +1097,65 @@ ALTER TABLE l_expenses ADD CONSTRAINT l_expenses_category_fkey
   FOREIGN KEY (category_id, company_id)
   REFERENCES l_expense_categories (id, company_id)
   ON DELETE RESTRICT;
+
+
+-- ---------------------------------------------------------------------
+-- PER-UNIT UTILITIES
+--
+-- Subscribers hold very different stock: long-let flats, bought units in
+-- high-rise blocks, self-built houses. Each carries a different set of
+-- utilities at different amounts. So the utility LIST is per company, and
+-- which utilities apply (and what they cost) is per UNIT — not per
+-- property, which would force one building's arrangement onto every
+-- apartment inside it.
+--
+-- Amounts are a fixed figure per period, not metered consumption. Meter
+-- readings would slot in as extra columns on l_unit_utilities without
+-- disturbing this shape.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS l_utility_types (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id  uuid NOT NULL REFERENCES l_companies(id) ON DELETE CASCADE,
+  name        text NOT NULL,
+  sort_order  integer NOT NULL DEFAULT 0,
+  is_archived boolean NOT NULL DEFAULT false,   -- retired, but still labels history
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS l_utility_types_id_company ON l_utility_types (id, company_id);
+CREATE UNIQUE INDEX IF NOT EXISTS l_utility_types_unique_name ON l_utility_types (company_id, lower(name));
+ALTER TABLE l_utility_types ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS l_unit_utilities (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id      uuid NOT NULL REFERENCES l_companies(id) ON DELETE CASCADE,
+  unit_id         uuid NOT NULL,
+  utility_type_id uuid NOT NULL,
+  amount          numeric(14,2) NOT NULL DEFAULT 0,
+  billing_period  text NOT NULL DEFAULT 'monthly',
+  bill_to_tenant  boolean NOT NULL DEFAULT true,  -- false = subscriber absorbs it
+  is_active       boolean NOT NULL DEFAULT true,
+  notes           text,
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  updated_at      timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT l_unit_utilities_unit_fkey
+    FOREIGN KEY (unit_id, company_id) REFERENCES l_units (id, company_id) ON DELETE CASCADE,
+  CONSTRAINT l_unit_utilities_type_fkey
+    FOREIGN KEY (utility_type_id, company_id) REFERENCES l_utility_types (id, company_id) ON DELETE RESTRICT,
+  CONSTRAINT l_unit_utilities_period_check CHECK (billing_period IN ('monthly','quarterly','yearly')),
+  CONSTRAINT l_unit_utilities_amount_check CHECK (amount >= 0)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS l_unit_utilities_unique ON l_unit_utilities (unit_id, utility_type_id);
+CREATE INDEX IF NOT EXISTS l_unit_utilities_company ON l_unit_utilities (company_id);
+ALTER TABLE l_unit_utilities ENABLE ROW LEVEL SECURITY;
+
+-- Payments were implicitly all rent, so a utility charge would have been
+-- indistinguishable from it on a tenant's statement.
+ALTER TABLE l_payments ADD COLUMN IF NOT EXISTS charge_type text NOT NULL DEFAULT 'rent';
+ALTER TABLE l_payments ADD COLUMN IF NOT EXISTS utility_type_id uuid;
+ALTER TABLE l_payments DROP CONSTRAINT IF EXISTS l_payments_charge_type_check;
+ALTER TABLE l_payments ADD CONSTRAINT l_payments_charge_type_check
+  CHECK (charge_type IN ('rent','utility','deposit','other'));
+ALTER TABLE l_payments DROP CONSTRAINT IF EXISTS l_payments_utility_type_fkey;
+ALTER TABLE l_payments ADD CONSTRAINT l_payments_utility_type_fkey
+  FOREIGN KEY (utility_type_id, company_id)
+  REFERENCES l_utility_types (id, company_id) ON DELETE SET NULL;

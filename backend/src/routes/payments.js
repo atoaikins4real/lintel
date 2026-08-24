@@ -8,7 +8,7 @@ router.use(gateMutations);
 // Blank form inputs arrive as '' — Postgres rejects that outright for date
 // and numeric columns ("invalid input syntax for type date"), so an
 // optional un-filled date would otherwise fail the whole insert.
-const { blank: str, toNumber: num } = require('../utils/sanitize');
+const { blank: str, blank: blankId, toNumber: num } = require('../utils/sanitize');
 
 // A payment inherits the currency of the LEASE it settles — not the
 // company default. Those are usually the same, but not always, and the
@@ -36,7 +36,11 @@ const COLUMNS = [
   'method',
   'reference',
   'notes',
+  'charge_type',
+  'utility_type_id',
 ];
+
+const CHARGE_TYPES = ['rent', 'utility', 'deposit', 'other'];
 
 // GET /api/payments?tenant_id=&unit_id=&lease_id=&status=
 router.get('/', async (req, res, next) => {
@@ -65,6 +69,11 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: 'lease_id and amount are required' });
     }
 
+    const chargeType = req.body.charge_type || 'rent';
+    if (!CHARGE_TYPES.includes(chargeType)) {
+      return res.status(400).json({ error: `Charge type must be one of: ${CHARGE_TYPES.join(', ')}` });
+    }
+
     const { data: lease, error: leaseError } = await supabase
       .from('l_leases')
       .select('tenant_id, unit_id')
@@ -90,6 +99,8 @@ router.post('/', async (req, res, next) => {
         unit_id: lease.unit_id,
         amount: num(amount),
         currency: resolvedCurrency,
+        charge_type: chargeType,
+        utility_type_id: chargeType === 'utility' ? blankId(req.body.utility_type_id) : null,
         due_date: str(due_date),
         payment_date: str(payment_date),
         status: status || 'pending',

@@ -144,6 +144,22 @@ export const updateExpense = (id, payload) => api.put(`/expenses/${id}`, payload
 // omission as deleteUnit.
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`).then((r) => r.data);
 
+// Utilities. Two levels: the company's list of utility types, and which
+// of them apply to a given apartment (at what amount, and whether the
+// tenant is charged). Properties differ, so the amounts live per unit.
+export const getUtilityTypes = (params) => api.get('/utilities/types', { params }).then((r) => r.data);
+export const createUtilityType = (payload) => api.post('/utilities/types', payload).then((r) => r.data);
+export const updateUtilityType = (id, payload) => api.put(`/utilities/types/${id}`, payload).then((r) => r.data);
+export const deleteUtilityType = (id) => api.delete(`/utilities/types/${id}`).then((r) => r.data);
+
+export const getUnitUtilities = (unitId) => api.get(`/utilities/units/${unitId}`).then((r) => r.data);
+export const addUnitUtility = (unitId, payload) =>
+  api.post(`/utilities/units/${unitId}`, payload).then((r) => r.data);
+export const updateUnitUtility = (unitId, id, payload) =>
+  api.put(`/utilities/units/${unitId}/${id}`, payload).then((r) => r.data);
+export const deleteUnitUtility = (unitId, id) =>
+  api.delete(`/utilities/units/${unitId}/${id}`).then((r) => r.data);
+
 // Expense categories — one list per company, editable by the subscriber.
 export const getExpenseCategories = (params) =>
   api.get('/expenses/categories', { params }).then((r) => r.data);
