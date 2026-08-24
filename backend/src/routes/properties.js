@@ -9,6 +9,42 @@ const { parseCurrency } = require('../utils/currency');
 const router = express.Router();
 router.use(gateMutations);
 
+// Real columns on the table. Anything else in the request body is
+// dropped rather than sent to Postgres — detail endpoints return
+// joined children (a property's `units`, a lease's `payments`) and
+// edit forms send the whole object back. See utils/sanitize.js.
+const COLUMNS = [
+  'name',
+  'property_type',
+  'address',
+  'city',
+  'region',
+  'country',
+  'digital_address',
+  'year_built',
+  'floors',
+  'description',
+  'photo_url',
+  'photo_urls',
+  'amenities',
+  'notes',
+  'storeys',
+  'staircases',
+  'staircase_type',
+  'plot_size',
+  'plot_size_unit',
+  'total_units',
+  'parking_spaces',
+  'glass_panel_type',
+  'exterior_finish',
+  'roofing_type',
+  'wall_material',
+  'water_source',
+  'power_backup',
+  'currency',
+];
+
+
 // NOTE: `currency` is deliberately NOT in TEXTS. blank()/clean() would
 // pass an unrecognised code straight through to the database, and a typo
 // like "USDD" would then quietly label real money with a currency no
@@ -119,7 +155,7 @@ router.post('/', async (req, res, next) => {
 
 router.put('/:id', async (req, res, next) => {
   try {
-    const updates = clean(req.body, { numbers: NUMBERS, texts: TEXTS });
+    const updates = clean(req.body, { allowed: COLUMNS, numbers: NUMBERS, texts: TEXTS });
     delete updates.company_id;
     delete updates.id;
     if ('amenities' in updates) updates.amenities = arrayOf(updates.amenities);

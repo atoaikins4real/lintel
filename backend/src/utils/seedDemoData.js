@@ -224,24 +224,43 @@ async function seedDemoData(companyId) {
       },
     ]);
 
-    await supabase.from('l_expenses').insert([
-      {
-        company_id: companyId,
-        unit_id: occupied.id,
-        category: 'maintenance',
-        amount: 450,
-        expense_date: daysAgo(45),
-        description: 'Plumbing repair — sample data',
-      },
-      {
-        company_id: companyId,
-        unit_id: occupied.id,
-        category: 'utilities',
-        amount: 300,
-        expense_date: daysAgo(20),
-        description: 'Water and electricity — sample data',
-      },
-    ]);
+    // Categories are per-company now, so the sample expenses have to look
+    // up this company's own rows rather than naming a shared enum value.
+    // If they're somehow missing, the expenses are skipped rather than
+    // inserted uncategorised — a sample row that can't be labelled would
+    // show up as "Uncategorised" in the breakdown chart and look like a
+    // bug in the reporting.
+    const { data: categories } = await supabase
+      .from('l_expense_categories')
+      .select('id, name')
+      .eq('company_id', companyId);
+
+    const categoryByName = Object.fromEntries((categories || []).map((c) => [c.name, c.id]));
+    const maintenance = categoryByName['Maintenance'];
+    const utilities = categoryByName['Utilities'];
+
+    if (maintenance && utilities) {
+      await supabase.from('l_expenses').insert([
+        {
+          company_id: companyId,
+          unit_id: occupied.id,
+          category_id: maintenance,
+          amount: 450,
+          expense_date: daysAgo(45),
+          description: 'Plumbing repair — sample data',
+        },
+        {
+          company_id: companyId,
+          unit_id: occupied.id,
+          category_id: utilities,
+          amount: 300,
+          expense_date: daysAgo(20),
+          description: 'Water and electricity — sample data',
+        },
+      ]);
+    } else {
+      console.warn(`Skipped sample expenses for company ${companyId}: expense categories not found`);
+    }
 
     await supabase.from('l_faults').insert([
       {

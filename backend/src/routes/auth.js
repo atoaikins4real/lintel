@@ -11,6 +11,30 @@ const { enforcePlanLimit } = require('../middleware/planLimits');
 
 const router = express.Router();
 
+// The starting expense categories every new company gets. Subscribers can
+// rename, archive and add to this list themselves — it is a starting
+// point, not a fixed taxonomy. Kept in step with the seed in the
+// per_company_expense_categories migration.
+//
+// Renovation is deliberately absent: renovations are their own feature
+// with dates and rent before/after, and duplicating them as a category
+// would let the same spend be recorded twice and double-count in the P&L.
+const DEFAULT_EXPENSE_CATEGORIES = [
+  { name: 'Utilities', legacy_key: 'utilities', sort_order: 10 },
+  { name: 'Maintenance', legacy_key: 'maintenance', sort_order: 20 },
+  { name: 'Management fee', legacy_key: 'management_fee', sort_order: 30 },
+  { name: 'Commission', legacy_key: null, sort_order: 40 },
+  { name: 'Internet', legacy_key: null, sort_order: 50 },
+  { name: 'DSTV', legacy_key: null, sort_order: 60 },
+  { name: 'Air conditioning', legacy_key: null, sort_order: 70 },
+  { name: 'House Keeping', legacy_key: 'cleaning', sort_order: 80 },
+  { name: 'Insurance', legacy_key: 'insurance', sort_order: 90 },
+  { name: 'Tax', legacy_key: 'tax', sort_order: 100 },
+  { name: 'Others', legacy_key: 'other', sort_order: 110 },
+];
+
+
+
 // GET /api/auth/bootstrap-status
 // Retained for the frontend's benefit. Since every signup now creates its
 // own company, there's no global "first user" state any more — this always
@@ -118,6 +142,14 @@ router.post('/signup', authLimiter, async (req, res, next) => {
 
     // Each company gets its own settings row (currency, payout, etc.).
     await supabase.from('l_settings').insert({ company_id: company.id });
+
+    // ...and its own expense categories. Done here rather than in the
+    // demo seeder because seeding is best-effort and skippable, whereas a
+    // company with no categories cannot record an expense at all — the
+    // dropdown would simply be empty with nothing explaining why.
+    await supabase.from('l_expense_categories').insert(
+      DEFAULT_EXPENSE_CATEGORIES.map((c) => ({ ...c, company_id: company.id }))
+    );
 
     // Start the trial clock. The length comes from the plan catalogue
     // rather than a hardcoded number, so changing the trial period is a

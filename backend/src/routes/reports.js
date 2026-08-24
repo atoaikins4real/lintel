@@ -119,20 +119,27 @@ router.get('/expense-breakdown', async (req, res, next) => {
     const keys = lastNMonthKeys(months);
     const earliest = `${keys[0]}-01`;
 
+    // Reads the joined category NAME, not the old `category` enum. Each
+    // company owns its own category list now, so grouping by the enum
+    // would have silently reported nothing for every expense created
+    // after that change — the chart would look empty rather than broken.
+    // `category` is still selected as a fallback for rows that predate
+    // the migration and were never mapped.
     const { data: expenses, error } = await supabase
       .from('l_expenses')
-      .select('amount, category')
+      .select('amount, category, l_expense_categories(name)')
       .eq('company_id', req.user.company_id)
       .gte('expense_date', earliest);
     if (error) throw error;
 
     const totals = {};
     (expenses || []).forEach((e) => {
-      totals[e.category] = (totals[e.category] || 0) + Number(e.amount);
+      const label = e.l_expense_categories?.name || e.category || 'Uncategorised';
+      totals[label] = (totals[label] || 0) + Number(e.amount || 0);
     });
 
     const breakdown = Object.entries(totals)
-      .map(([category, amount]) => ({ category, amount }))
+      .map(([category, amount]) => ({ category, amount: Math.round(amount * 100) / 100 }))
       .sort((a, b) => b.amount - a.amount);
 
     res.json(breakdown);

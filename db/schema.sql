@@ -1059,3 +1059,41 @@ $$;
 ALTER TABLE l_settings DROP CONSTRAINT IF EXISTS l_settings_exchange_rates_positive;
 ALTER TABLE l_settings ADD CONSTRAINT l_settings_exchange_rates_positive
   CHECK (l_exchange_rates_valid(exchange_rates));
+
+
+-- ---------------------------------------------------------------------
+-- PER-SUBSCRIBER EXPENSE CATEGORIES
+--
+-- Categories were an l_expense_category enum shared by every subscriber,
+-- so adding "DSTV" meant a migration and a deploy. Each company now owns
+-- its own list.
+--
+-- The old enum column on l_expenses is KEPT (nullable) rather than
+-- dropped: it still holds the original value for rows created before the
+-- change, which makes the backfill checkable and reversible. Nothing
+-- writes to it any more.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS l_expense_categories (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id  uuid NOT NULL REFERENCES l_companies(id) ON DELETE CASCADE,
+  name        text NOT NULL,
+  legacy_key  text,          -- the enum value this replaces; NULL if user-created
+  sort_order  integer NOT NULL DEFAULT 0,
+  is_archived boolean NOT NULL DEFAULT false,  -- retired, but still labels history
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS l_expense_categories_id_company
+  ON l_expense_categories (id, company_id);
+CREATE UNIQUE INDEX IF NOT EXISTS l_expense_categories_unique_name
+  ON l_expense_categories (company_id, lower(name));
+ALTER TABLE l_expense_categories ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE l_expenses ADD COLUMN IF NOT EXISTS category_id uuid;
+ALTER TABLE l_expenses ALTER COLUMN category DROP NOT NULL;
+
+ALTER TABLE l_expenses DROP CONSTRAINT IF EXISTS l_expenses_category_fkey;
+ALTER TABLE l_expenses ADD CONSTRAINT l_expenses_category_fkey
+  FOREIGN KEY (category_id, company_id)
+  REFERENCES l_expense_categories (id, company_id)
+  ON DELETE RESTRICT;

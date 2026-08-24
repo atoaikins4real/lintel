@@ -144,6 +144,16 @@ export const updateExpense = (id, payload) => api.put(`/expenses/${id}`, payload
 // omission as deleteUnit.
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`).then((r) => r.data);
 
+// Expense categories — one list per company, editable by the subscriber.
+export const getExpenseCategories = (params) =>
+  api.get('/expenses/categories', { params }).then((r) => r.data);
+export const createExpenseCategory = (payload) =>
+  api.post('/expenses/categories', payload).then((r) => r.data);
+export const updateExpenseCategory = (id, payload) =>
+  api.put(`/expenses/categories/${id}`, payload).then((r) => r.data);
+export const deleteExpenseCategory = (id) =>
+  api.delete(`/expenses/categories/${id}`).then((r) => r.data);
+
 // Renovations
 export const getRenovations = (params) => api.get('/renovations', { params }).then((r) => r.data);
 export const createRenovation = (payload) => api.post('/renovations', payload).then((r) => r.data);

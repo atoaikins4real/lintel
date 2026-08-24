@@ -19,6 +19,25 @@ const { blank: str, toNumber: num } = require('../utils/sanitize');
 const { parseCurrency, currencyForLease } = require('../utils/currency');
 
 
+// Real columns on the table. Anything else in the request body is
+// dropped rather than reaching Postgres. Edit forms post back whole
+// fetched records, which carry id/created_at/updated_at — all real
+// columns, so an update would silently accept a client rewriting a
+// row's id or its creation timestamp. See utils/sanitize.js.
+const COLUMNS = [
+  'lease_id',
+  'tenant_id',
+  'unit_id',
+  'amount',
+  'currency',
+  'due_date',
+  'payment_date',
+  'status',
+  'method',
+  'reference',
+  'notes',
+];
+
 // GET /api/payments?tenant_id=&unit_id=&lease_id=&status=
 router.get('/', async (req, res, next) => {
   try {
@@ -91,7 +110,9 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const updates = { ...req.body };
+    const updates = Object.fromEntries(
+      Object.entries(req.body || {}).filter(([key]) => COLUMNS.includes(key))
+    );
     for (const f of ['due_date', 'payment_date', 'method', 'reference', 'notes']) {
       if (f in updates) updates[f] = str(updates[f]);
     }

@@ -6,6 +6,23 @@ const { blank, toNumber, clean } = require('../utils/sanitize');
 const router = express.Router();
 router.use(gateMutations);
 
+// Real columns on the table. Anything else in the request body is
+// dropped rather than sent to Postgres — detail endpoints return
+// joined children (a property's `units`, a lease's `payments`) and
+// edit forms send the whole object back. See utils/sanitize.js.
+const COLUMNS = [
+  'unit_id',
+  'tenant_id',
+  'description',
+  'severity',
+  'caused_by',
+  'status',
+  'reported_date',
+  'resolved_date',
+  'cost',
+];
+
+
 
 router.get('/', async (req, res, next) => {
   try {
@@ -56,6 +73,7 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const updates = clean(req.body, {
+      allowed: COLUMNS,
       numbers: ['cost'],
       dates: ['reported_date', 'resolved_date'],
       texts: ['tenant_id', 'description'],

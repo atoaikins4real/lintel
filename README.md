@@ -159,6 +159,28 @@ incurred in another currency will be labelled with the building's — and it
 buys the guarantee that a property's revenue and costs are always in the
 same currency, so its P&L is a valid subtraction.
 
+## Expenses
+
+Operating costs — utilities, commission, internet, DSTV, air
+conditioning, house keeping, insurance, tax — are recorded per apartment
+under **Costs & Repairs**, and feed the P&L and the expense-breakdown
+chart.
+
+Categories are **per company**, not a fixed list. Each workspace starts
+with a default set and the subscriber renames, archives and adds their
+own in Settings. They were previously a Postgres enum, which meant every
+new category was a migration and a deploy shared across all subscribers.
+
+Two behaviours worth knowing:
+
+- A category still attached to expenses **cannot be deleted** — that
+  would orphan or silently relabel historical records. Archive it
+  instead: it disappears from the dropdown and past reports stay intact.
+- **Renovations are not an expense category.** They're their own feature,
+  tracking dates and the rent before and after. Listing them in both
+  places would let the same spend be recorded twice and double-count in
+  the P&L.
+
 ## Subscription notices
 
 The in-app banner covers trials and paid renewals alike (≤7 days, plus

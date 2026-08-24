@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   getFaults, createFault, updateFault, deleteFault,
   getRenovations, createRenovation, deleteRenovation,
-  getExpenses, createExpense, updateExpense, deleteExpense,
+  getExpenses, createExpense, updateExpense, deleteExpense, getExpenseCategories,
   getUnits, readApiError,
 } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
@@ -12,19 +12,9 @@ import { useSettings } from '../context/SettingsContext.jsx';
 
 const emptyFault = { unit_id: '', description: '', severity: 'low', caused_by: 'unknown', reported_date: '', cost: '' };
 const emptyReno = { unit_id: '', description: '', cost: '', start_date: '', end_date: '', rate_before: '', rate_after: '' };
-const emptyExpense = { unit_id: '', category: 'utilities', amount: '', expense_date: '', description: '' };
+const emptyExpense = { unit_id: '', category_id: '', amount: '', expense_date: '', description: '' };
 
-// Matches the l_expense_category enum in the database.
-const EXPENSE_CATEGORIES = [
-  { value: 'utilities', label: 'Utilities' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'management_fee', label: 'Management fee' },
-  { value: 'insurance', label: 'Insurance' },
-  { value: 'tax', label: 'Tax' },
-  { value: 'cleaning', label: 'Cleaning' },
-  { value: 'other', label: 'Other' },
-];
-const categoryLabel = (v) => EXPENSE_CATEGORIES.find((c) => c.value === v)?.label || v;
+// Categories are per-company and fetched at runtime — see Settings.
 
 export default function FaultsRenovations() {
   const { canEdit } = useAuth();
@@ -48,12 +38,14 @@ export default function FaultsRenovations() {
   const [expenseForm, setExpenseForm] = useState(emptyExpense);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [categories, setCategories] = useState([]);
 
   useEffect(() => {
     getUnits().then(setUnits);
     getFaults().then(setFaults);
     getRenovations().then(setRenovations);
     getExpenses().then(setExpenses).catch(() => setExpenses([]));
+    getExpenseCategories().then(setCategories).catch(() => setCategories([]));
   }, []);
 
   const unitLabel = (id) => units.find((u) => u.id === id)?.unit_code || id;
@@ -81,7 +73,7 @@ export default function FaultsRenovations() {
     setShowExpenseForm(true);
     setExpenseForm({
       unit_id: x.unit_id || '',
-      category: x.category || 'utilities',
+      category_id: x.category_id || '',
       amount: x.amount ?? '',
       expense_date: x.expense_date || '',
       description: x.description || '',
@@ -337,9 +329,10 @@ export default function FaultsRenovations() {
               <option value="">Select apartment…</option>
               {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
             </select>
-            <select required className="lx-select" value={expenseForm.category}
-              onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value })}>
-              {EXPENSE_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            <select required className="lx-select" value={expenseForm.category_id}
+              onChange={(e) => setExpenseForm({ ...expenseForm, category_id: e.target.value })}>
+              <option value="">Select category…</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <input type="number" min="0" step="any" required placeholder="Amount" className="lx-input"
               value={expenseForm.amount}
@@ -366,7 +359,7 @@ export default function FaultsRenovations() {
                 <div className="min-w-0">
                   <div className="font-medium text-ink text-sm mb-0.5">
                     {unitLabel(x.unit_id)}
-                    <span className="pill bg-stone/10 text-stone ml-2">{categoryLabel(x.category)}</span>
+                    <span className="pill bg-stone/10 text-stone ml-2">{x.category_name || x.category || 'Uncategorised'}</span>
                   </div>
                   {x.description && <div className="text-sm text-ink/80">{x.description}</div>}
                   <div className="text-stone text-xs mt-1">

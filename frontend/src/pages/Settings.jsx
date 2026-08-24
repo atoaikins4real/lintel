@@ -6,6 +6,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { CURRENCY_LABELS } from '../utils/currency.js';
+import ExpenseCategories from '../components/ExpenseCategories.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 
 const MOBILE_PROVIDERS = ['MTN Mobile Money', 'Telecel Cash', 'AirtelTigo Money', 'Other'];
@@ -255,6 +256,8 @@ export default function Settings() {
           </div>
         </div>
       </section>
+
+      <ExpenseCategories canEdit={isManager} />
 
       {/* Payout */}
       <section className="lx-card p-5 sm:p-6">

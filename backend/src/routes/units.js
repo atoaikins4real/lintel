@@ -26,6 +26,57 @@ const SPEC_TEXTS = [
 // rather than listed above: str() would let an unrecognised code through
 // to the database, and a typo would then label real money with a currency
 // no formatter recognises.
+
+// Real columns on the table. Anything else in the request body is
+// dropped rather than reaching Postgres. Edit forms post back whole
+// fetched records, which carry id/created_at/updated_at — all real
+// columns, so an update would silently accept a client rewriting a
+// row's id or its creation timestamp. See utils/sanitize.js.
+const COLUMNS = [
+  'unit_code',
+  'property_name',
+  'unit_type',
+  'class',
+  'bedrooms',
+  'bathrooms',
+  'address',
+  'city',
+  'base_rate_short',
+  'base_rate_long',
+  'status',
+  'notes',
+  'photo_url',
+  'photo_urls',
+  'property_id',
+  'floor_area',
+  'floor_area_unit',
+  'floor_number',
+  'storeys',
+  'staircases',
+  'rooms',
+  'kitchens',
+  'halls',
+  'balconies',
+  'ensuite_bathrooms',
+  'store_rooms',
+  'glass_panel_type',
+  'wood_colour',
+  'joinery_material',
+  'flooring_type',
+  'ceiling_type',
+  'wall_colour',
+  'furnishing',
+  'has_air_conditioning',
+  'view_orientation',
+  'features',
+  'description',
+  'listing_type',
+  'sale_price',
+  'sale_status',
+  'sale_currency',
+  'currency',
+];
+
 const FURNISHING = ['unfurnished', 'semi_furnished', 'fully_furnished'];
 const LISTING_TYPES = ['rent', 'sale', 'both'];
 const SALE_STATUSES = ['available', 'under_offer', 'sold'];
@@ -219,9 +270,13 @@ router.post('/', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
-    const updates = { ...req.body };
-    if (updates.class === undefined && req.body.unitClass) updates.class = req.body.unitClass;
-    delete updates.unitClass;
+    // Map the UI's alias first, then keep only real columns. Filtering
+    // after the mapping means `unitClass` is dropped automatically.
+    const raw = { ...req.body };
+    if (raw.class === undefined && req.body.unitClass) raw.class = req.body.unitClass;
+    const updates = Object.fromEntries(
+      Object.entries(raw).filter(([key]) => COLUMNS.includes(key))
+    );
 
     // Same '' -> null coercion as on create (see num/str above).
     for (const field of SPEC_NUMBERS) {

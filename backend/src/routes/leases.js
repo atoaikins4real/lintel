@@ -7,6 +7,27 @@ const { parseCurrency } = require('../utils/currency');
 const router = express.Router();
 router.use(gateMutations);
 
+// Real columns on the table. Anything else in the request body is
+// dropped rather than sent to Postgres — detail endpoints return
+// joined children (a property's `units`, a lease's `payments`) and
+// edit forms send the whole object back. See utils/sanitize.js.
+const COLUMNS = [
+  'tenant_id',
+  'unit_id',
+  'stay_type',
+  'start_date',
+  'end_date',
+  'agreed_rate',
+  'rate_period',
+  'status',
+  'source',
+  'escalation_percent',
+  'next_review_on',
+  'last_escalated_on',
+  'currency',
+];
+
+
 
 // GET /api/leases?unit_id=&tenant_id=&status=&stay_type=
 router.get('/', async (req, res, next) => {
@@ -90,6 +111,7 @@ router.put('/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const updates = clean(req.body, {
+      allowed: COLUMNS,
       numbers: ['agreed_rate', 'escalation_percent'],
       dates: ['start_date', 'end_date', 'next_review_on'],
       texts: ['source'],
@@ -97,9 +119,9 @@ router.put('/:id', async (req, res, next) => {
 
     delete updates.company_id;
 
-    // clean() coerces the fields it's told about but passes the rest of
-    // the body through, so currency has to be validated explicitly or an
-    // unrecognised code would reach the column unchecked.
+    // Still validated explicitly: COLUMNS lets `currency` through as a
+    // real column, but says nothing about whether the value is a currency
+    // code Lintel recognises.
     if ('currency' in updates) {
       const currency = parseCurrency(updates.currency);
       if (!currency.ok) return res.status(400).json({ error: currency.error });
