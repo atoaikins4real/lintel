@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createProperty, getProperty, updateProperty, readApiError } from '../api/client.js';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import PropertyUnitsStep from './PropertyUnitsStep.jsx';
 import { StepChips, WizardStep, NumField, ComboField, ChipGroup } from '../components/WizardShell.jsx';
 import { CurrencyField } from '../components/Money.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -10,7 +11,13 @@ import {
   ROOFING_TYPES, WALL_MATERIALS, EXTERIOR_FINISHES, WATER_SOURCES, POWER_BACKUP,
 } from '../data/specs.js';
 
-const STEPS = ['Basics', 'Location', 'Building', 'Finishes', 'Amenities', 'Photos', 'Review'];
+// The property steps are the same either way; the last step differs. When
+// adding a NEW property we finish by capturing its unit(s) inline (the
+// unified flow). When editing an existing one, units are managed on their
+// own pages, so the last step is a plain review.
+const PROPERTY_STEPS = ['Basics', 'Location', 'Building', 'Finishes', 'Amenities', 'Photos'];
+const CREATE_STEPS = [...PROPERTY_STEPS, 'Units'];
+const EDIT_STEPS = [...PROPERTY_STEPS, 'Review'];
 
 const empty = {
   name: '', property_type: 'apartment_block', description: '',
@@ -31,6 +38,10 @@ export default function PropertyOnboarding() {
   const { id: routeId } = useParams();
   const { currency } = useSettings();
   const navigate = useNavigate();
+
+  const isEdit = Boolean(routeId);
+  const STEPS = isEdit ? EDIT_STEPS : CREATE_STEPS;
+  const UNITS_STEP = 6; // index of the final step (Units when creating, Review when editing)
 
   const [propertyId, setPropertyId] = useState(routeId || null);
   const [step, setStep] = useState(0);
@@ -243,7 +254,20 @@ export default function PropertyOnboarding() {
         </WizardStep>
       )}
 
-      {step === 6 && (
+      {/* Final step when ADDING a property: capture its unit(s) inline. */}
+      {step === UNITS_STEP && !isEdit && propertyId && (
+        <PropertyUnitsStep
+          propertyId={propertyId}
+          propertyName={form.name}
+          currency={form.currency || currency}
+          onBack={() => setStep(5)}
+          onFinish={() => navigate(`/properties/${propertyId}`)}
+        />
+      )}
+
+      {/* Final step when EDITING an existing property: a plain review. Units
+          are managed on their own pages in this case. */}
+      {step === UNITS_STEP && isEdit && (
         <WizardStep title="Review" hint="Anything blank can be filled in later from the property page."
           onBack={() => setStep(5)} onNext={finish} busy={saving} nextLabel="Finish">
           <Row label="Name" value={form.name} />
@@ -256,7 +280,7 @@ export default function PropertyOnboarding() {
           <Row label="Amenities" value={form.amenities.join(', ')} />
           <Row label="Photos" value={`${form.photo_urls.length} uploaded`} />
           <p className="text-xs text-stone pt-1">
-            Next: add the apartments inside this property from the Units page.
+            Manage the units inside this property from the Units page or the property page.
           </p>
         </WizardStep>
       )}

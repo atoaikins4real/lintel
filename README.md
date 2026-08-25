@@ -324,6 +324,35 @@ shows usage against each limit.
 Still not built: no payment provider is connected, so nothing charges
 anyone automatically — see "A note on money movement".
 
+### Self-serve plan changes
+
+Subscribers can now start a plan change themselves instead of emailing the
+operator — but **as a request, not a direct edit**. Subscription state stays
+operator-controlled in `l_subscriptions` (a subscriber's own manager still
+can't mark themselves paid); what the subscriber can do is *ask*.
+
+- A manager, from **Settings → Change your plan**, requests a switch to
+  another catalogue plan or a cancellation, with an optional note. It's
+  recorded in `l_subscription_requests` and the operator is emailed.
+- The operator sees pending requests on **/admin** and clicks **Apply** or
+  **Decline**. Applying a change moves the subscription onto the requested
+  plan and snapshots that plan's price as the agreed `amount` (same rule as
+  everywhere: the amount lives on the subscription, never read live from the
+  catalogue); applying a cancellation sets the status to `cancelled`.
+- Only **one request is pending per company** at a time (a partial unique
+  index enforces it, and the API returns a clear 409 rather than a raw
+  constraint error). A subscriber can withdraw their own pending request.
+
+Why a request rather than an instant change: there is no payment provider,
+so an upgrade can't collect money in-app. Making the operator the point that
+enacts the change keeps one honest place where payment is arranged, and
+avoids handing a subscriber a button that would either charge nothing or
+promise a charge the system can't make. The routes live under
+`/api/subscription` and are **exempt from the lapsed-subscription write
+gate** (like `/settings`) — a lapsed subscriber must still be able to
+request an upgrade, since that's exactly how they get out of the lapsed
+state.
+
 ## Email
 
 Provider-agnostic — choosing one is a config change, not a code change:
@@ -409,6 +438,53 @@ isolated data, admin-of-their-own-office) is a known next step, not yet
 built — see the manager-created-staff flow (`POST /api/auth/register`) for
 real business use in the meantime.
 
+## Testing
+
+The backend has a test suite (Vitest + supertest). From `backend/`:
+
+```
+npm install          # picks up vitest + supertest (devDependencies)
+npm test             # the whole suite, once
+npm run test:watch   # re-run on change while developing
+npm run test:unit    # just the pure-function unit tests
+npm run test:integration
+npm run check        # audits + tests together
+```
+
+It runs entirely in-memory — **no Supabase project, no network, no
+credentials.** Two kinds of test:
+
+- **Unit** (`test/unit/`) — the deterministic core, tested directly:
+  the multi-currency math (`totalByCurrency`, `indicativeTotal` — the two
+  rules that amounts are never converted in/out of the DB and never summed
+  across currencies), tenant scoring and tier thresholds, the
+  form-input sanitizers, subscription standing (`evaluate`), and token
+  signing.
+- **Integration** (`test/integration/`) — the real Express app driven with
+  supertest, asserting the guarantees the README makes: auth guards
+  (including the legacy-token re-login and forged-token rejection), role
+  gating (a viewer's write is refused 403; reads are open), the
+  platform-admin area answering 404 to non-admins and re-checking the flag
+  in the DB, plan limits blocking creates with 402 while never touching
+  edits, subscription enforcement degrading writes to read-only while
+  never blocking reads and failing **open**, and multi-tenant isolation —
+  every company-owned query carries the caller's `company_id` from the
+  token, and a body-supplied `company_id` is ignored.
+
+The whole database is faked at the one seam every route shares —
+`config/supabase` — by a small controllable stand-in
+(`test/helpers/fakeSupabase.js`) that mimics the slice of the supabase-js
+query builder the code actually uses and records every query so a test can
+assert *how* a table was accessed, not just the response. Because the
+backend is CommonJS, the fake is injected by swapping `config/supabase`'s
+export before the app graph loads (`test/helpers/appWithFake.js`) rather
+than via Vitest's module mocker — the reasoning is documented in that file.
+
+This complements, rather than replaces, the audit scripts: the audits
+prove *static* properties (every query is company-scoped, every `require`
+is declared, nothing touches a non-`l_` table), while these tests prove
+*behaviour* at runtime.
+
 ## First-time setup
 
 ### 1. Database
@@ -471,18 +547,29 @@ screen).
   Added via a guided wizard (`/properties/onboard`): basics, location and
   plot size, building structure (storeys, floors, staircases and type,
   parking, year built), materials and finishes (glass panels, exterior
-  finish, roofing, walls, water source, power backup), amenities, photos,
-  review.
-- **Apartments** — added via their own wizard (`/units/onboard`): the
-  property they sit in, layout counts (bedrooms, bathrooms, en-suites,
-  halls, kitchens, balconies, store rooms, total rooms, storeys for
-  duplexes, internal staircases, floor number), floor area in sqm or sqft,
-  finishes and fittings (flooring, ceiling, wood colour, joinery, glass
-  panels, wall colour, outlook, furnishing, air conditioning), features,
-  pricing, photos, review. Finish fields are combo inputs — pick a common
-  option or type your own.
-- Both wizards save the record on the first step, so a part-finished entry
-  is kept and resumable rather than lost. "Quick add" remains for a
+  finish, roofing, walls, water source, power backup), amenities, photos —
+  and then, in the **same flow**, the unit(s) inside it (see below).
+- **Apartments** — layout counts (bedrooms, bathrooms, en-suites, halls,
+  kitchens, balconies, store rooms, total rooms, storeys for duplexes,
+  internal staircases, floor number), floor area in sqm or sqft, finishes
+  and fittings (flooring, ceiling, wood colour, joinery, glass panels, wall
+  colour, outlook, furnishing, air conditioning), features, pricing, photos.
+  Finish fields are combo inputs — pick a common option or type your own.
+- **Unified onboarding.** Adding a property now flows straight into adding
+  its units — no bouncing to a separate screen. The last step of
+  `/properties/onboard` asks whether it's **one standalone unit** (a house:
+  fill in the single unit and finish) or a **building with several units**
+  (add them one at a time, each saved as you go). Property and unit remain
+  separate records underneath — leases, payments, reports and the showcase
+  all still hang off units — so a block can hold many units, each with its
+  own tenant, rent and P&L; the merge is of the *experience*, not the data
+  model. The two are captured by one reusable field set
+  (`components/UnitFields.jsx`) shared with the standalone unit wizard, so
+  they can't drift apart. The standalone `/units/onboard` wizard still
+  exists for adding or editing a single unit later, and editing a property
+  (`/properties/:id/edit`) ends in a plain review rather than the units
+  step. Both wizards save the record on the first step, so a part-finished
+  entry is kept and resumable rather than lost. "Quick add" remains for a
   bare-minimum record you flesh out later.
 - **Guided tenant onboarding** (`/tenants/onboard`) — a six-step intake:
   identity, ID documents (photo + front/back uploads), emergency contact
@@ -610,11 +697,19 @@ subscription status.
 - Live door hardware integration — access cards are recorded, no lock is
   actually driven. See "A note on door hardware".
 - SMS as a channel: everything currently goes by email only
-- Self-serve plan changes — subscribers can't upgrade, downgrade or
-  cancel themselves; only a platform admin can, through /admin
-- An automated test suite. There are two audit scripts
-  (`npm run audit`) that are verified against negative controls, but no
-  unit or integration tests.
+- Fully automatic plan changes. Self-serve plan changes now exist as a
+  **request** flow (see "Self-serve plan changes" under Subscriptions) —
+  the operator applies them, which is deliberate while there's no payment
+  provider to collect on an upgrade. A subscription that renews or upgrades
+  *and charges a card without an operator in the loop* still needs the
+  payment integration above.
+- Broader automated coverage. There is now a real test suite (`npm test`
+  in `backend/` — see "Testing" below) covering the money math, tenant
+  scoring, subscription/plan-limit rules, auth guards and tenant
+  isolation, alongside the three audit scripts (`npm run audit`). Still
+  thin in places: the route handlers are exercised for authorisation and
+  scoping, not yet for every field-level validation branch, and the
+  frontend has no tests at all.
 - Immediate revocation of a session. `company_id` and `role` are read
   from the signed JWT and never re-checked, and tokens live 7 days — so
   moving someone between companies or demoting them can take up to a
