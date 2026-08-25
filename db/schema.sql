@@ -1159,3 +1159,40 @@ ALTER TABLE l_payments DROP CONSTRAINT IF EXISTS l_payments_utility_type_fkey;
 ALTER TABLE l_payments ADD CONSTRAINT l_payments_utility_type_fkey
   FOREIGN KEY (utility_type_id, company_id)
   REFERENCES l_utility_types (id, company_id) ON DELETE SET NULL;
+
+-- ------------------------------------------------------------
+-- SELF-SERVE PLAN CHANGES  (mirrors migration self_serve_plan_requests)
+--
+-- Subscription STATE stays operator-controlled in l_subscriptions — a
+-- subscriber's own manager still cannot mark themselves paid or renewing.
+-- What this table adds is a controlled way for a subscriber to *ask* for a
+-- plan change or a cancellation; the platform operator applies or declines
+-- it from /admin (and arranges any payment, since Lintel doesn't move money
+-- in-app). It records the request, never the authority to grant itself.
+--
+-- kind='change' carries requested_plan_id; kind='cancel' leaves it null.
+-- Exactly one request may be 'pending' per company at a time (partial
+-- unique index below), so a subscriber can't queue a stack of them.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS l_subscription_requests (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id uuid NOT NULL REFERENCES l_companies (id) ON DELETE CASCADE,
+  requested_plan_id uuid REFERENCES l_plans (id) ON DELETE SET NULL,
+  kind text NOT NULL DEFAULT 'change',
+  status text NOT NULL DEFAULT 'pending',
+  note text,
+  requested_by uuid REFERENCES l_users (id) ON DELETE SET NULL,
+  decided_by uuid REFERENCES l_users (id) ON DELETE SET NULL,
+  decided_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT l_subscription_requests_kind_check CHECK (kind IN ('change','cancel')),
+  CONSTRAINT l_subscription_requests_status_check
+    CHECK (status IN ('pending','applied','declined','withdrawn'))
+);
+-- At most one open request per company.
+CREATE UNIQUE INDEX IF NOT EXISTS l_subscription_requests_one_pending
+  ON l_subscription_requests (company_id) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS l_subscription_requests_company
+  ON l_subscription_requests (company_id);
+ALTER TABLE l_subscription_requests ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON l_subscription_requests TO service_role;

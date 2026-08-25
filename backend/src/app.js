@@ -30,6 +30,7 @@ const bookingInquiriesRouter = require('./routes/bookingInquiries');
 const uploadsRouter = require('./routes/uploads');
 const documentsRouter = require('./routes/documents');
 const settingsRouter = require('./routes/settings');
+const subscriptionRouter = require('./routes/subscription');
 const companyRouter = require('./routes/company');
 const propertiesRouter = require('./routes/properties');
 const tenantOnboardingRouter = require('./routes/tenantOnboarding');
@@ -88,11 +89,19 @@ app.use('/api', requireAuth);
 // routers but AFTER /api/auth, so signing in and reading your own records
 // keeps working no matter what state the subscription is in.
 //
-// Not applied to /api/admin (mounted below with its own gate) or
-// /api/settings, so a lapsed subscriber can still see their own plan and
-// payout details.
+// Not applied to /api/admin (mounted below with its own gate),
+// /api/settings, or /api/subscription, so a lapsed subscriber can still see
+// their own plan and — crucially — request an upgrade to get OUT of the
+// lapsed state. Blocking the very route that lets them fix a lapse would be
+// a trap.
 app.use('/api', (req, res, next) => {
-  if (req.path.startsWith('/settings') || req.path.startsWith('/admin')) return next();
+  if (
+    req.path.startsWith('/settings') ||
+    req.path.startsWith('/admin') ||
+    req.path.startsWith('/subscription')
+  ) {
+    return next();
+  }
   return enforceSubscription(req, res, next);
 });
 
@@ -116,6 +125,7 @@ app.use('/api/booking-inquiries', bookingInquiriesRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/subscription', subscriptionRouter);
 app.use('/api/company', companyRouter);
 // Platform-owner only. The single place that reads across companies —
 // gated by requirePlatformAdmin, which re-checks the flag in the database

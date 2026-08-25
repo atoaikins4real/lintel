@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
-import { getSubscribers, updateSubscription, readApiError } from '../api/client.js';
+import {
+  getSubscribers, updateSubscription, readApiError,
+  getPlanRequests, applyPlanRequest, declinePlanRequest,
+} from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { formatMoney } from '../utils/currency.js';
 
@@ -17,22 +20,38 @@ export default function Admin() {
   const { isPlatformAdmin } = useAuth();
   const [subscribers, setSubscribers] = useState([]);
   const [plans, setPlans] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [reqBusy, setReqBusy] = useState(null);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const load = () =>
-    getSubscribers()
-      .then((res) => {
+    Promise.all([getSubscribers(), getPlanRequests().catch(() => [])])
+      .then(([res, reqs]) => {
         setSubscribers(res.subscribers);
         setPlans(res.plans);
+        setRequests(reqs);
       })
       .catch((err) => setError(readApiError(err, 'load subscribers')));
 
   useEffect(() => {
     if (isPlatformAdmin) load();
   }, [isPlatformAdmin]);
+
+  const actOnRequest = async (id, action) => {
+    setError('');
+    setReqBusy(id);
+    try {
+      await (action === 'apply' ? applyPlanRequest(id) : declinePlanRequest(id));
+      await load();
+    } catch (err) {
+      setError(readApiError(err, `${action} that request`));
+    } finally {
+      setReqBusy(null);
+    }
+  };
 
   if (!isPlatformAdmin) {
     return <div className="text-stone text-sm">This area is for the Lintel operator only.</div>;
@@ -83,6 +102,64 @@ export default function Admin() {
 
       {error && (
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      )}
+
+      {requests.length > 0 && (
+        <div className="lx-card p-4 sm:p-5 mb-6 border-gold/40">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="font-serif text-lg text-ink">Plan change requests</span>
+            <span className="pill bg-gold/10 text-gold">{requests.length} pending</span>
+          </div>
+          <div className="divide-y divide-line/70">
+            {requests.map((r) => (
+              <div key={r.id} className="py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-ink">
+                    <span className="font-medium">{r.company?.name || 'A subscriber'}</span>{' '}
+                    {r.kind === 'cancel' ? (
+                      <span className="text-rose-700">wants to cancel</span>
+                    ) : (
+                      <>
+                        wants to switch to{' '}
+                        <span className="font-medium">{r.requested_plan?.name || 'a plan'}</span>
+                        {r.requested_plan
+                          ? ` (${formatMoney(r.requested_plan.price, r.requested_plan.currency)}/${r.requested_plan.billing_interval})`
+                          : ''}
+                      </>
+                    )}
+                  </div>
+                  <div className="text-xs text-stone mt-0.5">
+                    {r.current?.plan ? `Currently on ${r.current.plan.name}` : 'No current plan'}
+                    {r.current?.status ? ` · ${r.current.status.replace('_', ' ')}` : ''}
+                    {' · '}
+                    {new Date(r.created_at).toLocaleDateString()}
+                  </div>
+                  {r.note && <div className="text-xs text-stone italic mt-0.5">“{r.note}”</div>}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    disabled={reqBusy === r.id}
+                    onClick={() => actOnRequest(r.id, 'apply')}
+                    className="lx-btn-primary text-xs px-3 py-1.5"
+                  >
+                    {reqBusy === r.id ? 'Working…' : 'Apply'}
+                  </button>
+                  <button
+                    disabled={reqBusy === r.id}
+                    onClick={() => actOnRequest(r.id, 'decline')}
+                    className="lx-btn-ghost text-xs px-3 py-1.5"
+                  >
+                    Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-stone mt-2">
+            Applying a change moves the subscription onto the requested plan and snapshots its price. You can
+            still fine-tune dates below afterwards.
+          </p>
+        </div>
       )}
 
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">

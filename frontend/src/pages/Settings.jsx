@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   updateSettings, getCompany, updateCompany,
   getProperties, getUnits, getTenants, getStaffUsers, readApiError,
+  getPlanCatalogue, getMyPlanRequests, requestPlanChange, withdrawPlanRequest,
 } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -382,6 +383,17 @@ export default function Settings() {
         ) : (
           <p className="text-sm text-stone">No subscription on file yet.</p>
         )}
+
+        {/* Self-serve plan changes. A manager can REQUEST a change or a
+            cancellation; Lintel applies it (and arranges any payment). The
+            subscription above stays operator-controlled — this only records
+            a request. */}
+        {isManager && (
+          <PlanChangeManager
+            currentPlanId={form.subscription?.plan_id || null}
+            status={form.subscription?.status || null}
+          />
+        )}
       </section>
 
       {isManager && (
@@ -391,6 +403,173 @@ export default function Settings() {
       )}
     </form>
   );
+}
+
+// Manager-only. Shows the plan catalogue and lets the subscriber request a
+// switch or a cancellation; if a request is already pending it shows that
+// instead, with a way to withdraw it. Every button is type="button" because
+// this renders inside the Settings <form> and must not submit it.
+function PlanChangeManager({ currentPlanId, status }) {
+  const [plans, setPlans] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const load = () =>
+    Promise.all([getPlanCatalogue().catch(() => []), getMyPlanRequests().catch(() => [])]).then(
+      ([cat, reqs]) => {
+        setPlans(cat);
+        setRequests(reqs);
+      }
+    );
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const pending = requests.find((r) => r.status === 'pending') || null;
+
+  const submit = async (payload) => {
+    setError('');
+    setBusy(true);
+    try {
+      await requestPlanChange(payload);
+      setNote('');
+      setOpen(false);
+      await load();
+    } catch (err) {
+      setError(readApiError(err, 'send that request'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const withdraw = async (id) => {
+    setError('');
+    setBusy(true);
+    try {
+      await withdrawPlanRequest(id);
+      await load();
+    } catch (err) {
+      setError(readApiError(err, 'withdraw that request'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="sm:col-span-2 mt-5 pt-5 border-t border-line/70">
+      <div className="lx-eyebrow mb-2">Change your plan</div>
+
+      {error && (
+        <div className="mb-3 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      {pending ? (
+        <div className="rounded-xl bg-panel border border-line/70 px-4 py-3">
+          <p className="text-sm text-ink">
+            {pending.kind === 'cancel'
+              ? 'You’ve requested to cancel your subscription.'
+              : `You’ve requested to switch to ${pending.l_plans?.name || 'a new plan'}.`}
+          </p>
+          <p className="text-xs text-stone mt-1">
+            Lintel will confirm it (and arrange any payment). Your current plan stays in place until then.
+          </p>
+          {pending.note && <p className="text-xs text-stone italic mt-1">“{pending.note}”</p>}
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => withdraw(pending.id)}
+            className="lx-btn-ghost text-xs px-3 py-1.5 mt-3"
+          >
+            {busy ? 'Working…' : 'Withdraw request'}
+          </button>
+        </div>
+      ) : status === 'cancelled' ? (
+        <p className="text-sm text-stone">
+          Your subscription is cancelled — get in touch with Lintel to reactivate.
+        </p>
+      ) : !open ? (
+        <button type="button" onClick={() => setOpen(true)} className="lx-btn-ghost text-sm px-4 py-2">
+          Request a plan change
+        </button>
+      ) : (
+        <div>
+          <p className="text-xs text-stone mb-3">
+            Pick a plan to request. Lintel confirms the change and arranges any payment — nothing changes on
+            your account until then.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {plans.map((p) => {
+              const isCurrent = p.id === currentPlanId;
+              return (
+                <div
+                  key={p.id}
+                  className={`rounded-xl border px-4 py-3 ${
+                    isCurrent ? 'border-gold/50 bg-gold/5' : 'border-line/70'
+                  }`}
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium text-ink">{p.name}</span>
+                    <span className="text-sm text-stone">
+                      {p.currency} {Number(p.price).toLocaleString()}/{p.billing_interval}
+                    </span>
+                  </div>
+                  {p.description && <p className="text-xs text-stone mt-1">{p.description}</p>}
+                  <p className="text-[11px] text-stone mt-1">
+                    {fmtLimit(p.max_properties, 'properties')} · {fmtLimit(p.max_units, 'units')} ·{' '}
+                    {fmtLimit(p.max_tenants, 'tenants')} · {fmtLimit(p.max_staff, 'staff')}
+                  </p>
+                  {isCurrent ? (
+                    <span className="pill bg-gold/10 text-gold mt-2 inline-block">Current plan</span>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => submit({ kind: 'change', requested_plan_id: p.id, note })}
+                      className="lx-btn-primary text-xs px-3 py-1.5 mt-2"
+                    >
+                      Request this plan
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <input
+            className="lx-input mt-3"
+            placeholder="Optional note to Lintel (e.g. billing contact, timing)"
+            value={note}
+            maxLength={500}
+            onChange={(e) => setNote(e.target.value)}
+          />
+
+          <div className="flex items-center gap-3 mt-3">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => submit({ kind: 'cancel', note })}
+              className="text-xs text-rose-700 hover:underline"
+            >
+              Cancel my subscription instead
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className="lx-btn-ghost text-xs px-3 py-1.5 ml-auto">
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtLimit(value, label) {
+  return `${value === null || value === undefined ? '∞' : value} ${label}`;
 }
 
 function Detail({ label, value, capitalize }) {

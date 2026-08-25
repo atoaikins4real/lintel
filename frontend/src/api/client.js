@@ -245,4 +245,16 @@ export const deleteDocument = (id) => api.delete(`/documents/${id}`).then((r) =>
 export const getSettings = () => api.get('/settings').then((r) => r.data);
 export const updateSettings = (payload) => api.put('/settings', payload).then((r) => r.data);
 
+// Self-serve plan changes (subscriber side). Subscribers submit a change or
+// cancellation REQUEST; the operator applies it. State stays operator-owned.
+export const getPlanCatalogue = () => api.get('/subscription/plans').then((r) => r.data);
+export const getMyPlanRequests = () => api.get('/subscription/requests').then((r) => r.data);
+export const requestPlanChange = (payload) => api.post('/subscription/requests', payload).then((r) => r.data);
+export const withdrawPlanRequest = (id) => api.delete(`/subscription/requests/${id}`).then((r) => r.data);
+
+// Self-serve plan changes (operator side).
+export const getPlanRequests = () => api.get('/admin/plan-requests').then((r) => r.data);
+export const applyPlanRequest = (id) => api.post(`/admin/plan-requests/${id}/apply`).then((r) => r.data);
+export const declinePlanRequest = (id) => api.post(`/admin/plan-requests/${id}/decline`).then((r) => r.data);
+
 export { TOKEN_KEY };

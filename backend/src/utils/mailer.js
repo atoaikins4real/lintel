@@ -182,6 +182,27 @@ const templates = {
     ),
   }),
 
+  // Sent to the operator when a subscriber requests a plan change or
+  // cancellation from Settings. Best-effort — a request is recorded whether
+  // or not this is delivered.
+  planChangeRequest: ({ companyName, kind, planName, note, appUrl }) => {
+    const what =
+      kind === 'cancel'
+        ? 'wants to cancel their subscription'
+        : `wants to switch to the ${planName || 'a different'} plan`;
+    return {
+      subject: `Plan request — ${companyName}`,
+      text: `${companyName} ${what}.${note ? ` Note: ${note}` : ''} Review it in /admin.`,
+      html: wrap(
+        'New plan request',
+        `<p style="line-height:1.6"><strong>${companyName}</strong> ${what}.</p>
+         ${note ? `<p style="line-height:1.6;color:#555">"${note}"</p>` : ''}
+         <p style="line-height:1.6">Apply or decline it from the Subscribers area.</p>
+         ${button(appUrl, 'Open admin')}`
+      ),
+    };
+  },
+
   trialEnding: ({ companyName, daysLeft, appUrl }) => ({
     subject:
       daysLeft > 0

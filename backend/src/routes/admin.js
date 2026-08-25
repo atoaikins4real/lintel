@@ -163,6 +163,145 @@ router.put('/plans/:id', async (req, res, next) => {
   }
 });
 
+// ---------------------------------------------------------------------
+// SELF-SERVE PLAN CHANGE REQUESTS (operator side)
+//
+// Subscribers submit change/cancel requests via /api/subscription; the
+// operator actions them here. Applying a request is the point at which the
+// subscription STATE actually changes — keeping that in the operator's
+// hands is the whole reason self-serve is a request rather than a direct
+// edit (and it's where payment is arranged, since Lintel doesn't move money
+// in-app). Cross-company by design, like every route in this file.
+// ---------------------------------------------------------------------
+
+// GET /api/admin/plan-requests — pending requests across all companies.
+router.get('/plan-requests', async (req, res, next) => {
+  try {
+    const status = req.query.status || 'pending';
+    const { data: requests, error } = await supabase
+      .from('l_subscription_requests')
+      .select('*')
+      .eq('status', status)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+
+    // Decorate with company and plan names, fetched in bulk.
+    const companyIds = [...new Set((requests || []).map((r) => r.company_id))];
+    const planIds = [...new Set((requests || []).map((r) => r.requested_plan_id).filter(Boolean))];
+    const [{ data: companies }, { data: plans }, { data: subs }] = await Promise.all([
+      companyIds.length ? supabase.from('l_companies').select('id, name, slug').in('id', companyIds) : Promise.resolve({ data: [] }),
+      planIds.length ? supabase.from('l_plans').select('id, name, price, currency, billing_interval').in('id', planIds) : Promise.resolve({ data: [] }),
+      companyIds.length ? supabase.from('l_subscriptions').select('company_id, plan_id, status, amount, currency').in('company_id', companyIds) : Promise.resolve({ data: [] }),
+    ]);
+    const companyById = Object.fromEntries((companies || []).map((c) => [c.id, c]));
+    const planById = Object.fromEntries((plans || []).map((p) => [p.id, p]));
+    const subByCompany = Object.fromEntries((subs || []).map((s) => [s.company_id, s]));
+
+    const currentPlanIds = [...new Set(Object.values(subByCompany).map((s) => s.plan_id).filter(Boolean))];
+    const { data: currentPlans } = currentPlanIds.length
+      ? await supabase.from('l_plans').select('id, name').in('id', currentPlanIds)
+      : { data: [] };
+    const currentPlanById = Object.fromEntries((currentPlans || []).map((p) => [p.id, p]));
+
+    const result = (requests || []).map((r) => {
+      const sub = subByCompany[r.company_id];
+      return {
+        ...r,
+        company: companyById[r.company_id] || null,
+        requested_plan: r.requested_plan_id ? planById[r.requested_plan_id] || null : null,
+        current: sub
+          ? { status: sub.status, plan: sub.plan_id ? currentPlanById[sub.plan_id] || null : null }
+          : null,
+      };
+    });
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/plan-requests/:id/apply — enact the request. For a
+// 'change' this moves the subscription onto the requested plan and snapshots
+// its price as the agreed amount (same rule as elsewhere: the amount lives
+// on the subscription, not read live from the catalogue). For a 'cancel' it
+// sets the subscription to cancelled. The operator can still fine-tune dates
+// afterwards via the normal subscriber-management form.
+router.post('/plan-requests/:id/apply', async (req, res, next) => {
+  try {
+    const { data: reqRow, error: reqErr } = await supabase
+      .from('l_subscription_requests')
+      .select('*')
+      .eq('id', req.params.id)
+      .maybeSingle();
+    if (reqErr) throw reqErr;
+    if (!reqRow) return res.status(404).json({ error: 'Request not found' });
+    if (reqRow.status !== 'pending') {
+      return res.status(409).json({ error: `This request was already ${reqRow.status}.` });
+    }
+
+    const subUpdate = { updated_by: req.user.id };
+    if (reqRow.kind === 'cancel') {
+      subUpdate.status = 'cancelled';
+    } else {
+      if (!reqRow.requested_plan_id) {
+        return res.status(400).json({ error: 'This change request has no plan attached.' });
+      }
+      const { data: plan } = await supabase
+        .from('l_plans')
+        .select('id, price, currency')
+        .eq('id', reqRow.requested_plan_id)
+        .maybeSingle();
+      if (!plan) return res.status(404).json({ error: 'The requested plan no longer exists.' });
+      subUpdate.plan_id = plan.id;
+      subUpdate.amount = plan.price;
+      subUpdate.currency = plan.currency || 'GHS';
+      // A subscriber asking for a plan again means they intend to keep
+      // paying — clear a cancelled status if they were in one.
+      subUpdate.status = 'active';
+    }
+
+    const { data: sub, error: subErr } = await supabase
+      .from('l_subscriptions')
+      .update(subUpdate)
+      .eq('company_id', reqRow.company_id)
+      .select('*')
+      .maybeSingle();
+    if (subErr) throw subErr;
+    if (!sub) return res.status(404).json({ error: 'That company has no subscription row to update.' });
+
+    const { data: updated, error: updErr } = await supabase
+      .from('l_subscription_requests')
+      .update({ status: 'applied', decided_by: req.user.id, decided_at: new Date().toISOString() })
+      .eq('id', reqRow.id)
+      .select('*')
+      .single();
+    if (updErr) throw updErr;
+
+    res.json({ request: updated, subscription: sub });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/plan-requests/:id/decline — reject without changing the
+// subscription.
+router.post('/plan-requests/:id/decline', async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('l_subscription_requests')
+      .update({ status: 'declined', decided_by: req.user.id, decided_at: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .eq('status', 'pending')
+      .select('*')
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'No pending request with that id.' });
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // PATCH /api/admin/users/:id/platform-admin — grant or revoke operator
 // rights. Refuses to remove the last remaining admin, so the platform
 // can't be locked out of its own administration.
