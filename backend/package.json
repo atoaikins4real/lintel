@@ -7,10 +7,15 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
     "audit:scoping": "node audit-scoping.js",
     "audit:deps": "node audit-deps.js",
     "audit:floor": "node audit-floor.js",
-    "audit": "npm run audit:scoping && npm run audit:deps && npm run audit:floor"
+    "audit": "npm run audit:scoping && npm run audit:deps && npm run audit:floor",
+    "check": "npm run audit && npm test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -28,6 +33,8 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "nodemon": "^3.1.4",
+    "supertest": "^7.2.2",
+    "vitest": "^2.1.9"
   }
 }
