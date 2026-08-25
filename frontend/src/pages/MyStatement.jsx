@@ -138,7 +138,30 @@ export default function MyStatement() {
             )}
 
             <div className="lx-eyebrow mb-2">Payments</div>
-            <div className="overflow-x-auto">
+
+            {/* Mobile: stacked cards so a tenant can read the ledger on a phone.
+                Hidden in print so a saved PDF always uses the full table. */}
+            <div className="sm:hidden print:hidden space-y-2.5">
+              {statement.payments.map((p, i) => (
+                <div key={i} className="border border-line rounded-xl p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="font-semibold text-ink">{formatMoney(p.amount, p.currency)}</span>
+                    <span className="text-xs capitalize text-stone">{p.status}</span>
+                  </div>
+                  <div className="flex items-center gap-x-3 gap-y-1 mt-2 flex-wrap text-xs text-stone">
+                    <span>Due {p.due_date || '—'}</span>
+                    <span>Paid {p.payment_date || '—'}</span>
+                    <span className="capitalize">{p.method?.replace('_', ' ') || 'No method'}</span>
+                  </div>
+                </div>
+              ))}
+              {statement.payments.length === 0 && (
+                <div className="text-center text-stone text-sm py-6">No payments recorded yet.</div>
+              )}
+            </div>
+
+            {/* Tablet + desktop / print: full table */}
+            <div className="overflow-x-auto hidden sm:block print:block">
               <table className="w-full lx-table min-w-[520px]">
                 <thead>
                   <tr>

@@ -263,7 +263,70 @@ export default function Leases() {
         </select>
       </SearchBar>
 
-      <div className="lx-card overflow-hidden">
+      {/* Mobile: stacked cards (with the same inline edit) instead of a table */}
+      <div className="sm:hidden space-y-3">
+        {shownLeases.map((l) => (
+          <div key={l.id} className="lx-card p-4">
+            {editingId === l.id ? (
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-ink">{tenantLabel(l.tenant_id)}</div>
+                <div className="text-xs text-stone capitalize">{unitLabel(l.unit_id)} · {l.stay_type.replace('_', ' ')}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="date" className="lx-input" value={edit.start_date || ''}
+                    onChange={(e) => setEdit({ ...edit, start_date: e.target.value })} />
+                  <input type="date" className="lx-input" value={edit.end_date || ''}
+                    onChange={(e) => setEdit({ ...edit, end_date: e.target.value })} />
+                </div>
+                <input type="number" className="lx-input" placeholder="Agreed rate" value={edit.agreed_rate ?? ''}
+                  onChange={(e) => setEdit({ ...edit, agreed_rate: e.target.value })} />
+                <select className="lx-select" value={edit.status}
+                  onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="completed">Completed (frees the unit)</option>
+                  <option value="cancelled">Cancelled (frees the unit)</option>
+                </select>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={() => save(l.id)} disabled={busyId === l.id} className="lx-btn-primary text-sm flex-1">
+                    {busyId === l.id ? 'Saving…' : 'Save'}
+                  </button>
+                  <RowActions editing busy={busyId === l.id} onEdit={() => startEdit(l)}
+                    onDelete={() => remove(l.id)} deleteLabel="Delete this lease?" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-ink truncate">{tenantLabel(l.tenant_id)}</div>
+                    <div className="text-xs text-stone truncate">{unitLabel(l.unit_id)}</div>
+                  </div>
+                  <StatusBadge status={l.status} />
+                </div>
+                <div className="flex items-center gap-x-3 gap-y-1 mt-3 flex-wrap text-xs text-stone">
+                  <span className="capitalize">{l.stay_type.replace('_', ' ')}</span>
+                  <span>{l.start_date} → {l.end_date || 'ongoing'}</span>
+                  <span className="text-ink font-medium">{money(l.agreed_rate)}/{l.rate_period}</span>
+                </div>
+                {canEdit && (
+                  <div className="flex items-center justify-end gap-2 mt-3 pt-3 border-t border-line/70">
+                    <RowActions editing={false} busy={busyId === l.id} onEdit={() => startEdit(l)}
+                      onDelete={() => remove(l.id)} deleteLabel="Delete this lease?" />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+        {shownLeases.length === 0 && (
+          <div className="lx-card p-8 text-center text-stone text-sm">
+            {leases.length === 0 ? 'No leases yet.' : 'Nothing matches that search.'}
+          </div>
+        )}
+      </div>
+
+      {/* Tablet + desktop: full table */}
+      <div className="lx-card overflow-hidden hidden sm:block">
         <div className="overflow-x-auto">
           <table className="w-full lx-table min-w-[680px]">
             <thead>

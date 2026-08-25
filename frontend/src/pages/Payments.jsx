@@ -249,7 +249,69 @@ export default function Payments() {
         </select>
       </SearchBar>
 
-      <div className="lx-card overflow-hidden">
+      {/* Mobile: stacked cards (with the same inline edit) instead of a table */}
+      <div className="sm:hidden space-y-3">
+        {shownPayments.map((p) => (
+          <div key={p.id} className="lx-card p-4">
+            {editingId === p.id ? (
+              <div className="space-y-2">
+                <input type="date" className="lx-input" value={edit.payment_date || ''}
+                  onChange={(e) => setEdit({ ...edit, payment_date: e.target.value })} />
+                <input type="number" className="lx-input" placeholder="Amount" value={edit.amount ?? ''}
+                  onChange={(e) => setEdit({ ...edit, amount: e.target.value })} />
+                <select className="lx-select" value={edit.status}
+                  onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
+                  <option value="paid">Paid</option>
+                  <option value="partial">Partial</option>
+                  <option value="late">Late</option>
+                  <option value="pending">Pending</option>
+                  <option value="refunded">Refunded</option>
+                </select>
+                <select className="lx-select" value={edit.method || ''}
+                  onChange={(e) => setEdit({ ...edit, method: e.target.value })}>
+                  <option value="">No method</option>
+                  <option value="mobile_money">Mobile money</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                </select>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={() => saveEdit(p.id)} disabled={busyId === p.id} className="lx-btn-primary text-sm flex-1">
+                    {busyId === p.id ? 'Saving…' : 'Save'}
+                  </button>
+                  <RowActions editing busy={busyId === p.id} onEdit={() => startEdit(p)}
+                    onDelete={() => remove(p.id)} deleteLabel="Delete this payment?" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-ink">{money(p.amount, p.currency)}</div>
+                    <div className="text-xs text-stone">{p.payment_date || p.due_date}</div>
+                  </div>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-line/70">
+                  <span className="text-xs text-stone capitalize">{p.method?.replace('_', ' ') || 'No method'}</span>
+                  {canEdit && (
+                    <RowActions editing={false} busy={busyId === p.id} onEdit={() => startEdit(p)}
+                      onDelete={() => remove(p.id)} deleteLabel="Delete this payment?" />
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        {shownPayments.length === 0 && (
+          <div className="lx-card p-8 text-center text-stone text-sm">
+            {payments.length === 0 ? 'No payments yet.' : 'Nothing matches that search.'}
+          </div>
+        )}
+      </div>
+
+      {/* Tablet + desktop: full table */}
+      <div className="lx-card overflow-hidden hidden sm:block">
         <div className="overflow-x-auto">
           <table className="w-full lx-table min-w-[500px]">
             <thead>

@@ -95,7 +95,7 @@ export default function Dashboard() {
                 </p>
               </div>
 
-              <div className="bg-white/95 backdrop-blur rounded-2xl p-4 shadow-lift w-full xs:w-auto sm:w-48">
+              <div className="bg-white/95 backdrop-blur rounded-2xl p-4 shadow-lift w-full sm:w-48">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-7 h-7 rounded-lg bg-panel flex items-center justify-center text-gold shrink-0">
                     <IconSparkle width={13} height={13} />

@@ -214,3 +214,12 @@ export function IconArrowRight(props) {
     </svg>
   );
 }
+
+// Down-caret, used for expandable nav groups. Rotate 180deg when open.
+export function IconChevron(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 9.5 12 15l6-5.5" />
+    </svg>
+  );
+}

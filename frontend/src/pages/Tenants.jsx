@@ -127,7 +127,48 @@ export default function Tenants() {
         </select>
       </SearchBar>
 
-      <div className="lx-card overflow-hidden">
+      {/* Mobile: stacked cards instead of a sideways-scrolling table */}
+      <div className="sm:hidden space-y-3">
+        {shownTenants.map((t) => (
+          <div key={t.id} className="lx-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <Link to={`/tenants/${t.id}`} className="font-medium text-ink hover:text-gold transition block truncate">
+                  {t.first_name} {t.last_name}
+                </Link>
+                <div className="text-xs text-stone">{t.lintel_id}</div>
+              </div>
+              <TierBadge tier={t.tier} />
+            </div>
+            <div className="flex items-center gap-x-3 gap-y-1 mt-3 flex-wrap text-xs text-stone">
+              {t.onboarding_status === 'complete' ? (
+                <span className="pill bg-emerald-50 text-emerald-700">Complete</span>
+              ) : (
+                <Link to={`/tenants/${t.id}/onboard`} className="pill bg-amber-50 text-amber-700">Finish setup</Link>
+              )}
+              <span>Score {t.score}</span>
+              <span>{t.total_stays} stays</span>
+              <span>{t.on_time_payment_rate}% on-time</span>
+            </div>
+            {canEdit && (
+              <div className="flex items-center gap-3 mt-3 pt-3 border-t border-line/70">
+                <Link to={`/tenants/${t.id}/onboard`} className="text-xs text-stone hover:text-ink">Edit</Link>
+                {isManager && (
+                  <RowActions onDelete={() => remove(t.id)} busy={busyId === t.id} deleteLabel="Delete this tenant?" />
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+        {shownTenants.length === 0 && (
+          <div className="lx-card p-8 text-center text-stone text-sm">
+            {tenants.length === 0 ? 'No tenants yet.' : 'Nothing matches that search.'}
+          </div>
+        )}
+      </div>
+
+      {/* Tablet + desktop: full table */}
+      <div className="lx-card overflow-hidden hidden sm:block">
         <div className="overflow-x-auto">
           <table className="w-full lx-table min-w-[560px]">
             <thead>
