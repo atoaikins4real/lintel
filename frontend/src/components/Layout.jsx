@@ -14,7 +14,16 @@ import SubscriptionBanner from './SubscriptionBanner.jsx';
 // `mobileTo` so the bar has a single destination to point that tab at.
 const navItems = [
   { to: '/', label: 'Dashboard', end: true, icon: IconGrid, primary: true },
-  { to: '/tenants', label: 'Tenants', icon: IconUsers, primary: true },
+  {
+    label: 'People',
+    icon: IconUsers,
+    primary: true,
+    mobileTo: '/tenants',
+    children: [
+      { to: '/tenants', label: 'Tenants', icon: IconUsers },
+      { to: '/staff', label: 'Staff', icon: IconShield },
+    ],
+  },
   {
     label: 'Property',
     icon: IconHome,
@@ -25,13 +34,27 @@ const navItems = [
       { to: '/units', label: 'Units', icon: IconBuilding },
     ],
   },
-  { to: '/leases', label: 'Leases', icon: IconFile },
-  { to: '/access', label: 'Access Cards', icon: IconKey },
-  { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
-  { to: '/faults-renovations', label: 'Costs & Repairs', icon: IconWrench },
-  { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
+  {
+    label: 'Leasing',
+    icon: IconWallet,
+    primary: true,
+    mobileTo: '/payments',
+    children: [
+      { to: '/leases', label: 'Leases', icon: IconFile },
+      { to: '/payments', label: 'Payments', icon: IconWallet },
+    ],
+  },
+  {
+    label: 'Operations',
+    icon: IconWrench,
+    mobileTo: '/faults-renovations',
+    children: [
+      { to: '/access', label: 'Access Cards', icon: IconKey },
+      { to: '/faults-renovations', label: 'Costs & Repairs', icon: IconWrench },
+      { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
+    ],
+  },
   { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
-  { to: '/staff', label: 'Staff', icon: IconShield },
   { to: '/settings', label: 'Settings', icon: IconCog },
 ];
 
@@ -185,7 +208,9 @@ export default function Layout({ children }) {
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="sticky top-0 z-10 bg-canvas/90 backdrop-blur border-b border-line/70">
-          <div className="px-4 sm:px-6 lg:px-10 py-5 flex items-center justify-between">
+          {/* Same max-w-6xl container as <main> below, so the page title lines
+              up exactly with the content on every screen width. */}
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-5 flex items-center justify-between">
             <div>
               <div className="lx-eyebrow mb-1 hidden sm:block">{today}</div>
               <h1 className="font-serif text-xl sm:text-2xl text-ink">{pageTitle(location.pathname, visibleNav)}</h1>
