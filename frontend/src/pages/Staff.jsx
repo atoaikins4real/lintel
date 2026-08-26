@@ -3,13 +3,14 @@ import { getStaffUsers, register, updateUserRole, deleteStaffUser, readApiError 
 import RowActions from '../components/RowActions.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
+// Two in-company roles. Stored as manager/finance; shown as Admin/Member.
+const ROLE_LABEL = { manager: 'Admin', finance: 'Member', viewer: 'Member' };
 const ROLE_HELP = {
-  manager: 'Full access — can edit everything and manage staff.',
-  finance: 'Can create and edit records, but not manage staff or settings.',
-  viewer: 'Read-only across the whole app.',
+  manager: 'Admin — full access: can edit everything, onboard members and change settings.',
+  finance: 'Member — can create and edit records, but not onboard members or change settings.',
 };
 
-const emptyInvite = { name: '', email: '', password: '', role: 'viewer' };
+const emptyInvite = { name: '', email: '', password: '', role: 'finance' };
 
 export default function Staff() {
   const { user, isManager } = useAuth();
@@ -82,7 +83,8 @@ export default function Staff() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <p className="text-stone text-sm">
-          Everyone with access to this Lintel account. Self-service signups arrive as read-only viewers.
+          Everyone with access to this company. Admins have full control and can onboard members; members
+          can edit records but can&apos;t manage members or settings.
         </p>
         {isManager && (
           <button onClick={() => setShowInvite((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
@@ -118,9 +120,8 @@ export default function Staff() {
             className="lx-select" value={invite.role}
             onChange={(e) => setInvite({ ...invite, role: e.target.value })}
           >
-            <option value="viewer">Viewer — read-only</option>
-            <option value="finance">Finance — can edit records</option>
-            <option value="manager">Manager — full access</option>
+            <option value="finance">Member — can edit records</option>
+            <option value="manager">Admin — full access &amp; manages members</option>
           </select>
           <p className="text-xs text-stone sm:col-span-2">
             {ROLE_HELP[invite.role]} You&apos;ll need to share the password with them directly — Lintel doesn&apos;t
@@ -150,9 +151,8 @@ export default function Staff() {
                   value={u.role}
                   onChange={(e) => changeRole(u.id, e.target.value)}
                 >
-                  <option value="viewer">Viewer — read-only</option>
-                  <option value="finance">Finance — can edit records</option>
-                  <option value="manager">Manager — full access</option>
+                  <option value="finance">Member — can edit records</option>
+                  <option value="manager">Admin — full access &amp; manages members</option>
                 </select>
                 {/* Removing your own account would end your session, so
                     that's blocked server-side and hidden here. */}
@@ -165,7 +165,7 @@ export default function Staff() {
                 )}
               </div>
             ) : (
-              <span className="pill bg-stone/10 text-stone capitalize shrink-0">{u.role}</span>
+              <span className="pill bg-stone/10 text-stone shrink-0">{ROLE_LABEL[u.role] || u.role}</span>
             )}
           </div>
         ))}

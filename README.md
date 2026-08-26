@@ -241,16 +241,19 @@ your* company, who can then read your live records. Staff invites are for
 a subscriber's own colleagues.
 
 There is deliberately no "log in as another role" shortcut. To see the
-finance or viewer experience, sign up a throwaway workspace and add staff
-to it — the same path a real customer takes.
+Member experience, sign up a throwaway workspace and add a member to it —
+the same path a real customer takes.
 
 ## Subscriptions (platform owner)
 
 There are two kinds of authority in Lintel, deliberately kept separate:
 
-- **`role`** (manager / finance / viewer) — authority *inside* one company.
-  Even a manager is just a customer.
-- **`is_platform_admin`** — the operator of Lintel itself. Set on
+- **`role`** — authority *inside* one company. Two values, surfaced in the
+  UI as **Admin** (`manager` — full control, onboards members, changes
+  settings) and **Member** (`finance` — creates/edits records, but can't
+  manage members or settings). The old read-only `viewer` role was retired.
+  Even an Admin is just a customer.
+- **`is_platform_admin`** — the operator of Lintel itself ("godmode"). Set on
   `l_users`, never grantable from inside the app by a subscriber.
 
 Subscription state lives in `l_subscriptions`, **not** on the
@@ -419,9 +422,12 @@ bare minimum:
 - **Sanitized error responses** — in production, unexpected server errors
   return a generic message instead of the real exception text; full detail
   still goes to the server logs.
-- **Signup can never grant itself a privileged role** — `/api/auth/signup`
-  hardcodes `role: 'viewer'` server-side and ignores anything else the
-  request sends.
+- **Signup can never grant itself rights over anyone else's data** —
+  `/api/auth/signup` always creates a **brand-new, isolated company** and
+  makes the signer its Admin (`role: 'manager'`) server-side, ignoring any
+  role the request sends. Becoming Admin of your *own* fresh workspace grants
+  nothing over any existing company. Platform-admin ("godmode") is never
+  grantable from signup.
 
 ### Session revocation
 
@@ -447,18 +453,16 @@ signs every current user out **once** (they simply log back in).
 
 ## Letting people test it
 
-Anyone can create their own account from the login screen ("Create a free
-trial account") without asking you first. Self-service signups always land
-as `viewer` — read-only everywhere, blocked server-side (not just hidden in
-the UI) from creating/editing/deleting anything. They see the same shared
-demo dataset as everyone else.
+Anyone can create their own account from the login screen ("Start your free
+trial") without asking you first. Each self-service signup spins up its **own
+isolated company** with the signer as its **Admin**, its own settings and
+its own seeded sample data — they see nothing of yours, and nothing of any
+other subscriber's (see "Multi-tenancy"). The Admin then onboards their own
+colleagues as **Members** from the Staff page (`POST /api/auth/register`).
 
-This is intentionally simple: one shared dataset, no per-signup data
-isolation. Fine for a product demo; not fine once this holds a real client's
-actual books. A future multi-tenant redesign (each subscriber gets their own
-isolated data, admin-of-their-own-office) is a known next step, not yet
-built — see the manager-created-staff flow (`POST /api/auth/register`) for
-real business use in the meantime.
+Do **not** add a tester from your own Staff page — that would create a member
+*inside your* company, who could read your live records. Send testers to the
+trial signup instead; that's the same path a real customer takes.
 
 ## Testing
 
@@ -560,10 +564,12 @@ screen).
 ## What's built (MVP)
 
 - **Authentication & roles** — JWT-based login, first-run bootstrap (no
-  seed script needed), three roles: `manager` and `finance` can create/edit
-  everything, `viewer` is read-only across the whole app. All `/api/*`
-  routes require a valid session; mutating routes additionally require
-  manager or finance.
+  seed script needed), two in-company roles: **Admin** (`manager`) has full
+  control and onboards members; **Member** (`finance`) creates and edits
+  records but can't manage members or settings. (Plus `is_platform_admin`,
+  the platform operator — "godmode".) All `/api/*` routes require a valid
+  session; mutating routes additionally require Admin or Member, and
+  member/settings management requires Admin.
 - **Properties** — buildings and estates are their own records. Every unit
   belongs to one, and a property can't be deleted while it still has units.
   Added via a guided wizard (`/properties/onboard`): basics, location and

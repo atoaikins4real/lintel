@@ -80,7 +80,9 @@ const TITLES = {
   '/admin': 'Lintel Subscribers',
 };
 
-const ROLE_LABEL = { manager: 'Manager', finance: 'Finance', viewer: 'Viewer' };
+// Two in-company roles, shown to people as Admin / Member. (Any legacy
+// 'viewer' also reads as Member.) Godmode = is_platform_admin, handled apart.
+const ROLE_LABEL = { manager: 'Admin', finance: 'Member', viewer: 'Member' };
 
 // Groups are replaced by their children for title lookup, and collapsed to a
 // single destination for the mobile bar.

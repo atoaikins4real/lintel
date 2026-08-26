@@ -207,8 +207,13 @@ router.post('/signup', authLimiter, async (req, res, next) => {
 
 async function createUser({ email, password, name, role, companyId, company }, res, next) {
   try {
-    const allowedRoles = ['manager', 'finance', 'viewer'];
-    const finalRole = allowedRoles.includes(role) ? role : 'viewer';
+    // Two in-company roles: manager (surfaced as "Admin" — full control incl.
+    // onboarding members and settings) and finance ("Member" — edits records
+    // but can't manage members/settings). The read-only "viewer" role was
+    // retired; an unrecognised role falls back to the least-privileged of the
+    // two, Member.
+    const allowedRoles = ['manager', 'finance'];
+    const finalRole = allowedRoles.includes(role) ? role : 'finance';
     const password_hash = await bcrypt.hash(password, 10);
 
     const { data, error } = await supabase
@@ -323,7 +328,8 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
   try {
     const { id } = req.params;
     const { role } = req.body;
-    const allowedRoles = ['manager', 'finance', 'viewer'];
+    // Admin (manager) and Member (finance) only — viewer retired.
+    const allowedRoles = ['manager', 'finance'];
 
     if (!allowedRoles.includes(role)) {
       return res.status(400).json({ error: `role must be one of: ${allowedRoles.join(', ')}` });
