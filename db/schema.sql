@@ -1196,3 +1196,13 @@ CREATE INDEX IF NOT EXISTS l_subscription_requests_company
   ON l_subscription_requests (company_id);
 ALTER TABLE l_subscription_requests ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON l_subscription_requests TO service_role;
+
+-- ------------------------------------------------------------
+-- IMMEDIATE SESSION REVOCATION (mirrors migration add_session_valid_from)
+-- Any token issued before a user's session_valid_from is rejected on its
+-- next request (see backend/src/middleware/auth.js). Bumped to now() on role
+-- change, password reset, and platform-admin grant/revoke, so those take
+-- effect on the next request instead of when the 7-day token expires.
+-- ------------------------------------------------------------
+ALTER TABLE l_users
+  ADD COLUMN IF NOT EXISTS session_valid_from timestamptz NOT NULL DEFAULT now();

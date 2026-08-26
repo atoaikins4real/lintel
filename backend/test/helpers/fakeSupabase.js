@@ -20,11 +20,13 @@
 const state = {
   handlers: {}, // table -> (ctx) => { data?, error?, count? }
   calls: [], // every resolved query context, in order
+  defaults: {}, // per-table handlers that survive reset() (e.g. the auth read)
 };
 
 function resolve(ctx) {
   state.calls.push(ctx);
-  const handler = state.handlers[ctx.table];
+  // A per-test handler wins; otherwise fall back to a registered default.
+  const handler = state.handlers[ctx.table] || state.defaults[ctx.table];
   let result = null;
   if (typeof handler === 'function') result = handler(ctx);
   else if (handler && typeof handler === 'object') result = handler;
@@ -127,7 +129,11 @@ module.exports = {
   supabase,
   /** Register a per-table handler: (ctx) => { data?, error?, count? } */
   table(name, handler) { state.handlers[name] = handler; },
-  /** Clear all handlers and the recorded call log. Call in beforeEach. */
+  /** A per-table handler that survives reset() — used for the auth read that
+   *  now happens on every authenticated request. A per-test `table()` still
+   *  overrides it. */
+  setDefault(name, handler) { state.defaults[name] = handler; },
+  /** Clear per-test handlers and the call log (defaults are kept). beforeEach. */
   reset() { state.handlers = {}; state.calls = []; },
   /** Every resolved query, in order. */
   calls() { return state.calls; },

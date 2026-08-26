@@ -423,6 +423,28 @@ bare minimum:
   hardcodes `role: 'viewer'` server-side and ignores anything else the
   request sends.
 
+### Session revocation
+
+`role` and `company_id` live in a 7-day JWT, so on their own a demotion or a
+move between companies wouldn't bite until the token expired. Each `l_users`
+row carries a **`session_valid_from`** cutoff, and `requireAuth` re-reads it
+on every request (a fast primary-key lookup) and rejects any token minted
+*before* it — the next sign-in issues a token with the new standing. The
+cutoff is bumped to `now()` on:
+
+- a **role change** (`PATCH /api/auth/users/:id`),
+- a **platform-admin grant or revoke** (`/api/admin`),
+- a **password reset** — which therefore signs out every existing session,
+- and a **staff removal** takes effect because the deleted row makes the
+  next request's lookup fail (an absent account is treated as signed-out).
+
+Two deliberate properties: the check **fails open** — if the lookup errors
+the request proceeds, so an outage in this path can't lock every customer
+out — and the comparison is at **whole-second precision**, so the fresh
+token a user gets by signing back in is never caught by the cutoff that
+signed them out. Because the column defaults to `now()`, deploying it
+signs every current user out **once** (they simply log back in).
+
 ## Letting people test it
 
 Anyone can create their own account from the login screen ("Create a free
@@ -710,8 +732,12 @@ subscription status.
   thin in places: the route handlers are exercised for authorisation and
   scoping, not yet for every field-level validation branch, and the
   frontend has no tests at all.
-- Immediate revocation of a session. `company_id` and `role` are read
-  from the signed JWT and never re-checked, and tokens live 7 days — so
-  moving someone between companies or demoting them can take up to a
-  week to take effect. Rotating `JWT_SECRET` is the blunt fix; a
-  `session_valid_from` column would be the proper one.
+- Finer-grained token control. Immediate session revocation is now built —
+  `l_users.session_valid_from` is a cutoff, and `requireAuth` rejects any
+  token issued before it, so a role change, a move, an offboarding or a
+  password reset takes effect on the user's *next request* rather than when
+  their 7-day token expires (see "Session revocation" below). What's still
+  a blunt instrument: there's no per-device session list or selective
+  sign-out — bumping the cutoff signs a user out of *all* their sessions at
+  once, which is the right behaviour for the cases above but can't yet
+  revoke a single device.

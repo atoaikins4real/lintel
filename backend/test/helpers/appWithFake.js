@@ -28,7 +28,14 @@ cfg.supabase = fake.supabase;
 const seed = require('../../src/utils/seedDemoData');
 seed.seedDemoData = async () => {};
 
-// 3. Now it's safe to load the app — everything downstream sees the fake.
+// 3. requireAuth now reads the caller's l_users row on every authenticated
+//    request (the session-revocation check). Give it a benign default — an
+//    existing account with no revocation cutoff — so tests that don't care
+//    about revocation pass unchanged. A test that registers its own l_users
+//    handler (or wants to simulate a deleted user / a cutoff) overrides this.
+fake.setDefault('l_users', () => ({ data: { session_valid_from: null } }));
+
+// 4. Now it's safe to load the app — everything downstream sees the fake.
 const app = require('../../src/app');
 
 module.exports = { app, fake };

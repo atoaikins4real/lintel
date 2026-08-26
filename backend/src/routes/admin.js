@@ -320,9 +320,11 @@ router.patch('/users/:id/platform-admin', async (req, res, next) => {
       }
     }
 
+    // Bump session_valid_from so granting/revoking operator rights forces the
+    // affected user's next request to re-authenticate with the new standing.
     const { data, error } = await supabase
       .from('l_users')
-      .update({ is_platform_admin: grant })
+      .update({ is_platform_admin: grant, session_valid_from: new Date().toISOString() })
       .eq('id', req.params.id)
       .select('id, email, name, is_platform_admin')
       .maybeSingle();

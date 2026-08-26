@@ -23,7 +23,15 @@ function signToken(user) {
 }
 
 // Verifies the Bearer token and attaches { id, email, name, role } to req.user.
-function requireAuth(req, res, next) {
+//
+// Async because it enforces IMMEDIATE session revocation: role and company_id
+// live in a 7-day token, so without this a demotion, a move between
+// companies, or offboarding a staff member would take up to a week to bite.
+// Each request re-reads the caller's own `session_valid_from` cutoff (a fast
+// primary-key lookup) and rejects any token minted before it — the next
+// sign-in issues a token with the new role/company. See the column in
+// db/schema.sql and where it's bumped (routes/auth.js, routes/admin.js).
+async function requireAuth(req, res, next) {
   try {
     if (!JWT_SECRET) {
       return res.status(500).json({ error: 'Server misconfigured: JWT_SECRET is not set' });
@@ -38,6 +46,40 @@ function requireAuth(req, res, next) {
     // silently defaulting them into some company's data, force a re-login.
     if (!payload.company_id) {
       return res.status(401).json({ error: 'Your session predates a security update — please sign in again.' });
+    }
+
+    // Revocation check. Scoped by the user id in the caller's own signed
+    // token (not company_id) — see the audit-scoping allow-list entry.
+    try {
+      const { supabase } = require('../config/supabase');
+      const { data: acct, error } = await supabase
+        .from('l_users')
+        .select('session_valid_from')
+        .eq('id', payload.sub)
+        .maybeSingle();
+
+      // Fail OPEN on a lookup error: an outage in this check must not lock
+      // every customer out. But a MISSING row means the account was deleted
+      // (offboarded) — that token should stop working immediately.
+      if (!error) {
+        if (!acct) {
+          return res.status(401).json({ error: 'Your session is no longer valid — please sign in again.' });
+        }
+        if (acct.session_valid_from) {
+          // Compare at second precision (JWT `iat` is whole seconds): a token
+          // issued in the same second as the cutoff, or later, is fine — only
+          // strictly-earlier tokens are revoked. This avoids rejecting the
+          // fresh token a user gets by signing back in.
+          const cutoffSec = Math.floor(new Date(acct.session_valid_from).getTime() / 1000);
+          if (payload.iat && cutoffSec > payload.iat) {
+            return res.status(401).json({ error: 'You have been signed out — please sign in again.' });
+          }
+        }
+      }
+    } catch (revErr) {
+      // Fail open — never let this check be the reason the whole API is down.
+      // eslint-disable-next-line no-console
+      console.error('Session revocation check failed, allowing request through:', revErr?.message || revErr);
     }
 
     req.user = {

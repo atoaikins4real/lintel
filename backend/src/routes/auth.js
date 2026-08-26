@@ -347,9 +347,11 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
 
     // The company_id filter is what stops a manager changing roles for
     // users belonging to a different company.
+    // Bump session_valid_from so the role change takes effect on the target's
+    // next request, not whenever their 7-day token happens to expire.
     const { data, error } = await supabase
       .from('l_users')
-      .update({ role })
+      .update({ role, session_valid_from: new Date().toISOString() })
       .eq('id', id)
       .eq('company_id', req.user.company_id)
       .select('id, email, name, role, created_at')
@@ -463,9 +465,12 @@ router.post('/reset-password', authLimiter, async (req, res, next) => {
 
     const password_hash = await bcrypt.hash(String(password), 10);
 
+    // Changing the password also signs out every existing session for this
+    // user (session_valid_from cutoff), so a leaked/old token can't outlive
+    // the reset.
     const { error: updateErr } = await supabase
       .from('l_users')
-      .update({ password_hash })
+      .update({ password_hash, session_valid_from: new Date().toISOString() })
       .eq('id', record.user_id);
     if (updateErr) throw updateErr;
 
