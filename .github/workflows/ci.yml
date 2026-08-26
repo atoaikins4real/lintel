@@ -1,0 +1,58 @@
+# Continuous integration — runs on every push and pull request.
+#
+# Two independent jobs run in parallel on GitHub's runners (no server, no
+# secrets, and nothing touches the database — the backend tests are fully
+# in-memory):
+#
+#   backend  — the three audits (scoping / dependency-bundling / l_ "floor"
+#              guard) plus the Vitest suite, via `npm run check`.
+#   frontend — a production Vite build, so a broken build is caught here
+#              instead of failing on Netlify.
+#
+# A red X on a commit means something that would have shipped is broken —
+# most importantly a query that lost its company_id scope or strayed off
+# Lintel's l_ floor, which the audits catch. Green means it's safe to deploy.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# If new commits are pushed while a run is in progress, cancel the old run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend — audits & tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run check
+
+  frontend:
+    name: Frontend — build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
