@@ -40,6 +40,16 @@ describe('write gating by role (POST /api/faults)', () => {
     expect([200, 201]).toContain(res.status);
   });
 
+  it('godmode (platform admin) writes even with a non-writing role', async () => {
+    // A platform admin bypasses in-company role gates entirely — full access.
+    fake.table('l_faults', (ctx) => ({ data: ctx.method === 'insert' ? { id: 'f3', ...ctx.payload } : [] }));
+    const res = await request(app)
+      .post('/api/faults')
+      .set('Authorization', bearer({ role: 'viewer', is_platform_admin: true, company_id: 'c1' }))
+      .send({ unit_id: 'u1', description: 'Operator fix' });
+    expect([200, 201]).toContain(res.status);
+  });
+
   it('lets a viewer READ (GET is never gated by role)', async () => {
     fake.table('l_faults', () => ({ data: [] }));
     const res = await request(app)

@@ -47,10 +47,13 @@ export function AuthProvider({ children }) {
     if (sessionCompany) setCompany(sessionCompany);
   }, []);
 
-  const canEdit = user ? ['manager', 'finance'].includes(user.role) : false;
-  const isManager = user?.role === 'manager';
   // Operator of Lintel itself — separate from any role inside a company.
   const isPlatformAdmin = user?.is_platform_admin === true;
+  // Godmode (platform admin) has full access to every page and feature, so it
+  // counts as both an editor and an Admin everywhere in the UI, whatever its
+  // in-company role happens to be. The backend enforces the same override.
+  const canEdit = isPlatformAdmin || (user ? ['manager', 'finance'].includes(user.role) : false);
+  const isManager = isPlatformAdmin || user?.role === 'manager';
 
   const value = useMemo(
     () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin }),

@@ -98,9 +98,16 @@ async function requireAuth(req, res, next) {
 
 // requireRole('manager', 'finance') — 403s if req.user.role isn't in the list.
 // Must run after requireAuth.
+//
+// The platform admin (godmode / the Lintel operator) bypasses every in-company
+// role gate: they have full access to every page and feature, on top of the
+// operator-only Subscribers area. That flag is set only in the database and
+// re-checked live by requirePlatformAdmin for the admin routes, so treating it
+// as an override here doesn't widen who can become one.
 function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
+    if (req.user.is_platform_admin === true) return next();
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({ error: `Requires role: ${roles.join(' or ')}` });
     }
