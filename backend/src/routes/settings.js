@@ -154,6 +154,13 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       updates.online_payments_enabled = wantOn;
     }
 
+    // Whether the nightly job emails tenants their rent reminders. On by
+    // default; a subscriber can switch it off here.
+    if (req.body.tenant_reminders_enabled !== undefined) {
+      updates.tenant_reminders_enabled =
+        req.body.tenant_reminders_enabled === true || req.body.tenant_reminders_enabled === 'true';
+    }
+
     const { data, error } = await supabase
       .from('l_settings')
       .update(updates)

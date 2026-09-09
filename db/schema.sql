@@ -1267,3 +1267,15 @@ CREATE INDEX IF NOT EXISTS idx_l_payment_transactions_tenant
   ON l_payment_transactions (tenant_id);
 ALTER TABLE l_payment_transactions ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON l_payment_transactions TO service_role;
+
+-- ------------------------------------------------------------
+-- AUTOMATED TENANT RENT REMINDERS (mirrors migration add_tenant_reminders)
+-- The nightly job emails tenants a "due soon" note once and an "overdue" note
+-- weekly, deep-linked to their statement. See scheduledBilling.js.
+-- ------------------------------------------------------------
+ALTER TABLE l_settings
+  ADD COLUMN IF NOT EXISTS tenant_reminders_enabled boolean NOT NULL DEFAULT true;
+ALTER TABLE l_payments
+  ADD COLUMN IF NOT EXISTS due_reminder_at timestamptz;
+ALTER TABLE l_payments
+  ADD COLUMN IF NOT EXISTS overdue_reminder_at timestamptz;

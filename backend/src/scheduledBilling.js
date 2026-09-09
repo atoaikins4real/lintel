@@ -12,6 +12,116 @@ const { supabase } = require('./config/supabase');
 const mailer = require('./utils/mailer');
 const paystack = require('./utils/paystack');
 const { reconcilePaystackData } = require('./utils/reconcile');
+const { mintPortalToken } = require('./utils/portalToken');
+
+// Money for a tenant-facing line: currency code + grouped amount. Never adds
+// across currencies — each payment carries its own.
+const money = (amount, currency) => `${currency || 'GHS'} ${Number(amount || 0).toLocaleString()}`;
+
+/**
+ * Fetch the per-company reminder switch, tenant contact, and company name for
+ * a set of payments in three batched reads (not one per payment).
+ */
+async function reminderContext(payments) {
+  const companyIds = [...new Set(payments.map((p) => p.company_id).filter(Boolean))];
+  const tenantIds = [...new Set(payments.map((p) => p.tenant_id).filter(Boolean))];
+  const [{ data: settings }, { data: tenants }, { data: companies }] = await Promise.all([
+    companyIds.length
+      ? supabase.from('l_settings').select('company_id, tenant_reminders_enabled').in('company_id', companyIds)
+      : { data: [] },
+    tenantIds.length
+      ? supabase.from('l_tenants').select('id, company_id, first_name, email').in('id', tenantIds).in('company_id', companyIds)
+      : { data: [] },
+    companyIds.length ? supabase.from('l_companies').select('id, name').in('id', companyIds) : { data: [] },
+  ]);
+  return {
+    // Default ON: a company with no settings row still gets the courtesy.
+    remindersOn: Object.fromEntries((settings || []).map((s) => [s.company_id, s.tenant_reminders_enabled !== false])),
+    tenantById: Object.fromEntries((tenants || []).map((t) => [t.id, t])),
+    companyById: Object.fromEntries((companies || []).map((c) => [c.id, c])),
+  };
+}
+
+/**
+ * Email each tenant behind these payments, deep-linked to their statement,
+ * then stamp the payment so it isn't re-sent. `kind` is 'due' or 'overdue'.
+ * Only stamps on a successful send, so a transient mail outage retries next
+ * night rather than silently swallowing the reminder.
+ */
+async function sendReminderBatch(payments, kind) {
+  if (!payments.length) return 0;
+  const { remindersOn, tenantById, companyById } = await reminderContext(payments);
+  const stampField = kind === 'due' ? 'due_reminder_at' : 'overdue_reminder_at';
+  const template = kind === 'due' ? templates.tenantRentDue : templates.tenantRentOverdue;
+  const nowIso = new Date().toISOString();
+  let sent = 0;
+
+  for (const p of payments) {
+    if (remindersOn[p.company_id] === false) continue; // subscriber turned it off
+    const tenant = tenantById[p.tenant_id];
+    if (!tenant?.email || !tenant.email.includes('@')) continue; // nowhere to send
+
+    // A fresh, expiring link straight to their statement (where they can pay).
+    // If minting fails, fall back to the "request a link" page rather than skip.
+    let statementUrl = `${mailer.APP_URL}/my-statement`;
+    try {
+      const raw = await mintPortalToken(p.company_id, p.tenant_id);
+      statementUrl += `?token=${raw}`;
+    } catch (err) {
+      console.error('[scheduled-billing] portal token mint failed:', err?.message || err);
+    }
+
+    const result = await mailer.send({
+      to: tenant.email,
+      ...template({
+        firstName: tenant.first_name,
+        amount: money(p.amount, p.currency),
+        dueDate: p.due_date || 'soon',
+        companyName: companyById[p.company_id]?.name,
+        statementUrl,
+      }),
+    });
+
+    if (result.ok) {
+      await supabase.from('l_payments').update({ [stampField]: nowIso }).eq('id', p.id).eq('company_id', p.company_id);
+      sent += 1;
+    }
+  }
+  return sent;
+}
+
+const { templates } = mailer;
+const isoDay = (d) => d.toISOString().slice(0, 10);
+
+/** "Rent due soon" — once, for pending charges due within 3 days. */
+async function remindTenantsRentDue() {
+  if (!mailer.isConfigured) return 0;
+  const today = new Date();
+  const soon = new Date(today);
+  soon.setDate(soon.getDate() + 3);
+  const { data } = await supabase
+    .from('l_payments')
+    .select('id, company_id, tenant_id, amount, currency, due_date')
+    .eq('status', 'pending')
+    .gte('due_date', isoDay(today))
+    .lte('due_date', isoDay(soon))
+    .is('due_reminder_at', null);
+  return sendReminderBatch(data || [], 'due');
+}
+
+/** "Rent overdue" — weekly, for late/pending charges past their due date. */
+async function remindTenantsOverdue() {
+  if (!mailer.isConfigured) return 0;
+  const today = new Date();
+  const weekAgoIso = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { data } = await supabase
+    .from('l_payments')
+    .select('id, company_id, tenant_id, amount, currency, due_date, overdue_reminder_at')
+    .in('status', ['late', 'pending'])
+    .lt('due_date', isoDay(today))
+    .or(`overdue_reminder_at.is.null,overdue_reminder_at.lt.${weekAgoIso}`);
+  return sendReminderBatch(data || [], 'overdue');
+}
 
 /**
  * Confirms online payments that never got a webhook.
@@ -272,9 +382,23 @@ exports.handler = async function scheduledBillingHandler() {
       console.error('[scheduled-billing] online-payment reconcile failed:', err?.message || err);
     }
 
+    // Tenant-facing reminders — best-effort, after the money work is done.
+    let dueReminders = 0;
+    let overdueReminders = 0;
+    try {
+      dueReminders = await remindTenantsRentDue();
+    } catch (err) {
+      console.error('[scheduled-billing] rent-due reminders failed:', err?.message || err);
+    }
+    try {
+      overdueReminders = await remindTenantsOverdue();
+    } catch (err) {
+      console.error('[scheduled-billing] overdue reminders failed:', err?.message || err);
+    }
+
     console.log(
       `[scheduled-billing] generated ${gen.generated_count} charge(s), flagged ${late.flagged_count} late, ` +
-        `settled ${onlineSettled} online payment(s), ` +
+        `settled ${onlineSettled} online payment(s), reminded ${dueReminders} due + ${overdueReminders} overdue tenant(s), ` +
         `sent ${lateEmails} late-payment and ${subscriptionEmails} subscription email(s)`
     );
 
@@ -285,6 +409,8 @@ exports.handler = async function scheduledBillingHandler() {
         generated: gen.generated_count,
         flagged: late.flagged_count,
         online_settled: onlineSettled,
+        tenant_due_reminders: dueReminders,
+        tenant_overdue_reminders: overdueReminders,
         late_emails: lateEmails,
         subscription_emails: subscriptionEmails,
       }),
@@ -298,3 +424,5 @@ exports.handler = async function scheduledBillingHandler() {
 // Exported for testing — the sweep is exercised directly rather than through
 // the whole handler (which also runs billing).
 exports.reconcilePendingOnlinePayments = reconcilePendingOnlinePayments;
+exports.remindTenantsRentDue = remindTenantsRentDue;
+exports.remindTenantsOverdue = remindTenantsOverdue;

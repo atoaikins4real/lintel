@@ -172,6 +172,33 @@ const templates = {
     ),
   }),
 
+  // ---- Tenant-facing rent reminders (sent to the TENANT, not staff) ----
+  // Both deep-link to the tenant's own statement, where they can pay online.
+  tenantRentDue: ({ firstName, amount, dueDate, companyName, statementUrl }) => ({
+    subject: `Rent due ${dueDate} — ${companyName || 'your landlord'}`,
+    text: `Hi ${firstName || 'there'}, a friendly reminder that your rent of ${amount} is due on ${dueDate}. View your statement and pay here: ${statementUrl}`,
+    html: wrap(
+      'Rent due soon',
+      `<p style="line-height:1.6">Hi ${firstName || 'there'},</p>
+       <p style="line-height:1.6">A friendly reminder that your rent of <strong>${amount}</strong> is due on <strong>${dueDate}</strong>.</p>
+       ${button(statementUrl, 'View statement & pay')}
+       <p style="line-height:1.6;color:#78716c;font-size:13px">Already paid? Please ignore this — it can take a day to update.</p>`
+    ),
+  }),
+
+  tenantRentOverdue: ({ firstName, amount, dueDate, companyName, statementUrl }) => ({
+    subject: `Rent overdue — ${companyName || 'your landlord'}`,
+    text: `Hi ${firstName || 'there'}, your rent of ${amount} was due on ${dueDate} and is now overdue. Please settle it here: ${statementUrl}`,
+    html: wrap(
+      'Rent overdue',
+      `<p style="line-height:1.6">Hi ${firstName || 'there'},</p>
+       <p style="line-height:1.6">Your rent of <strong>${amount}</strong> was due on <strong>${dueDate}</strong> and is now overdue.</p>
+       <p style="line-height:1.6">You can settle it in a moment from your statement.</p>
+       ${button(statementUrl, 'View statement & pay')}
+       <p style="line-height:1.6;color:#78716c;font-size:13px">If you've already paid, thank you — please disregard this note.</p>`
+    ),
+  }),
+
   latePayment: ({ tenantName, amount, dueDate, appUrl }) => ({
     subject: `Payment overdue — ${tenantName}`,
     text: `A payment of ${amount} from ${tenantName} was due on ${dueDate} and is now marked late.`,
