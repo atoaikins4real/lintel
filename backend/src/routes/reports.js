@@ -41,7 +41,9 @@ router.get('/monthly', async (req, res, next) => {
       { currency: defaultCurrency, rates },
       unitCurrency,
     ] = await Promise.all([
-      supabase.from('l_payments').select('amount, currency, payment_date, status').eq('company_id', companyId).eq('status', 'paid').gte('payment_date', earliest),
+      // Deposits are money HELD, not earned — exclude them from revenue. The
+      // `or` keeps legacy rows whose charge_type predates the column (null).
+      supabase.from('l_payments').select('amount, currency, payment_date, status').eq('company_id', companyId).eq('status', 'paid').or('charge_type.neq.deposit,charge_type.is.null').gte('payment_date', earliest),
       supabase.from('l_expenses').select('amount, unit_id, expense_date').eq('company_id', companyId).gte('expense_date', earliest),
       supabase.from('l_renovations').select('cost, unit_id, start_date').eq('company_id', companyId).gte('start_date', earliest),
       companyCurrency(companyId),
@@ -174,7 +176,8 @@ router.get('/summary', async (req, res, next) => {
       { currency: defaultCurrency, rates },
       unitCurrency,
     ] = await Promise.all([
-      supabase.from('l_payments').select('amount, currency').eq('company_id', companyId).eq('status', 'paid'),
+      // Deposits held are a liability, not income — kept out of revenue.
+      supabase.from('l_payments').select('amount, currency').eq('company_id', companyId).eq('status', 'paid').or('charge_type.neq.deposit,charge_type.is.null'),
       supabase.from('l_expenses').select('amount, unit_id').eq('company_id', companyId),
       supabase.from('l_renovations').select('cost, unit_id').eq('company_id', companyId),
       companyCurrency(companyId),
@@ -280,7 +283,9 @@ router.get('/property-pnl', async (req, res, next) => {
             .from('l_payments')
             .select('unit_id, amount, status, payment_date')
             .eq('company_id', companyId)
-            .eq('status', 'paid'),
+            .eq('status', 'paid')
+            // Deposits held aren't revenue — exclude from per-property P&L.
+            .or('charge_type.neq.deposit,charge_type.is.null'),
           'payment_date'
         ),
         dateRange(

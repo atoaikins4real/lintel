@@ -84,6 +84,13 @@ export const getTenant = (id) => api.get(`/tenants/${id}`).then((r) => r.data);
 export const createTenant = (payload) => api.post('/tenants', payload).then((r) => r.data);
 export const updateTenant = (id, payload) => api.put(`/tenants/${id}`, payload).then((r) => r.data);
 export const deleteTenant = (id) => api.delete(`/tenants/${id}`).then((r) => r.data);
+
+// Security deposits — held money with a hold/deduct/refund ledger.
+export const getDeposits = (params) => api.get('/deposits', { params }).then((r) => r.data);
+export const createDeposit = (payload) => api.post('/deposits', payload).then((r) => r.data);
+export const deductDeposit = (id, payload) => api.post(`/deposits/${id}/deduct`, payload).then((r) => r.data);
+export const refundDeposit = (id, payload) => api.post(`/deposits/${id}/refund`, payload).then((r) => r.data);
+export const deleteDeposit = (id) => api.delete(`/deposits/${id}`).then((r) => r.data);
 export const recomputeTenant = (id) => api.post(`/tenants/${id}/recompute`).then((r) => r.data);
 export const getUpgradeEligible = () => api.get('/tenants/upgrade-eligible').then((r) => r.data);
 export const addTierEvent = (id, payload) => api.post(`/tenants/${id}/tier-events`, payload).then((r) => r.data);

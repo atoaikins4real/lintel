@@ -1279,3 +1279,52 @@ ALTER TABLE l_payments
   ADD COLUMN IF NOT EXISTS due_reminder_at timestamptz;
 ALTER TABLE l_payments
   ADD COLUMN IF NOT EXISTS overdue_reminder_at timestamptz;
+
+-- ------------------------------------------------------------
+-- SECURITY-DEPOSIT LEDGER (mirrors migration add_deposits)
+-- A deposit is money HELD (a liability), not revenue. l_deposits holds one
+-- record per deposit; l_deposit_entries logs hold/deduct/refund movements.
+-- Reports exclude charge_type='deposit' from revenue. See routes/deposits.js.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS l_deposits (
+  company_id uuid NOT NULL REFERENCES l_companies (id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  lease_id uuid REFERENCES l_leases (id) ON DELETE SET NULL,
+  tenant_id uuid NOT NULL REFERENCES l_tenants (id) ON DELETE RESTRICT,
+  unit_id uuid REFERENCES l_units (id) ON DELETE SET NULL,
+  amount numeric(12,2) NOT NULL,
+  currency text NOT NULL DEFAULT 'GHS',
+  status text NOT NULL DEFAULT 'held',
+  received_on date NOT NULL DEFAULT current_date,
+  settled_on date,
+  notes text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT l_deposits_status_check CHECK (status IN ('held','partially_returned','returned','forfeited'))
+);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'l_deposits_id_company_key') THEN
+    ALTER TABLE l_deposits ADD CONSTRAINT l_deposits_id_company_key UNIQUE (id, company_id);
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_l_deposits_tenant ON l_deposits (tenant_id);
+CREATE INDEX IF NOT EXISTS idx_l_deposits_lease ON l_deposits (lease_id);
+CREATE INDEX IF NOT EXISTS idx_l_deposits_company ON l_deposits (company_id);
+CREATE TABLE IF NOT EXISTS l_deposit_entries (
+  company_id uuid NOT NULL REFERENCES l_companies (id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  deposit_id uuid NOT NULL,
+  kind text NOT NULL,
+  amount numeric(12,2) NOT NULL,
+  reason text,
+  created_by uuid REFERENCES l_users (id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT l_deposit_entries_kind_check CHECK (kind IN ('hold','deduct','refund')),
+  CONSTRAINT l_deposit_entries_deposit_fk FOREIGN KEY (deposit_id, company_id) REFERENCES l_deposits (id, company_id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_l_deposit_entries_deposit ON l_deposit_entries (deposit_id);
+CREATE INDEX IF NOT EXISTS idx_l_deposit_entries_company ON l_deposit_entries (company_id);
+ALTER TABLE l_deposits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE l_deposit_entries ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON l_deposits, l_deposit_entries TO service_role;

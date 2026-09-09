@@ -5,6 +5,7 @@ import TierBadge from '../components/TierBadge.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import Documents from '../components/Documents.jsx';
+import DepositsPanel from '../components/DepositsPanel.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function TenantDetail() {
@@ -109,6 +110,10 @@ export default function TenantDetail() {
             <p className="text-sm text-stone">No payments yet.</p>
           )}
         </Section>
+      </div>
+
+      <div className="mt-4 sm:mt-6">
+        <DepositsPanel tenantId={id} />
       </div>
 
       <div className="mt-4 sm:mt-6">
