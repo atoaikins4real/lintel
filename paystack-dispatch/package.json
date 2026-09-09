@@ -1,0 +1,7 @@
+{
+  "name": "paystack-dispatch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Routes one Paystack account's webhook to multiple apps by reference prefix.",
+  "engines": { "node": ">=18" }
+}

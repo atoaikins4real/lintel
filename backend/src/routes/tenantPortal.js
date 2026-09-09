@@ -21,10 +21,15 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const { supabase } = require('../config/supabase');
 const mailer = require('../utils/mailer');
+const paystack = require('../utils/paystack');
+const { reconcilePaystackData } = require('../utils/reconcile');
 
 const router = express.Router();
 
 const TOKEN_TTL_DAYS = 30;
+
+// A charge a tenant is allowed to pay online — not yet settled.
+const PAYABLE_STATUSES = ['pending', 'late', 'partial'];
 
 const portalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -128,7 +133,7 @@ router.get('/statement', portalLimiter, async (req, res, next) => {
       .update({ last_used_at: new Date().toISOString() })
       .eq('id', record.id);
 
-    const [{ data: tenant }, { data: leases }, { data: payments }, { data: units }, { data: company }] =
+    const [{ data: tenant }, { data: leases }, { data: payments }, { data: units }, { data: company }, { data: portalSettings }] =
       await Promise.all([
         supabase
           .from('l_tenants')
@@ -143,7 +148,7 @@ router.get('/statement', portalLimiter, async (req, res, next) => {
           .eq('company_id', record.company_id),
         supabase
           .from('l_payments')
-          .select('amount, currency, due_date, payment_date, status, method, reference')
+          .select('id, amount, currency, due_date, payment_date, status, method, reference, charge_type')
           .eq('tenant_id', record.tenant_id)
           .eq('company_id', record.company_id)
           .order('due_date', { ascending: true }),
@@ -156,9 +161,20 @@ router.get('/statement', portalLimiter, async (req, res, next) => {
           .select('name, email, phone, address, city, country, logo_url')
           .eq('id', record.company_id)
           .maybeSingle(),
+        supabase
+          .from('l_settings')
+          .select('online_payments_enabled, paystack_subaccount_code')
+          .eq('company_id', record.company_id)
+          .maybeSingle(),
       ]);
 
     if (!tenant) return invalid();
+
+    // Whether a tenant can pay online here: the platform has Paystack keys,
+    // AND this landlord has both enabled it and linked a settlement account.
+    const onlinePayments = Boolean(
+      paystack.isConfigured() && portalSettings?.online_payments_enabled && portalSettings?.paystack_subaccount_code
+    );
 
     const unitById = Object.fromEntries((units || []).map((u) => [u.id, u]));
 
@@ -181,7 +197,158 @@ router.get('/statement', portalLimiter, async (req, res, next) => {
       })),
       payments: payments || [],
       totals: { charged, paid, outstanding },
+      online_payments: onlinePayments,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Resolve a portal token to its live record, or null. Same rules as the
+// statement route: must exist, not be revoked, not be expired.
+async function resolveToken(rawToken) {
+  if (!rawToken) return null;
+  const { data: record } = await supabase
+    .from('l_tenant_portal_tokens')
+    .select('id, tenant_id, company_id, expires_at, revoked_at')
+    .eq('token_hash', hashToken(rawToken))
+    .maybeSingle();
+  if (!record || record.revoked_at) return null;
+  if (new Date(record.expires_at) < new Date()) return null;
+  return record;
+}
+
+// POST /api/tenant-portal/pay/initialize  { token, payment_id }
+// Starts an online payment for ONE outstanding charge and returns the
+// Paystack checkout URL the tenant completes on their phone. Money settles to
+// the subscriber's own linked account (their Paystack subaccount), not Lintel.
+router.post('/pay/initialize', portalLimiter, async (req, res, next) => {
+  try {
+    const record = await resolveToken(String(req.body?.token || ''));
+    if (!record) return res.status(400).json({ error: 'This link is no longer valid. Please request a new one.' });
+
+    const paymentId = String(req.body?.payment_id || '');
+    if (!paymentId) return res.status(400).json({ error: 'Which charge would you like to pay?' });
+
+    // The charge must belong to THIS tenant in THIS company. Scoping by both
+    // is what stops a valid link paying (or probing) someone else's charge.
+    const { data: payment } = await supabase
+      .from('l_payments')
+      .select('id, amount, currency, status, tenant_id')
+      .eq('id', paymentId)
+      .eq('company_id', record.company_id)
+      .eq('tenant_id', record.tenant_id)
+      .maybeSingle();
+
+    if (!payment) return res.status(404).json({ error: 'Charge not found.' });
+    if (!PAYABLE_STATUSES.includes(payment.status)) {
+      return res.status(409).json({ error: 'This charge has already been paid.' });
+    }
+
+    // Is online payment actually available for this subscriber?
+    if (!paystack.isConfigured()) {
+      return res.status(503).json({ error: 'Online payment isn’t available yet. Please pay your landlord directly.' });
+    }
+    const { data: settings } = await supabase
+      .from('l_settings')
+      .select('online_payments_enabled, paystack_subaccount_code')
+      .eq('company_id', record.company_id)
+      .maybeSingle();
+    if (!settings?.online_payments_enabled || !settings?.paystack_subaccount_code) {
+      return res.status(503).json({ error: 'Your landlord hasn’t enabled online payments yet.' });
+    }
+    if (!paystack.currencySupported(payment.currency)) {
+      return res.status(422).json({ error: `${payment.currency} can’t be paid online here. Please pay your landlord directly.` });
+    }
+
+    // Tenant's email is required by Paystack for the receipt.
+    const { data: tenant } = await supabase
+      .from('l_tenants')
+      .select('email, first_name')
+      .eq('id', record.tenant_id)
+      .eq('company_id', record.company_id)
+      .maybeSingle();
+    if (!tenant?.email) {
+      return res.status(422).json({ error: 'We need an email on your tenancy to take an online payment. Please contact your landlord.' });
+    }
+
+    const reference = `LX-${crypto.randomBytes(12).toString('hex')}`;
+
+    let init;
+    try {
+      init = await paystack.initializeTransaction({
+        email: tenant.email,
+        amountMajor: payment.amount,
+        currency: payment.currency,
+        reference,
+        // Paystack appends ?reference=&trxref= to this; the statement page
+        // reads them and calls /pay/verify. The token is the tenant's own
+        // link secret, already in their URL — carried through, not exposed anew.
+        callbackUrl: `${mailer.APP_URL}/my-statement?token=${encodeURIComponent(String(req.body.token))}`,
+        subaccount: settings.paystack_subaccount_code,
+        metadata: { company_id: record.company_id, payment_id: payment.id, tenant_id: record.tenant_id },
+      });
+    } catch (gwErr) {
+      // A gateway failure isn't a server bug — tell the tenant plainly.
+      return res.status(502).json({ error: `Could not start the payment: ${gwErr.message}` });
+    }
+
+    const { error: txnErr } = await supabase.from('l_payment_transactions').insert({
+      company_id: record.company_id,
+      payment_id: payment.id,
+      tenant_id: record.tenant_id,
+      reference,
+      amount: payment.amount,
+      currency: payment.currency,
+      status: 'initialized',
+      authorization_url: init.authorization_url,
+    });
+    if (txnErr) throw txnErr;
+
+    res.json({ authorization_url: init.authorization_url, reference });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/tenant-portal/pay/verify?token=&reference=
+// Fallback to the webhook: when the tenant lands back on their statement,
+// confirm the payment straight away rather than waiting for the async event.
+// Reconciliation is idempotent, so racing the webhook is harmless.
+router.get('/pay/verify', portalLimiter, async (req, res, next) => {
+  try {
+    const record = await resolveToken(String(req.query.token || ''));
+    if (!record) return res.status(400).json({ error: 'This link is no longer valid. Please request a new one.' });
+
+    const reference = String(req.query.reference || '');
+    if (!reference) return res.status(400).json({ error: 'Missing payment reference.' });
+
+    // The reference must be one WE started for THIS tenant — otherwise a link
+    // holder could ask us to verify arbitrary references.
+    const { data: txn } = await supabase
+      .from('l_payment_transactions')
+      .select('id, company_id, tenant_id, status')
+      .eq('reference', reference)
+      .eq('company_id', record.company_id)
+      .eq('tenant_id', record.tenant_id)
+      .maybeSingle();
+    if (!txn) return res.status(404).json({ error: 'Payment not found.' });
+
+    // Already settled by the webhook? Report success without re-hitting Paystack.
+    if (txn.status === 'success') return res.json({ status: 'success' });
+
+    let data;
+    try {
+      data = await paystack.verifyTransaction(reference);
+    } catch (gwErr) {
+      return res.status(502).json({ error: `Could not confirm the payment: ${gwErr.message}` });
+    }
+
+    const result = await reconcilePaystackData(data);
+    const status = result.outcome === 'reconciled' || result.outcome === 'already_done' ? 'success'
+      : result.outcome === 'mismatch' ? 'mismatch'
+      : 'pending';
+    res.json({ status });
   } catch (err) {
     next(err);
   }

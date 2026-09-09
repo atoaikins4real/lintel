@@ -3,6 +3,7 @@ import {
   updateSettings, getCompany, updateCompany,
   getProperties, getUnits, getTenants, getStaffUsers, readApiError,
   getPlanCatalogue, getMyPlanRequests, requestPlanChange, withdrawPlanRequest,
+  getPaymentBanks, linkPaymentAccount, disablePaymentAccount,
 } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -339,6 +340,14 @@ export default function Settings() {
         {!form.payout_method && <p className="text-sm text-stone">Choose how you&apos;d like to receive rent.</p>}
       </section>
 
+      {/* Online rent payments — link a settlement account so tenants can pay
+          from their statement and the money lands with you directly. */}
+      <OnlinePayments
+        isManager={isManager}
+        settings={form}
+        onUpdated={(updated) => { setSettings(updated); setForm(updated); }}
+      />
+
       {/* Subscription — read-only. Managed by the Lintel operator via
           /api/admin, so a subscriber can't mark themselves as paid. */}
       <section className="lx-card p-5 sm:p-6">
@@ -516,7 +525,9 @@ function PlanChangeManager({ currentPlanId, status }) {
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-medium text-ink">{p.name}</span>
                     <span className="text-sm text-stone">
-                      {p.currency} {Number(p.price).toLocaleString()}/{p.billing_interval}
+                      {p.price == null
+                        ? 'Custom'
+                        : `${p.currency} ${Number(p.price).toLocaleString()}/${p.billing_interval}`}
                     </span>
                   </div>
                   {p.description && <p className="text-xs text-stone mt-1">{p.description}</p>}
@@ -600,5 +611,165 @@ function Usage({ label, used, limit }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ------------------------------------------------------------
+// Online rent payments — the subscriber links a mobile-money or bank account
+// (registered behind the scenes as a Paystack subaccount) that tenant
+// payments settle into directly. Lintel is never in the money path.
+// ------------------------------------------------------------
+function OnlinePayments({ isManager, settings, onUpdated }) {
+  const available = settings.online_payments_available;
+  const linked = settings.online_payments_linked;
+  const enabled = settings.online_payments_enabled;
+
+  const [type, setType] = useState(settings.payout_method === 'bank' ? 'bank' : 'mobile_money');
+  const [banks, setBanks] = useState([]);
+  const [bankCode, setBankCode] = useState('');
+  const [accountNumber, setAccountNumber] = useState(settings.payout_account_number || '');
+  const [accountName, setAccountName] = useState(settings.payout_account_name || '');
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [ok, setOk] = useState('');
+
+  // Load the provider/bank list for the chosen type. Paystack identifies each
+  // by a code, so the subscriber must pick from this list rather than type a
+  // name we couldn't map.
+  useEffect(() => {
+    if (!available || !isManager) return;
+    setLoadingBanks(true);
+    setBankCode('');
+    getPaymentBanks({ type, country: 'ghana' })
+      .then((list) => setBanks(list || []))
+      .catch((err) => setError(err?.response?.data?.error || 'Could not load providers.'))
+      .finally(() => setLoadingBanks(false));
+  }, [type, available, isManager]);
+
+  if (!available) {
+    return (
+      <section className="lx-card p-5 sm:p-6">
+        <h2 className="font-serif text-lg text-ink mb-1">Online rent payments</h2>
+        <p className="text-xs text-stone">
+          Letting tenants pay rent online isn&apos;t switched on for this workspace yet. Once it is, you&apos;ll be able
+          to link the mobile-money or bank account you want rent to land in, and a &ldquo;Pay&rdquo; button appears on
+          every tenant&apos;s statement.
+        </p>
+      </section>
+    );
+  }
+
+  const link = async () => {
+    setError(''); setOk('');
+    if (!bankCode || !accountNumber.trim()) {
+      setError('Choose a provider and enter your number.');
+      return;
+    }
+    setBusy(true);
+    try {
+      const updated = await linkPaymentAccount({
+        type,
+        settlement_bank: bankCode,
+        account_number: accountNumber.trim(),
+        account_name: accountName.trim(),
+      });
+      onUpdated(updated);
+      setOk('Linked. Tenants can now pay rent online — it settles straight to this account.');
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Could not link that account. Check the number and try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = async (on) => {
+    setError(''); setOk('');
+    setBusy(true);
+    try {
+      const updated = on ? await updateSettings({ online_payments_enabled: true }) : await disablePaymentAccount();
+      onUpdated(updated);
+      setOk(on ? 'Online payments turned on.' : 'Online payments turned off. Your linked account is kept.');
+    } catch (err) {
+      setError(err?.response?.data?.error || 'Could not update. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="lx-card p-5 sm:p-6">
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <h2 className="font-serif text-lg text-ink">Online rent payments</h2>
+        {linked && (
+          <span className={`text-xs px-2.5 py-1 rounded-full border ${enabled ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : 'text-stone bg-panel border-line'}`}>
+            {enabled ? 'On' : 'Off'}
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-stone mb-4">
+        Link the account rent should settle into. Tenants then see a &ldquo;Pay&rdquo; button on their statement and pay
+        from their phone — the money goes straight to you. Lintel never holds it.
+      </p>
+
+      {error && <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5 mb-3">{error}</div>}
+      {ok && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5 mb-3">{ok}</div>}
+
+      {!isManager ? (
+        <p className="text-sm text-stone">Only a manager can set up online payments.</p>
+      ) : (
+        <>
+          <div className="flex gap-3 mb-4">
+            {[
+              { value: 'mobile_money', label: 'Mobile money' },
+              { value: 'bank', label: 'Bank account' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setType(opt.value)}
+                className={`px-4 py-2 rounded-xl text-sm border transition ${
+                  type === opt.value ? 'border-gold bg-gold/10 text-ink font-medium' : 'border-line text-stone hover:border-stone/40'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <select className="lx-select" value={bankCode} onChange={(e) => setBankCode(e.target.value)} disabled={loadingBanks}>
+              <option value="">{loadingBanks ? 'Loading…' : type === 'bank' ? 'Select bank…' : 'Select provider…'}</option>
+              {banks.map((b) => (
+                <option key={b.code} value={b.code}>{b.name}</option>
+              ))}
+            </select>
+            <input
+              className="lx-input"
+              placeholder={type === 'bank' ? 'Account number' : 'Mobile money number'}
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+            />
+            <input
+              className="lx-input sm:col-span-2"
+              placeholder="Account name (as registered)"
+              value={accountName}
+              onChange={(e) => setAccountName(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center gap-3 mt-4 flex-wrap">
+            <button type="button" onClick={link} disabled={busy} className="lx-btn-primary text-sm">
+              {busy ? 'Saving…' : linked ? 'Update linked account' : 'Link account'}
+            </button>
+            {linked && (
+              <button type="button" onClick={() => toggle(!enabled)} disabled={busy} className="lx-btn-ghost text-sm">
+                {enabled ? 'Turn off online payments' : 'Turn on online payments'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </section>
   );
 }

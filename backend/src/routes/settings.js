@@ -9,6 +9,7 @@ const express = require('express');
 const { supabase } = require('../config/supabase');
 const { requireRole } = require('../middleware/auth');
 const mailer = require('../utils/mailer');
+const paystack = require('../utils/paystack');
 
 const router = express.Router();
 
@@ -57,6 +58,12 @@ router.get('/', async (req, res, next) => {
       //
       // A boolean only: no provider name, no key, nothing exploitable.
       mail_configured: mailer.isConfigured,
+      // Whether the PLATFORM has configured Paystack at all. If false, the
+      // whole online-payments section is unavailable to every subscriber and
+      // the UI hides it. Never exposes a key — a boolean only.
+      online_payments_available: paystack.isConfigured(),
+      // Whether THIS subscriber has finished linking a settlement account.
+      online_payments_linked: Boolean(data?.paystack_subaccount_code),
     });
   } catch (err) {
     next(err);
@@ -130,11 +137,22 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
 
     const { data: existing, error: findErr } = await supabase
       .from('l_settings')
-      .select('id')
+      .select('id, paystack_subaccount_code')
       .eq('company_id', req.user.company_id)
       .maybeSingle();
     if (findErr) throw findErr;
     if (!existing) return res.status(404).json({ error: 'Settings not found for this company' });
+
+    // The on/off switch for online payments. Turning it ON is only allowed
+    // once a settlement account is linked — otherwise a tenant could tap
+    // "Pay" and reach a dead end. Turning it OFF is always allowed.
+    if (req.body.online_payments_enabled !== undefined) {
+      const wantOn = req.body.online_payments_enabled === true || req.body.online_payments_enabled === 'true';
+      if (wantOn && !existing.paystack_subaccount_code) {
+        return res.status(400).json({ error: 'Link a mobile-money or bank account first, then enable online payments.' });
+      }
+      updates.online_payments_enabled = wantOn;
+    }
 
     const { data, error } = await supabase
       .from('l_settings')
@@ -145,7 +163,152 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       .single();
     if (error) throw error;
 
-    res.json({ ...data, supported_currencies: SUPPORTED_CURRENCIES });
+    res.json({
+      ...data,
+      supported_currencies: SUPPORTED_CURRENCIES,
+      online_payments_available: paystack.isConfigured(),
+      online_payments_linked: Boolean(data.paystack_subaccount_code),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ------------------------------------------------------------
+// ONLINE PAYMENTS — linking a subscriber's settlement account
+//
+// The subscriber picks the bank or mobile-money provider that Lintel will
+// settle rent into. Paystack identifies these by CODE (not name), so the UI
+// fetches the list here, the subscriber selects one, and we register it as a
+// Paystack subaccount. From then on a tenant's payment settles straight to
+// this account — Lintel never touches the money.
+// ------------------------------------------------------------
+
+// GET /api/settings/banks?type=mobile_money|bank&currency=GHS&country=ghana
+// The options for the settlement picker. Manager only (it sits alongside the
+// payout details, which are manager-only). Returns [{ name, code, type }].
+router.get('/banks', requireRole('manager'), async (req, res, next) => {
+  try {
+    if (!paystack.isConfigured()) {
+      return res.status(503).json({ error: 'Online payments are not configured on this server yet.' });
+    }
+    const type = req.query.type === 'bank' ? undefined : 'mobile_money';
+    const banks = await paystack.listBanks({
+      country: req.query.country || 'ghana',
+      currency: req.query.currency || undefined,
+      type,
+    });
+    res.json(
+      (banks || []).map((b) => ({ name: b.name, code: b.code, type: b.type || (type ? 'mobile_money' : 'bank') }))
+    );
+  } catch (err) {
+    // A gateway failure here is not a server bug — report it cleanly.
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/settings/payments/link — manager only.
+// { type, settlement_bank (code), account_number, account_name }
+// Creates or updates this subscriber's Paystack subaccount and, on success,
+// enables online payments. account_number is the bank account number or the
+// mobile-money phone number, depending on `type`.
+router.post('/payments/link', requireRole('manager'), async (req, res, next) => {
+  try {
+    if (!paystack.isConfigured()) {
+      return res.status(503).json({ error: 'Online payments are not configured on this server yet.' });
+    }
+    const type = req.body.type === 'bank' ? 'bank' : 'mobile_money';
+    const settlementBank = str(req.body.settlement_bank);
+    const accountNumber = str(req.body.account_number);
+    const accountName = str(req.body.account_name);
+    if (!settlementBank || !accountNumber) {
+      return res.status(400).json({ error: 'Choose a provider and enter your account (or mobile-money) number.' });
+    }
+
+    const { data: settings } = await supabase
+      .from('l_settings')
+      .select('id, paystack_subaccount_code')
+      .eq('company_id', req.user.company_id)
+      .maybeSingle();
+    if (!settings) return res.status(404).json({ error: 'Settings not found for this company' });
+
+    const { data: company } = await supabase
+      .from('l_companies')
+      .select('name, email, phone')
+      .eq('id', req.user.company_id)
+      .maybeSingle();
+    const businessName = company?.name || accountName || 'Lintel subscriber';
+
+    // Create the subaccount, or update the existing one in place so a
+    // subscriber can correct a wrong number without orphaning the old one.
+    let sub;
+    try {
+      if (settings.paystack_subaccount_code) {
+        sub = await paystack.updateSubaccount(settings.paystack_subaccount_code, {
+          businessName,
+          settlementBank,
+          accountNumber,
+          active: true,
+        });
+      } else {
+        sub = await paystack.createSubaccount({
+          businessName,
+          settlementBank,
+          accountNumber,
+          percentageCharge: Number(process.env.PLATFORM_FEE_PERCENT || 0),
+          primaryContactEmail: company?.email || undefined,
+          primaryContactPhone: company?.phone || undefined,
+        });
+      }
+    } catch (gwErr) {
+      // Paystack validates the account against the bank/provider — a wrong
+      // number comes back here as a clear message for the subscriber.
+      return res.status(422).json({ error: gwErr.message });
+    }
+
+    const updates = {
+      paystack_subaccount_code: sub.subaccount_code || settings.paystack_subaccount_code,
+      online_payments_enabled: true,
+      payout_method: type === 'bank' ? 'bank' : 'mobile_money',
+      payout_account_number: accountNumber,
+    };
+    if (accountName) updates.payout_account_name = accountName;
+    if (type === 'mobile_money') updates.payout_mobile_number = accountNumber;
+
+    const { data, error } = await supabase
+      .from('l_settings')
+      .update(updates)
+      .eq('id', settings.id)
+      .eq('company_id', req.user.company_id)
+      .select()
+      .single();
+    if (error) throw error;
+
+    res.json({
+      ...data,
+      supported_currencies: SUPPORTED_CURRENCIES,
+      online_payments_available: true,
+      online_payments_linked: true,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/settings/payments/disable — manager only. Stops accepting online
+// payments without discarding the linked account, so it can be turned back on
+// with one tap.
+router.post('/payments/disable', requireRole('manager'), async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('l_settings')
+      .update({ online_payments_enabled: false })
+      .eq('company_id', req.user.company_id)
+      .select()
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return res.status(404).json({ error: 'Settings not found for this company' });
+    res.json({ ...data, supported_currencies: SUPPORTED_CURRENCIES, online_payments_available: paystack.isConfigured(), online_payments_linked: Boolean(data.paystack_subaccount_code) });
   } catch (err) {
     next(err);
   }

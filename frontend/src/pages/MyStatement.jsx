@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { requestTenantLink, getMyStatement } from '../api/client.js';
+import { requestTenantLink, getMyStatement, initTenantPayment, verifyTenantPayment } from '../api/client.js';
 import { formatMoney } from '../utils/currency.js';
+
+const PAYABLE = ['pending', 'late', 'partial'];
 
 // Public tenant-facing page. Two modes: request a link, or view the
 // statement the link grants. No login — see backend/src/routes/tenantPortal.js
@@ -17,15 +19,56 @@ export default function MyStatement() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(Boolean(token));
 
-  useEffect(() => {
-    if (!token) return;
+  const [payingId, setPayingId] = useState(null);
+  const [payError, setPayError] = useState('');
+  const [payBanner, setPayBanner] = useState(null); // { tone, text }
+
+  const reference = params.get('reference') || params.get('trxref');
+
+  const loadStatement = () =>
     getMyStatement(token)
       .then(setStatement)
       .catch((err) =>
         setError(err?.response?.data?.error || "Couldn't load your statement. Please request a new link.")
       )
       .finally(() => setLoading(false));
+
+  useEffect(() => {
+    if (!token) return;
+    loadStatement();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  // Returning from Paystack: confirm the payment right away (the webhook is
+  // authoritative, this is the instant-feedback fallback), then refresh.
+  useEffect(() => {
+    if (!token || !reference) return;
+    verifyTenantPayment(token, reference)
+      .then((res) => {
+        if (res.status === 'success') {
+          setPayBanner({ tone: 'good', text: 'Payment received — thank you. Your statement is updated below.' });
+        } else if (res.status === 'mismatch') {
+          setPayBanner({ tone: 'bad', text: 'We couldn’t match that payment. Please contact your landlord.' });
+        } else {
+          setPayBanner({ tone: 'wait', text: 'Payment is still processing. This page will reflect it once confirmed.' });
+        }
+      })
+      .catch(() => setPayBanner({ tone: 'wait', text: 'Payment is still processing. Check back shortly.' }))
+      .finally(() => loadStatement());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, reference]);
+
+  const pay = async (paymentId) => {
+    setPayError('');
+    setPayingId(paymentId);
+    try {
+      const { authorization_url } = await initTenantPayment(token, paymentId);
+      window.location.href = authorization_url; // hand off to Paystack
+    } catch (err) {
+      setPayError(err?.response?.data?.error || 'Could not start the payment. Please try again.');
+      setPayingId(null);
+    }
+  };
 
   const request = async (e) => {
     e.preventDefault();
@@ -111,6 +154,25 @@ export default function MyStatement() {
               </div>
             </div>
 
+            {payBanner && (
+              <div
+                className={`mb-5 text-sm rounded-xl px-4 py-3 border ${
+                  payBanner.tone === 'good'
+                    ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                    : payBanner.tone === 'bad'
+                    ? 'text-rose-700 bg-rose-50 border-rose-200'
+                    : 'text-amber-700 bg-amber-50 border-amber-200'
+                }`}
+              >
+                {payBanner.text}
+              </div>
+            )}
+            {payError && (
+              <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">
+                {payError}
+              </div>
+            )}
+
             <div className="grid grid-cols-3 gap-3 mb-6">
               <Total label="Charged" value={m(statement.totals.charged)} />
               <Total label="Paid" value={m(statement.totals.paid)} />
@@ -153,6 +215,15 @@ export default function MyStatement() {
                     <span>Paid {p.payment_date || '—'}</span>
                     <span className="capitalize">{p.method?.replace('_', ' ') || 'No method'}</span>
                   </div>
+                  {statement.online_payments && PAYABLE.includes(p.status) && p.id && (
+                    <button
+                      onClick={() => pay(p.id)}
+                      disabled={payingId === p.id}
+                      className="lx-btn-primary w-full mt-3 text-sm"
+                    >
+                      {payingId === p.id ? 'Starting…' : `Pay ${formatMoney(p.amount, p.currency)}`}
+                    </button>
+                  )}
                 </div>
               ))}
               {statement.payments.length === 0 && (
@@ -170,6 +241,7 @@ export default function MyStatement() {
                     <th>Method</th>
                     <th>Status</th>
                     <th className="text-right">Amount</th>
+                    {statement.online_payments && <th className="text-right print:hidden">Pay</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -180,10 +252,25 @@ export default function MyStatement() {
                       <td className="text-xs capitalize">{p.method?.replace('_', ' ') || '—'}</td>
                       <td className="text-xs capitalize">{p.status}</td>
                       <td className="text-right">{formatMoney(p.amount, p.currency)}</td>
+                      {statement.online_payments && (
+                        <td className="text-right print:hidden">
+                          {PAYABLE.includes(p.status) && p.id ? (
+                            <button
+                              onClick={() => pay(p.id)}
+                              disabled={payingId === p.id}
+                              className="lx-btn-primary text-xs px-3 py-1.5"
+                            >
+                              {payingId === p.id ? 'Starting…' : 'Pay'}
+                            </button>
+                          ) : (
+                            <span className="text-stone-light text-xs">—</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                   {statement.payments.length === 0 && (
-                    <tr><td colSpan={5} className="px-5 py-8 text-center text-stone">No payments recorded yet.</td></tr>
+                    <tr><td colSpan={statement.online_payments ? 6 : 5} className="px-5 py-8 text-center text-stone">No payments recorded yet.</td></tr>
                   )}
                 </tbody>
               </table>

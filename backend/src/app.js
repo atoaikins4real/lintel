@@ -36,6 +36,7 @@ const propertiesRouter = require('./routes/properties');
 const tenantOnboardingRouter = require('./routes/tenantOnboarding');
 const accessRouter = require('./routes/access');
 const adminRouter = require('./routes/admin');
+const paystackRouter = require('./routes/paystack');
 const { enforceSubscription } = require('./middleware/subscription');
 const { enforcePlanLimit } = require('./middleware/planLimits');
 
@@ -62,6 +63,12 @@ app.use(
     },
   })
 );
+// Paystack webhook — mounted BEFORE express.json with a raw body parser, and
+// before requireAuth. Its signature is computed over the exact bytes sent, so
+// it must not be re-parsed first; and Paystack, not a logged-in user, is the
+// caller (the signature is the authentication). See routes/paystack.js.
+app.use('/api/paystack', express.raw({ type: '*/*', limit: '1mb' }), paystackRouter);
+
 // Default limit is 100kb, which is far too small for the base64 image
 // uploads on /api/uploads/photo (see routes/uploads.js). 10mb leaves room
 // for base64's ~33% inflation over the 5mb image ceiling.

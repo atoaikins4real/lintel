@@ -10,6 +10,54 @@
 const { generateCharges, flagLatePayments } = require('./utils/billing');
 const { supabase } = require('./config/supabase');
 const mailer = require('./utils/mailer');
+const paystack = require('./utils/paystack');
+const { reconcilePaystackData } = require('./utils/reconcile');
+
+/**
+ * Confirms online payments that never got a webhook.
+ *
+ * The Paystack webhook is the fast path, but it can be missed — a tenant on
+ * one Paystack account shared by several apps may have events routed
+ * elsewhere, a forward can drop, a function can cold-start past a timeout.
+ * So this is the backstop: every run, take each payment attempt still sitting
+ * at "initialized", ask Paystack directly whether it actually succeeded, and
+ * reconcile it. Reconciliation is idempotent, so this can never double-pay or
+ * fight the webhook — whichever confirms first wins, the other no-ops.
+ *
+ * Cross-company by design, exactly like the charge/late-flag work above; the
+ * audit-scoping allow-list names this file for that reason. Each row is then
+ * settled through reconcilePaystackData, which scopes every write by the
+ * company on the transaction itself.
+ */
+async function reconcilePendingOnlinePayments() {
+  if (!paystack.isConfigured()) return 0;
+
+  const now = Date.now();
+  // Give the instant paths (webhook, redirect-verify) a couple of minutes
+  // before chasing it, and stop after 3 days — by then Paystack treats an
+  // unfinished checkout as abandoned and the tenant would simply start again.
+  const settledFloor = new Date(now - 2 * 60 * 1000).toISOString();
+  const staleFloor = new Date(now - 3 * 86400000).toISOString();
+
+  const { data: pending } = await supabase
+    .from('l_payment_transactions')
+    .select('reference')
+    .eq('status', 'initialized')
+    .lt('created_at', settledFloor)
+    .gt('created_at', staleFloor);
+
+  let settled = 0;
+  for (const row of pending || []) {
+    try {
+      const data = await paystack.verifyTransaction(row.reference);
+      const result = await reconcilePaystackData(data);
+      if (result.outcome === 'reconciled') settled += 1;
+    } catch (err) {
+      console.error('[scheduled-billing] verify failed for', row.reference, err?.message || err);
+    }
+  }
+  return settled;
+}
 
 /** Emails each company about payments just flagged late. */
 async function notifyLatePayments(flaggedIds) {
@@ -207,6 +255,7 @@ exports.handler = async function scheduledBillingHandler() {
     // this point and must not be reported as failed if mail is down.
     let lateEmails = 0;
     let subscriptionEmails = 0;
+    let onlineSettled = 0;
     try {
       lateEmails = await notifyLatePayments(late.ids);
     } catch (err) {
@@ -217,9 +266,15 @@ exports.handler = async function scheduledBillingHandler() {
     } catch (err) {
       console.error('[scheduled-billing] subscription-expiry emails failed:', err?.message || err);
     }
+    try {
+      onlineSettled = await reconcilePendingOnlinePayments();
+    } catch (err) {
+      console.error('[scheduled-billing] online-payment reconcile failed:', err?.message || err);
+    }
 
     console.log(
       `[scheduled-billing] generated ${gen.generated_count} charge(s), flagged ${late.flagged_count} late, ` +
+        `settled ${onlineSettled} online payment(s), ` +
         `sent ${lateEmails} late-payment and ${subscriptionEmails} subscription email(s)`
     );
 
@@ -229,6 +284,7 @@ exports.handler = async function scheduledBillingHandler() {
         ok: true,
         generated: gen.generated_count,
         flagged: late.flagged_count,
+        online_settled: onlineSettled,
         late_emails: lateEmails,
         subscription_emails: subscriptionEmails,
       }),
@@ -238,3 +294,7 @@ exports.handler = async function scheduledBillingHandler() {
     return { statusCode: 500, body: JSON.stringify({ ok: false, error: err.message }) };
   }
 };
+
+// Exported for testing — the sweep is exercised directly rather than through
+// the whole handler (which also runs billing).
+exports.reconcilePendingOnlinePayments = reconcilePendingOnlinePayments;

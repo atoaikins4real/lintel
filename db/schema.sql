@@ -789,7 +789,7 @@ create table if not exists l_plans (
     code text not null unique,
     name text not null,
     description text,
-    price numeric(12,2) not null default 0,
+    price numeric(12,2) default 0,              -- null = custom / contact-us pricing
     currency text not null default 'GHS',
     billing_interval text not null default 'monthly',
     max_properties integer,                     -- null = unlimited
@@ -803,10 +803,11 @@ create table if not exists l_plans (
 
 insert into l_plans (code, name, description, price, currency, billing_interval, max_properties, max_units, max_staff, sort_order)
 values
-  ('trial',      'Free trial', '14-day trial with full access',            0,    'GHS', 'monthly', 2,    10,   3,    0),
-  ('starter',    'Starter',    'For a single building or small portfolio', 250,  'GHS', 'monthly', 3,    25,   5,    1),
-  ('growth',     'Growth',     'For a growing agency',                     600,  'GHS', 'monthly', 10,   150,  15,   2),
-  ('enterprise', 'Enterprise', 'Unlimited portfolio and staff',            1500, 'GHS', 'monthly', null, null, null, 3)
+  ('trial',    'Free trial', '30-day trial with full access', 0,   'GHS', 'monthly', 2,    10,   3,    0),
+  ('starter',  'Solo',       'For an individual landlord',    99,  'GHS', 'monthly', 3,    10,   1,    1),
+  ('classic',  'Team',       'For a small agency',            300, 'GHS', 'monthly', 15,   40,   5,    2),
+  ('business', 'Business',   'For an established agency',      600, 'GHS', 'monthly', 50,   150,  15,   3),
+  ('premium',  'Enterprise', 'Custom — for large portfolios', null,'GHS', 'monthly', null, null, null, 4)
 on conflict (code) do nothing;
 
 -- One per company, controlled by the platform admin.
@@ -853,11 +854,11 @@ alter table l_plans add column if not exists trial_days integer;
 insert into l_plans (code, name, description, price, currency, billing_interval,
                      trial_days, max_properties, max_units, max_tenants, max_staff, sort_order)
 values
-  ('trial',   'Free trial', '30-day trial',              0,    'GHS', 'monthly', 30, 2,    10,   5,    2,    0),
-  ('starter', 'Starter',    'For a small portfolio',     250,  'GHS', 'monthly', null, 10,  50,   10,   5,    1),
-  ('classic', 'Classic',    'For an established agency', 600,  'GHS', 'monthly', null, 50,  50,   50,   50,   2),
-  ('premium', 'Premium',    'Unlimited portfolio, tenants and staff',
-                                                          1500, 'GHS', 'monthly', null, null, null, null, null, 3)
+  ('trial',    'Free trial', '30-day trial',                  0,   'GHS', 'monthly', 30,   2,    10,   5,    2,    0),
+  ('starter',  'Solo',       'For an individual landlord',    99,  'GHS', 'monthly', null, 3,    10,   15,   1,    1),
+  ('classic',  'Team',       'For a small agency',            300, 'GHS', 'monthly', null, 15,   40,   60,   5,    2),
+  ('business', 'Business',   'For an established agency',      600, 'GHS', 'monthly', null, 50,   150,  250,  15,   3),
+  ('premium',  'Enterprise', 'Custom — for large portfolios', null,'GHS', 'monthly', null, null, null, null, null, 4)
 on conflict (code) do update set
   name            = excluded.name,
   description     = excluded.description,
@@ -1206,3 +1207,63 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON l_subscription_requests TO service_role;
 -- ------------------------------------------------------------
 ALTER TABLE l_users
   ADD COLUMN IF NOT EXISTS session_valid_from timestamptz NOT NULL DEFAULT now();
+
+-- ------------------------------------------------------------
+-- ONLINE RENT PAYMENTS (mirrors migration add_paystack_payments)
+-- One platform-owned Paystack integration (keys live in the server env,
+-- never in the DB). Each subscriber links a mobile-money/bank account that
+-- the server registers as a Paystack subaccount; tenants pay on their phone
+-- and Paystack settles straight to the subscriber. See tenantPortal.js
+-- (/pay/*), routes/paystack.js (webhook), utils/paystack.js.
+-- ------------------------------------------------------------
+ALTER TABLE l_settings
+  ADD COLUMN IF NOT EXISTS paystack_subaccount_code text;
+ALTER TABLE l_settings
+  ADD COLUMN IF NOT EXISTS online_payments_enabled boolean NOT NULL DEFAULT false;
+
+ALTER TABLE l_payments
+  ADD COLUMN IF NOT EXISTS gateway text;
+ALTER TABLE l_payments
+  ADD COLUMN IF NOT EXISTS gateway_reference text;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_l_payments_gateway_reference
+  ON l_payments (company_id, gateway_reference)
+  WHERE gateway_reference IS NOT NULL;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'l_payments_id_company_key'
+  ) THEN
+    ALTER TABLE l_payments
+      ADD CONSTRAINT l_payments_id_company_key UNIQUE (id, company_id);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS l_payment_transactions (
+  company_id uuid NOT NULL REFERENCES l_companies (id) ON DELETE CASCADE,
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  payment_id uuid,
+  tenant_id uuid NOT NULL,
+  reference text NOT NULL UNIQUE,
+  amount numeric(12,2) NOT NULL,
+  currency text NOT NULL DEFAULT 'GHS',
+  status text NOT NULL DEFAULT 'initialized',
+  channel text,
+  gateway text NOT NULL DEFAULT 'paystack',
+  authorization_url text,
+  gateway_response jsonb,
+  paid_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT l_payment_transactions_status_check
+    CHECK (status IN ('initialized','success','failed','abandoned')),
+  CONSTRAINT l_payment_transactions_payment_fk
+    FOREIGN KEY (payment_id, company_id)
+    REFERENCES l_payments (id, company_id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_l_payment_transactions_company
+  ON l_payment_transactions (company_id);
+CREATE INDEX IF NOT EXISTS idx_l_payment_transactions_payment
+  ON l_payment_transactions (payment_id);
+CREATE INDEX IF NOT EXISTS idx_l_payment_transactions_tenant
+  ON l_payment_transactions (tenant_id);
+ALTER TABLE l_payment_transactions ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON l_payment_transactions TO service_role;

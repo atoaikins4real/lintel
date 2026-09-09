@@ -13,7 +13,7 @@ const SCOPED_TABLES = [
   'l_properties', 'l_tenant_contacts', 'l_tenant_occupants', 'l_tenant_vehicles',
   'l_access_credentials', 'l_access_events', 'l_subscriptions',
   'l_documents', 'l_tenant_portal_tokens', 'l_rent_reviews',
-  'l_subscription_requests',
+  'l_subscription_requests', 'l_payment_transactions',
 ];
 
 // Queries that are legitimately unscoped, with the reason. Anything not
@@ -49,6 +49,11 @@ const ALLOWED = [
   // still caught — only the recipient lookup is exempt, and it reads
   // nothing but email addresses.
   { file: 'scheduledBilling.js', match: 'is_platform_admin', why: 'operator digest recipients span all companies by design' },
+  // The nightly online-payment sweep verifies every still-pending attempt
+  // across all companies (like the charge/late-flag work), then hands each to
+  // reconcilePaystackData, which scopes every write by the company on the
+  // transaction row itself. The read is cross-company on purpose.
+  { file: 'scheduledBilling.js', match: "eq('status', 'initialized')", why: 'nightly sweep confirms pending online payments across all companies; each is then reconciled by its own reference' },
 ];
 
 const SRC = path.join(__dirname, 'src');

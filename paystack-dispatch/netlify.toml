@@ -1,0 +1,16 @@
+# Paystack webhook dispatcher — a standalone Netlify site whose only job is to
+# receive the one Paystack webhook for the whole account and fan it out to
+# each app. No build step; it's a single serverless function.
+
+[build]
+  # No site to build — just the function. `publish` points at an empty dir so
+  # Netlify has something to deploy alongside the function.
+  functions = "netlify/functions"
+  publish = "public"
+
+# Register this in Paystack as  https://<this-site>.netlify.app/webhook
+[[redirects]]
+  from = "/webhook"
+  to = "/.netlify/functions/dispatch"
+  status = 200
+  force = true

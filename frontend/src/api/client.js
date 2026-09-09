@@ -221,6 +221,12 @@ export const requestTenantLink = (email) =>
   api.post('/tenant-portal/request', { email }).then((r) => r.data);
 export const getMyStatement = (token) =>
   api.get('/tenant-portal/statement', { params: { token } }).then((r) => r.data);
+// Online rent payment (tenant side). initialize returns { authorization_url }
+// to redirect to Paystack; verify confirms on return as a webhook fallback.
+export const initTenantPayment = (token, paymentId) =>
+  api.post('/tenant-portal/pay/initialize', { token, payment_id: paymentId }).then((r) => r.data);
+export const verifyTenantPayment = (token, reference) =>
+  api.get('/tenant-portal/pay/verify', { params: { token, reference } }).then((r) => r.data);
 
 // Company profile
 export const getCompany = () => api.get('/company').then((r) => r.data);
@@ -244,6 +250,14 @@ export const deleteDocument = (id) => api.delete(`/documents/${id}`).then((r) =>
 // Settings — default currency, payout destination, subscription
 export const getSettings = () => api.get('/settings').then((r) => r.data);
 export const updateSettings = (payload) => api.put('/settings', payload).then((r) => r.data);
+
+// Online payments — the subscriber links a mobile-money/bank settlement
+// account (registered as a Paystack subaccount) that rent settles into.
+export const getPaymentBanks = (params) => api.get('/settings/banks', { params }).then((r) => r.data);
+export const linkPaymentAccount = (payload) =>
+  api.post('/settings/payments/link', payload).then((r) => r.data);
+export const disablePaymentAccount = () =>
+  api.post('/settings/payments/disable').then((r) => r.data);
 
 // Self-serve plan changes (subscriber side). Subscribers submit a change or
 // cancellation REQUEST; the operator applies it. State stays operator-owned.
