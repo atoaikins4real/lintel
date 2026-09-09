@@ -8,6 +8,7 @@ import Slideshow from '../components/Slideshow.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import { PROPERTY_TYPES, AMENITIES } from './Properties.jsx';
 import { CurrencyField } from '../components/Money.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 
 export default function PropertyDetail() {
   const { id } = useParams();
@@ -119,19 +120,21 @@ export default function PropertyDetail() {
 
       {canEdit && editing && form && (
         <div className="lx-card p-5 mb-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            <input
-              className="lx-input sm:col-span-2" placeholder="Property name"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <TextField
+              label="Property name" className="sm:col-span-2"
               value={form.name || ''} onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-            <select
-              className="lx-select" value={form.property_type || 'apartment_block'}
-              onChange={(e) => setForm({ ...form, property_type: e.target.value })}
-            >
-              {PROPERTY_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
+            <Field label="Property type">
+              <select
+                className="lx-select" value={form.property_type || 'apartment_block'}
+                onChange={(e) => setForm({ ...form, property_type: e.target.value })}
+              >
+                {PROPERTY_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </Field>
             <CurrencyField
               label="Rent currency"
               value={form.currency}
@@ -139,40 +142,42 @@ export default function PropertyDetail() {
               inheritedFrom="company default"
               inheritedValue={currency}
             />
-            <input
-              className="lx-input sm:col-span-2" placeholder="Street address"
+            <TextField
+              label="Street address" className="sm:col-span-2"
               value={form.address || ''} onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="Digital address (GPS)"
+            <TextField
+              label="Digital address" hint="GPS"
               value={form.digital_address || ''} onChange={(e) => setForm({ ...form, digital_address: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="City"
+            <TextField
+              label="City"
               value={form.city || ''} onChange={(e) => setForm({ ...form, city: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="Region"
+            <TextField
+              label="Region"
               value={form.region || ''} onChange={(e) => setForm({ ...form, region: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="Country"
+            <TextField
+              label="Country"
               value={form.country || ''} onChange={(e) => setForm({ ...form, country: e.target.value })}
             />
-            <input
-              type="number" className="lx-input" placeholder="Year built"
+            <TextField
+              label="Year built" type="number"
               value={form.year_built ?? ''} onChange={(e) => setForm({ ...form, year_built: e.target.value })}
             />
-            <input
-              type="number" className="lx-input" placeholder="Floors"
+            <TextField
+              label="Floors" type="number"
               value={form.floors ?? ''} onChange={(e) => setForm({ ...form, floors: e.target.value })}
             />
           </div>
 
-          <textarea
-            className="lx-input" rows={2} placeholder="Description"
-            value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <Field label="Description">
+            <textarea
+              className="lx-textarea" rows={2}
+              value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </Field>
 
           <div>
             <div className="lx-eyebrow mb-2">Amenities</div>
@@ -232,7 +237,7 @@ export default function PropertyDetail() {
             )}
           </div>
 
-          <button onClick={save} disabled={saving} className="lx-btn-primary">
+          <button onClick={save} disabled={saving} className="lx-btn-primary w-full sm:w-auto">
             {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>

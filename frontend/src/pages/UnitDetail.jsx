@@ -9,6 +9,7 @@ import UnitUtilities from '../components/UnitUtilities.jsx';
 import StatCard from '../components/StatCard.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { STOCK_PHOTOS, suggestedPhotos } from '../data/stockPhotos.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -200,54 +201,36 @@ export default function UnitDetail() {
       {canEdit && form && (
         <form onSubmit={save} className="lx-card p-5 mb-6">
           <div className="lx-eyebrow mb-3">Edit apartment</div>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <label className="block">
-              <span className="lx-label">Unit code</span>
-              <input required className="lx-input" value={form.unit_code}
-                onChange={(e) => set({ unit_code: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="lx-label">Property</span>
-              <select className="lx-input" value={form.property_id}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <TextField label="Unit code" required value={form.unit_code}
+              onChange={(e) => set({ unit_code: e.target.value })} />
+            <Field label="Property">
+              <select className="lx-select" value={form.property_id}
                 onChange={(e) => set({ property_id: e.target.value })}>
                 <option value="">— none —</option>
                 {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-            </label>
-            <label className="block">
-              <span className="lx-label">Status</span>
-              <select className="lx-input" value={form.status} onChange={(e) => set({ status: e.target.value })}>
+            </Field>
+            <Field label="Status">
+              <select className="lx-select" value={form.status} onChange={(e) => set({ status: e.target.value })}>
                 {['vacant', 'occupied', 'maintenance', 'off_market'].map((s) => (
                   <option key={s} value={s}>{s.replace('_', ' ')}</option>
                 ))}
               </select>
-            </label>
-            <label className="block">
-              <span className="lx-label">Class</span>
-              <select className="lx-input" value={form.class} onChange={(e) => set({ class: e.target.value })}>
+            </Field>
+            <Field label="Class">
+              <select className="lx-select" value={form.class} onChange={(e) => set({ class: e.target.value })}>
                 {['standard', 'premium', 'luxury'].map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-            </label>
-            <label className="block">
-              <span className="lx-label">Bedrooms</span>
-              <input type="number" min="0" className="lx-input" value={form.bedrooms}
-                onChange={(e) => set({ bedrooms: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="lx-label">Bathrooms</span>
-              <input type="number" min="0" className="lx-input" value={form.bathrooms}
-                onChange={(e) => set({ bathrooms: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="lx-label">Nightly rate</span>
-              <input type="number" min="0" className="lx-input" value={form.base_rate_short}
-                onChange={(e) => set({ base_rate_short: e.target.value })} />
-            </label>
-            <label className="block">
-              <span className="lx-label">Monthly rate</span>
-              <input type="number" min="0" className="lx-input" value={form.base_rate_long}
-                onChange={(e) => set({ base_rate_long: e.target.value })} />
-            </label>
+            </Field>
+            <TextField label="Bedrooms" type="number" min="0" value={form.bedrooms}
+              onChange={(e) => set({ bedrooms: e.target.value })} />
+            <TextField label="Bathrooms" type="number" min="0" value={form.bathrooms}
+              onChange={(e) => set({ bathrooms: e.target.value })} />
+            <TextField label="Nightly rate" type="number" min="0" value={form.base_rate_short}
+              onChange={(e) => set({ base_rate_short: e.target.value })} />
+            <TextField label="Monthly rate" type="number" min="0" value={form.base_rate_long}
+              onChange={(e) => set({ base_rate_long: e.target.value })} />
 
             <CurrencyField
               label="Rent currency"
@@ -257,21 +240,17 @@ export default function UnitDetail() {
               inheritedValue={parentProperty?.currency || currency}
             />
 
-            <label className="block">
-              <span className="lx-label">City</span>
-              <input className="lx-input" value={form.city} onChange={(e) => set({ city: e.target.value })} />
-            </label>
-            <label className="block sm:col-span-2">
-              <span className="lx-label">Internal notes</span>
-              <textarea rows={2} className="lx-input" value={form.notes}
+            <TextField label="City" value={form.city} onChange={(e) => set({ city: e.target.value })} />
+            <Field label="Internal notes" className="sm:col-span-2">
+              <textarea rows={2} className="lx-textarea" value={form.notes}
                 onChange={(e) => set({ notes: e.target.value })} />
-            </label>
+            </Field>
           </div>
-          <div className="flex gap-3 mt-4">
-            <button type="submit" disabled={saving} className="lx-btn-primary disabled:opacity-50">
+          <div className="flex flex-col sm:flex-row gap-3 mt-4">
+            <button type="submit" disabled={saving} className="lx-btn-primary disabled:opacity-50 w-full sm:w-auto">
               {saving ? 'Saving…' : 'Save changes'}
             </button>
-            <button type="button" onClick={() => setForm(null)} className="lx-btn-ghost">Cancel</button>
+            <button type="button" onClick={() => setForm(null)} className="lx-btn-ghost w-full sm:w-auto">Cancel</button>
           </div>
         </form>
       )}

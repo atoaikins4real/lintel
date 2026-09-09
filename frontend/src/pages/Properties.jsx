@@ -4,6 +4,7 @@ import { getProperties, createProperty, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { PROPERTY_TYPES as TYPES, AMENITIES as AMENITY_LIST } from '../data/specs.js';
 
 // Single source of truth lives in data/specs.js — re-exported here so the
@@ -61,21 +62,9 @@ export default function Properties() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">
-          Your buildings and estates. Each apartment or house lives inside one of these.
-        </p>
-        {canEdit && (
-          <div className="flex gap-3 w-full sm:w-auto">
-            <Link to="/properties/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
-              + Add Property
-            </Link>
-            <button onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
-              {showForm ? 'Cancel' : 'Quick add'}
-            </button>
-          </div>
-        )}
-      </div>
+      <p className="text-stone text-sm mb-5">
+        Your buildings and estates. Each apartment or house lives inside one of these.
+      </p>
 
       {error && (
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
@@ -84,52 +73,56 @@ export default function Properties() {
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <input
-              required placeholder="Property name (e.g. Airport Residency)" className="lx-input sm:col-span-2"
+            <TextField
+              label="Property name" required className="sm:col-span-2"
               value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
-            <select
-              className="lx-select" value={form.property_type}
-              onChange={(e) => setForm({ ...form, property_type: e.target.value })}
-            >
-              {TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-            <input
-              placeholder="Street address" className="lx-input sm:col-span-2"
+            <Field label="Property type">
+              <select
+                className="lx-select" value={form.property_type}
+                onChange={(e) => setForm({ ...form, property_type: e.target.value })}
+              >
+                {TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </Field>
+            <TextField
+              label="Street address" className="sm:col-span-2"
               value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
             />
-            <input
-              placeholder="Digital address (GPS)" className="lx-input"
+            <TextField
+              label="Digital address (GPS)"
               value={form.digital_address} onChange={(e) => setForm({ ...form, digital_address: e.target.value })}
             />
-            <input
-              placeholder="City" className="lx-input"
+            <TextField
+              label="City"
               value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
             />
-            <input
-              placeholder="Region" className="lx-input"
+            <TextField
+              label="Region"
               value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}
             />
-            <input
-              placeholder="Country" className="lx-input"
+            <TextField
+              label="Country"
               value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })}
             />
-            <input
-              type="number" placeholder="Year built" className="lx-input"
+            <TextField
+              label="Year built" type="number"
               value={form.year_built} onChange={(e) => setForm({ ...form, year_built: e.target.value })}
             />
-            <input
-              type="number" placeholder="Number of floors" className="lx-input"
+            <TextField
+              label="Number of floors" type="number"
               value={form.floors} onChange={(e) => setForm({ ...form, floors: e.target.value })}
             />
           </div>
 
-          <textarea
-            placeholder="Description (shown on the public showcase)" rows={2} className="lx-input"
-            value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
+          <Field label="Description" hint="Shown on the public showcase">
+            <textarea
+              rows={2} className="lx-textarea"
+              value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </Field>
 
           <div>
             <div className="lx-eyebrow mb-2">Amenities</div>
@@ -188,12 +181,20 @@ export default function Properties() {
         </form>
       )}
 
-      {properties.length > 0 && (
-        <SearchBar
-          value={query} onChange={setQuery} placeholder="Search properties, city…"
-          count={shownProperties.length} total={properties.length}
-        />
-      )}
+      <SearchBar
+        value={query} onChange={setQuery} placeholder="Search properties, city…"
+        count={shownProperties.length} total={properties.length}
+        action={canEdit && (
+          <>
+            <Link to="/properties/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
+              + Add Property
+            </Link>
+            <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
+              {showForm ? 'Cancel' : 'Quick add'}
+            </button>
+          </>
+        )}
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {shownProperties.map((p) => (

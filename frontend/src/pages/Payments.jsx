@@ -7,6 +7,7 @@ import { CURRENCY_LABELS } from '../utils/currency.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -134,14 +135,7 @@ export default function Payments() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">Every payment collected, tied to a lease, tenant, and unit.</p>
-        {canEdit && (
-          <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
-            {showForm ? 'Cancel' : '+ Log Payment'}
-          </button>
-        )}
-      </div>
+      <p className="text-stone text-sm mb-5">Every payment collected, tied to a lease, tenant, and unit.</p>
 
       {error && (
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
@@ -189,45 +183,57 @@ export default function Payments() {
 
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <select required className="lx-select sm:col-span-3" value={form.lease_id}
-            onChange={(e) => setForm({ ...form, lease_id: e.target.value })}>
-            <option value="">Select lease…</option>
-            {leases.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.stay_type} · {l.start_date} → {l.end_date || 'ongoing'} · {money(l.agreed_rate)}/{l.rate_period}
-              </option>
-            ))}
-          </select>
-          <input type="number" required placeholder="Amount" className="lx-input"
-            value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-          <select className="lx-select" value={form.currency}
-            onChange={(e) => setForm({ ...form, currency: e.target.value })}>
-            <option value="">{currency} (account default)</option>
-            {Object.keys(CURRENCY_LABELS)
-              .filter((c) => c !== currency)
-              .map((c) => (
-                <option key={c} value={c}>{c}</option>
+          <Field label="Lease" required className="sm:col-span-3">
+            <select required className="lx-select" value={form.lease_id}
+              onChange={(e) => setForm({ ...form, lease_id: e.target.value })}>
+              <option value="">Select lease…</option>
+              {leases.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.stay_type} · {l.start_date} → {l.end_date || 'ongoing'} · {money(l.agreed_rate)}/{l.rate_period}
+                </option>
               ))}
-          </select>
-          <select className="lx-select" value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}>
-            <option value="paid">Paid</option>
-            <option value="partial">Partial</option>
-            <option value="late">Late</option>
-            <option value="pending">Pending</option>
-            <option value="refunded">Refunded</option>
-          </select>
-          <select className="lx-select" value={form.method}
-            onChange={(e) => setForm({ ...form, method: e.target.value })}>
-            <option value="mobile_money">Mobile money</option>
-            <option value="cash">Cash</option>
-            <option value="card">Card</option>
-            <option value="bank_transfer">Bank transfer</option>
-          </select>
-          <input type="date" placeholder="Due date" className="lx-input"
-            value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
-          <input type="date" placeholder="Payment date" className="lx-input"
-            value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+            </select>
+          </Field>
+          <TextField label="Amount" required type="number"
+            value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+          <Field label="Currency">
+            <select className="lx-select" value={form.currency}
+              onChange={(e) => setForm({ ...form, currency: e.target.value })}>
+              <option value="">{currency} (account default)</option>
+              {Object.keys(CURRENCY_LABELS)
+                .filter((c) => c !== currency)
+                .map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+            </select>
+          </Field>
+          <Field label="Status">
+            <select className="lx-select" value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}>
+              <option value="paid">Paid</option>
+              <option value="partial">Partial</option>
+              <option value="late">Late</option>
+              <option value="pending">Pending</option>
+              <option value="refunded">Refunded</option>
+            </select>
+          </Field>
+          <Field label="Method">
+            <select className="lx-select" value={form.method}
+              onChange={(e) => setForm({ ...form, method: e.target.value })}>
+              <option value="mobile_money">Mobile money</option>
+              <option value="cash">Cash</option>
+              <option value="card">Card</option>
+              <option value="bank_transfer">Bank transfer</option>
+            </select>
+          </Field>
+          <Field label="Due date">
+            <input type="date" className="lx-input"
+              value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+          </Field>
+          <Field label="Payment date">
+            <input type="date" className="lx-input"
+              value={form.payment_date} onChange={(e) => setForm({ ...form, payment_date: e.target.value })} />
+          </Field>
           <button disabled={saving} className="lx-btn-gold sm:col-span-3 justify-self-start w-full sm:w-auto">
             {saving ? 'Saving…' : 'Log Payment'}
           </button>
@@ -237,8 +243,13 @@ export default function Payments() {
       <SearchBar
         value={query} onChange={setQuery} placeholder="Search reference, method, notes…"
         count={shownPayments.length} total={payments.length}
+        action={canEdit && (
+          <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
+            {showForm ? 'Cancel' : '+ Log Payment'}
+          </button>
+        )}
       >
-        <select className="lx-select !py-2 text-sm w-auto" value={paymentStatusFilter}
+        <select className="lx-filter" value={paymentStatusFilter}
           onChange={(e) => setPaymentStatusFilter(e.target.value)}>
           <option value="">Any status</option>
           <option value="paid">Paid</option>

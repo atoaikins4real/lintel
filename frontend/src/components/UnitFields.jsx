@@ -7,6 +7,7 @@
 // `toggleFeature(value)` toggler, exactly the shape both callers already use.
 import PhotoUploader from './PhotoUploader.jsx';
 import { NumField, ComboField, ChipGroup } from './WizardShell.jsx';
+import Field, { TextField } from './Field.jsx';
 import {
   UNIT_TYPES, UNIT_CLASSES, FURNISHING, UNIT_FEATURES,
   GLASS_PANEL_TYPES, WOOD_COLOURS, JOINERY_MATERIALS, FLOORING_TYPES, CEILING_TYPES,
@@ -42,35 +43,35 @@ export default function UnitFields({ form, set, toggleFeature, currency }) {
     <div className="space-y-6">
       <Section title="Details">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input
-            className="lx-input sm:col-span-2"
-            placeholder="Unit reference (e.g. Block A - 4B, or the house name)"
+          <TextField
+            label="Unit reference"
+            className="sm:col-span-2"
+            hint="e.g. Block A - 4B, or the house name"
             value={form.unit_code}
             onChange={(e) => set({ unit_code: e.target.value })}
           />
-          <div>
-            <label className="block text-xs text-stone mb-1">Type</label>
+          <Field label="Type">
             <select className="lx-select" value={form.unit_type} onChange={(e) => set({ unit_type: e.target.value })}>
               {UNIT_TYPES.map((t) => (
                 <option key={t} value={t} className="capitalize">{t}</option>
               ))}
             </select>
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Class</label>
+          </Field>
+          <Field label="Class">
             <select className="lx-select" value={form.class} onChange={(e) => set({ class: e.target.value })}>
               {UNIT_CLASSES.map((c) => (
                 <option key={c} value={c} className="capitalize">{c}</option>
               ))}
             </select>
-          </div>
+          </Field>
         </div>
-        <textarea
-          className="lx-input" rows={2}
-          placeholder="Description — what a prospect reads on your shared link"
-          value={form.description}
-          onChange={(e) => set({ description: e.target.value })}
-        />
+        <Field label="Description" hint="What a prospect reads on your shared link">
+          <textarea
+            className="lx-textarea" rows={2}
+            value={form.description}
+            onChange={(e) => set({ description: e.target.value })}
+          />
+        </Field>
       </Section>
 
       <Section title="Layout">
@@ -94,13 +95,12 @@ export default function UnitFields({ form, set, toggleFeature, currency }) {
       <Section title="Size">
         <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
           <NumField label="Floor area" value={form.floor_area} onChange={(v) => set({ floor_area: v })} placeholder="e.g. 120" />
-          <div>
-            <label className="block text-xs text-stone mb-1">Unit</label>
+          <Field label="Unit">
             <select className="lx-select" value={form.floor_area_unit} onChange={(e) => set({ floor_area_unit: e.target.value })}>
               <option value="sqm">sqm</option>
               <option value="sqft">sqft</option>
             </select>
-          </div>
+          </Field>
         </div>
       </Section>
 
@@ -114,14 +114,13 @@ export default function UnitFields({ form, set, toggleFeature, currency }) {
           <ComboField label="Wall colour" value={form.wall_colour} onChange={(v) => set({ wall_colour: v })} options={['White', 'Off-white', 'Grey', 'Beige', 'Cream']} />
           <ComboField label="Outlook / view" value={form.view_orientation} onChange={(v) => set({ view_orientation: v })}
             options={['Sea view', 'Garden facing', 'Street facing', 'Courtyard', 'City view', 'Pool view']} />
-          <div>
-            <label className="block text-xs text-stone mb-1">Furnishing</label>
+          <Field label="Furnishing">
             <select className="lx-select" value={form.furnishing} onChange={(e) => set({ furnishing: e.target.value })}>
               {FURNISHING.map((f) => (
                 <option key={f.value} value={f.value}>{f.label}</option>
               ))}
             </select>
-          </div>
+          </Field>
         </div>
         <label className="flex items-center gap-2 text-sm text-stone">
           <input type="checkbox" className="rounded border-line accent-ink"
@@ -168,26 +167,24 @@ export default function UnitFields({ form, set, toggleFeature, currency }) {
         {form.listing_type !== 'rent' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <NumField label={`Asking price (${currency})`} value={form.sale_price} onChange={(v) => set({ sale_price: v })} placeholder="e.g. 950000" />
-            <div>
-              <label className="block text-xs text-stone mb-1">Sale status</label>
+            <Field label="Sale status">
               <select className="lx-select" value={form.sale_status} onChange={(e) => set({ sale_status: e.target.value })}>
                 <option value="available">Available</option>
                 <option value="under_offer">Under offer</option>
                 <option value="sold">Sold</option>
               </select>
-            </div>
+            </Field>
           </div>
         )}
 
-        <div className="sm:max-w-xs">
-          <label className="block text-xs text-stone mb-1">Occupancy status</label>
+        <Field label="Occupancy status" className="sm:max-w-xs">
           <select className="lx-select" value={form.status} onChange={(e) => set({ status: e.target.value })}>
             <option value="vacant">Vacant</option>
             <option value="occupied">Occupied</option>
             <option value="maintenance">Maintenance</option>
             <option value="off_market">Off market (hidden from showcase)</option>
           </select>
-        </div>
+        </Field>
       </Section>
 
       <Section title="Photos">

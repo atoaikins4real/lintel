@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getBootstrapStatus, register, signup, forgotPassword, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { IconEye, IconEyeOff } from '../components/icons.jsx';
 
 const HERO_PHOTO = 'https://images.unsplash.com/photo-1759372945658-1e9f56e751bd?w=1800&q=80&auto=format&fit=crop';
@@ -143,54 +144,38 @@ export default function Login() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {(needsBootstrap || mode === 'signup') && (
                     <>
-                      <div>
-                        <label className="block text-xs font-medium text-ink mb-1.5">Full name</label>
+                      <TextField
+                        label="Full name"
+                        required
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      />
+                      <Field label="Company name" hint="You can change this later in Settings.">
                         <input
-                          required
-                          placeholder="Your full name"
-                          className="lx-input"
-                          value={form.name}
-                          onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-ink mb-1.5">Company name</label>
-                        <input
-                          placeholder="Your company or agency"
                           className="lx-input"
                           value={form.company_name}
                           onChange={(e) => setForm({ ...form, company_name: e.target.value })}
                         />
-                        <p className="text-[11px] text-stone mt-1">
-                          You can change this later in Settings.
-                        </p>
-                      </div>
+                      </Field>
                     </>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-medium text-ink mb-1.5">
-                      {mode === 'signup' && !needsBootstrap ? 'Email' : 'Email or username'}
-                    </label>
-                    <input
-                      required
-                      type="text"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      placeholder={mode === 'signup' && !needsBootstrap ? 'you@example.com' : 'Enter your email or username'}
-                      className="lx-input"
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    />
-                  </div>
+                  <TextField
+                    label={mode === 'signup' && !needsBootstrap ? 'Email' : 'Email or username'}
+                    required
+                    type="text"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    hint={mode === 'signup' && !needsBootstrap ? 'you@example.com' : undefined}
+                    value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  />
 
-                  <div>
-                    <label className="block text-xs font-medium text-ink mb-1.5">Password</label>
+                  <Field label="Password">
                     <div className="relative">
                       <input
                         required
                         type={showPassword ? 'text' : 'password'}
-                        placeholder="Enter your password here"
                         className="lx-input pr-10"
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
@@ -204,7 +189,7 @@ export default function Login() {
                         {showPassword ? <IconEyeOff width={16} height={16} /> : <IconEye width={16} height={16} />}
                       </button>
                     </div>
-                  </div>
+                  </Field>
 
                   {!needsBootstrap && (
                     <div className="flex items-center justify-between text-xs">
@@ -232,13 +217,14 @@ export default function Login() {
                           <p className="text-xs text-stone">
                             Enter the email on your account and we&apos;ll send a reset link.
                           </p>
-                          <input
-                            type="email"
-                            placeholder="you@example.com"
-                            className="lx-input"
-                            value={forgotEmail}
-                            onChange={(e) => setForgotEmail(e.target.value)}
-                          />
+                          <Field label="Account email">
+                            <input
+                              type="email"
+                              className="lx-input"
+                              value={forgotEmail}
+                              onChange={(e) => setForgotEmail(e.target.value)}
+                            />
+                          </Field>
                           <button
                             type="button"
                             disabled={forgotBusy || !forgotEmail.trim()}

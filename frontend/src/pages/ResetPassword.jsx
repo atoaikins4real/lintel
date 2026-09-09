@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { resetPassword, readApiError } from '../api/client.js';
+import Field from '../components/Field.jsx';
 import { IconEye, IconEyeOff } from '../components/icons.jsx';
 
 const HERO_PHOTO = 'https://images.unsplash.com/photo-1759372945658-1e9f56e751bd?w=1800&q=80&auto=format&fit=crop';
@@ -84,8 +85,7 @@ export default function ResetPassword() {
                 )}
 
                 <form onSubmit={submit} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-ink mb-1.5">New password</label>
+                  <Field label="New password">
                     <div className="relative">
                       <input
                         required
@@ -102,9 +102,8 @@ export default function ResetPassword() {
                         {show ? <IconEyeOff width={16} height={16} /> : <IconEye width={16} height={16} />}
                       </button>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-ink mb-1.5">Confirm new password</label>
+                  </Field>
+                  <Field label="Confirm new password">
                     <input
                       required
                       type={show ? 'text' : 'password'}
@@ -112,7 +111,7 @@ export default function ResetPassword() {
                       value={confirm}
                       onChange={(e) => setConfirm(e.target.value)}
                     />
-                  </div>
+                  </Field>
                   <button disabled={saving} className="lx-btn-primary w-full">
                     {saving ? 'Saving…' : 'Change password'}
                   </button>

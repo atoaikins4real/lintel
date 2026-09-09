@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { getPublicUnit, createInquiry } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import Slideshow from '../components/Slideshow.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { formatMoney } from '../utils/currency.js';
 import { LAYOUT_FIELDS, FINISH_FIELDS, BUILDING_FIELDS, furnishingLabel, areaLabel } from '../data/specs.js';
 
@@ -183,24 +184,22 @@ export default function ShowcaseDetail() {
                 {error && (
                   <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5">{error}</div>
                 )}
-                <input
+                <TextField
+                  label="Your name"
                   required
-                  placeholder="Your name"
-                  className="lx-input"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input
+                  <TextField
+                    label="Email"
                     type="email"
-                    placeholder="Email"
-                    className="lx-input"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                   />
-                  <input
-                    placeholder="Phone"
-                    className="lx-input"
+                  <TextField
+                    label="Phone"
+                    type="tel"
                     value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   />
@@ -209,65 +208,58 @@ export default function ShowcaseDetail() {
                 {/* Stay dates are meaningless on a purchase enquiry, so
                     the form asks for an offer instead. */}
                 {inquiryType === 'purchase' ? (
-                  <div>
-                    <label className="block text-xs text-stone mb-1">Your offer (optional)</label>
-                    <input
-                      type="number"
-                      placeholder="Leave blank to simply register interest"
-                      className="lx-input"
-                      value={form.offer_amount || ''}
-                      onChange={(e) => setForm({ ...form, offer_amount: e.target.value })}
-                    />
-                  </div>
+                  <TextField
+                    label="Your offer"
+                    type="number"
+                    hint="Leave blank to simply register interest."
+                    value={form.offer_amount || ''}
+                    onChange={(e) => setForm({ ...form, offer_amount: e.target.value })}
+                  />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-stone mb-1">Move-in / check-in date</label>
-                      <input
-                        type="date"
-                        className="lx-input"
-                        value={form.start_date}
-                        onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-stone mb-1">Check-out date (optional)</label>
-                      <input
-                        type="date"
-                        className="lx-input"
-                        value={form.end_date}
-                        onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                      />
-                    </div>
+                    <TextField
+                      label="Move-in / check-in date"
+                      type="date"
+                      value={form.start_date}
+                      onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                    />
+                    <TextField
+                      label="Check-out date"
+                      type="date"
+                      hint="Optional."
+                      value={form.end_date}
+                      onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                    />
                   </div>
                 )}
-                <textarea
-                  placeholder="Anything else we should know?"
-                  className="lx-input"
-                  rows={3}
-                  value={form.message}
-                  onChange={(e) => setForm({ ...form, message: e.target.value })}
-                />
-                <div className="flex gap-3">
-                  <button disabled={sending} className="lx-btn-primary">
+                <Field label="Anything else we should know?">
+                  <textarea
+                    className="lx-textarea"
+                    rows={3}
+                    value={form.message}
+                    onChange={(e) => setForm({ ...form, message: e.target.value })}
+                  />
+                </Field>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button disabled={sending} className="lx-btn-primary w-full sm:w-auto">
                     {sending ? 'Sending…' : inquiryType === 'purchase' ? 'Send enquiry' : 'Send request'}
                   </button>
-                  <button type="button" onClick={() => setShowForm(false)} className="lx-btn-ghost">
+                  <button type="button" onClick={() => setShowForm(false)} className="lx-btn-ghost w-full sm:w-auto">
                     Cancel
                   </button>
                 </div>
               </form>
             ) : (
-              <div className="flex gap-3 flex-wrap">
+              <div className="flex flex-col sm:flex-row gap-3 sm:flex-wrap">
                 {unit.listing_type !== 'sale' && (
-                  <button onClick={() => { setInquiryType('booking'); setShowForm(true); }} className="lx-btn-primary">
+                  <button onClick={() => { setInquiryType('booking'); setShowForm(true); }} className="lx-btn-primary w-full sm:w-auto">
                     {isVacant ? 'Book now' : 'Request to be notified'}
                   </button>
                 )}
                 {unit.listing_type !== 'rent' && unit.sale_status !== 'sold' && (
                   <button
                     onClick={() => { setInquiryType('purchase'); setShowForm(true); }}
-                    className={unit.listing_type === 'sale' ? 'lx-btn-primary' : 'lx-btn-ghost'}
+                    className={`w-full sm:w-auto ${unit.listing_type === 'sale' ? 'lx-btn-primary' : 'lx-btn-ghost'}`}
                   >
                     {unit.sale_status === 'under_offer' ? 'Register interest' : 'Enquire about buying'}
                   </button>

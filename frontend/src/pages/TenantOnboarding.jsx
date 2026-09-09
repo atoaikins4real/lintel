@@ -8,6 +8,7 @@ import {
   completeOnboarding, readApiError,
 } from '../api/client.js';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 
 // Guided tenant intake. Step 1 creates the tenant record (so a Lintel ID
 // exists to hang everything else off); later steps attach to it, which
@@ -183,24 +184,18 @@ export default function TenantOnboarding() {
             <p className="text-xs text-stone">Name is all that&apos;s required to create the record — the rest can follow.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input required placeholder="First name" className="lx-input"
+            <TextField label="First name" required
               value={identity.first_name} onChange={(e) => setIdentity({ ...identity, first_name: e.target.value })} />
-            <input required placeholder="Last name" className="lx-input"
+            <TextField label="Last name" required
               value={identity.last_name} onChange={(e) => setIdentity({ ...identity, last_name: e.target.value })} />
-            <input placeholder="Email" className="lx-input"
+            <TextField label="Email" type="email"
               value={identity.email} onChange={(e) => setIdentity({ ...identity, email: e.target.value })} />
-            <input placeholder="Phone" className="lx-input"
+            <TextField label="Phone" type="tel"
               value={identity.phone} onChange={(e) => setIdentity({ ...identity, phone: e.target.value })} />
-            <div>
-              <label className="block text-xs text-stone mb-1">Date of birth</label>
-              <input type="date" className="lx-input"
-                value={identity.date_of_birth} onChange={(e) => setIdentity({ ...identity, date_of_birth: e.target.value })} />
-            </div>
-            <div>
-              <label className="block text-xs text-stone mb-1">Nationality</label>
-              <input placeholder="e.g. Ghanaian" className="lx-input"
-                value={identity.nationality} onChange={(e) => setIdentity({ ...identity, nationality: e.target.value })} />
-            </div>
+            <TextField label="Date of birth" type="date"
+              value={identity.date_of_birth} onChange={(e) => setIdentity({ ...identity, date_of_birth: e.target.value })} />
+            <TextField label="Nationality" hint="e.g. Ghanaian"
+              value={identity.nationality} onChange={(e) => setIdentity({ ...identity, nationality: e.target.value })} />
           </div>
           <button onClick={saveIdentity} disabled={saving || !canAdvance} className="lx-btn-primary">
             {saving ? 'Saving…' : tenantId ? 'Save & continue' : 'Create tenant & continue'}
@@ -216,18 +211,17 @@ export default function TenantOnboarding() {
             <p className="text-xs text-stone">Upload clear photos — these are stored against the tenant for verification.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select className="lx-select" value={docs.id_document_type}
-              onChange={(e) => setDocs({ ...docs, id_document_type: e.target.value })}>
-              <option value="">Document type…</option>
-              {ID_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <input placeholder="Document number" className="lx-input"
+            <Field label="Document type">
+              <select className="lx-select" value={docs.id_document_type}
+                onChange={(e) => setDocs({ ...docs, id_document_type: e.target.value })}>
+                <option value="">Select…</option>
+                {ID_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Field>
+            <TextField label="Document number"
               value={docs.id_document_number} onChange={(e) => setDocs({ ...docs, id_document_number: e.target.value })} />
-            <div>
-              <label className="block text-xs text-stone mb-1">Expiry date</label>
-              <input type="date" className="lx-input"
-                value={docs.id_document_expiry} onChange={(e) => setDocs({ ...docs, id_document_expiry: e.target.value })} />
-            </div>
+            <TextField label="Expiry date" type="date"
+              value={docs.id_document_expiry} onChange={(e) => setDocs({ ...docs, id_document_expiry: e.target.value })} />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
@@ -265,15 +259,15 @@ export default function TenantOnboarding() {
           onNext={() => setStep(3)}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input placeholder="Full name" className="lx-input"
+            <TextField label="Full name"
               value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
-            <input placeholder="Relationship (e.g. sister)" className="lx-input"
+            <TextField label="Relationship" hint="e.g. sister"
               value={contact.relationship} onChange={(e) => setContact({ ...contact, relationship: e.target.value })} />
-            <input placeholder="Phone" className="lx-input"
+            <TextField label="Phone" type="tel"
               value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
-            <input placeholder="Email" className="lx-input"
+            <TextField label="Email" type="email"
               value={contact.email} onChange={(e) => setContact({ ...contact, email: e.target.value })} />
-            <input placeholder="Address" className="lx-input sm:col-span-2"
+            <TextField label="Address" className="sm:col-span-2"
               value={contact.address} onChange={(e) => setContact({ ...contact, address: e.target.value })} />
             <label className="flex items-center gap-2 text-xs text-stone sm:col-span-2">
               <input type="checkbox" className="rounded border-line accent-ink"
@@ -299,15 +293,12 @@ export default function TenantOnboarding() {
           onNext={() => setStep(4)}
         >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input placeholder="Full name" className="lx-input"
+            <TextField label="Full name"
               value={occupant.full_name} onChange={(e) => setOccupant({ ...occupant, full_name: e.target.value })} />
-            <input placeholder="Relationship" className="lx-input"
+            <TextField label="Relationship"
               value={occupant.relationship} onChange={(e) => setOccupant({ ...occupant, relationship: e.target.value })} />
-            <div>
-              <label className="block text-xs text-stone mb-1">Date of birth</label>
-              <input type="date" className="lx-input"
-                value={occupant.date_of_birth} onChange={(e) => setOccupant({ ...occupant, date_of_birth: e.target.value })} />
-            </div>
+            <TextField label="Date of birth" type="date"
+              value={occupant.date_of_birth} onChange={(e) => setOccupant({ ...occupant, date_of_birth: e.target.value })} />
           </div>
         </ChildStep>
       )}
@@ -326,15 +317,15 @@ export default function TenantOnboarding() {
           onNext={() => setStep(5)}
         >
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input placeholder="Plate number" className="lx-input"
+            <TextField label="Plate number"
               value={vehicle.plate_number} onChange={(e) => setVehicle({ ...vehicle, plate_number: e.target.value })} />
-            <input placeholder="Make" className="lx-input"
+            <TextField label="Make"
               value={vehicle.make} onChange={(e) => setVehicle({ ...vehicle, make: e.target.value })} />
-            <input placeholder="Model" className="lx-input"
+            <TextField label="Model"
               value={vehicle.model} onChange={(e) => setVehicle({ ...vehicle, model: e.target.value })} />
-            <input placeholder="Colour" className="lx-input"
+            <TextField label="Colour"
               value={vehicle.colour} onChange={(e) => setVehicle({ ...vehicle, colour: e.target.value })} />
-            <input placeholder="Parking slot" className="lx-input"
+            <TextField label="Parking slot"
               value={vehicle.parking_slot} onChange={(e) => setVehicle({ ...vehicle, parking_slot: e.target.value })} />
           </div>
         </ChildStep>

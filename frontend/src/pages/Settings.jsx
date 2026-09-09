@@ -11,6 +11,7 @@ import { CURRENCY_LABELS } from '../utils/currency.js';
 import ExpenseCategories from '../components/ExpenseCategories.jsx';
 import UtilityTypes from '../components/UtilityTypes.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 
 const MOBILE_PROVIDERS = ['MTN Mobile Money', 'Telecel Cash', 'AirtelTigo Money', 'Other'];
 
@@ -133,41 +134,42 @@ export default function Settings() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input
-            className="lx-input sm:col-span-2" placeholder="Company name" disabled={!isManager}
+          <TextField
+            label="Company name" className="sm:col-span-2" disabled={!isManager}
             value={companyForm.name || ''} onChange={(e) => setCo({ name: e.target.value })}
           />
-          <input
-            className="lx-input" placeholder="Contact email" disabled={!isManager}
+          <TextField
+            label="Contact email" type="email" disabled={!isManager}
             value={companyForm.email || ''} onChange={(e) => setCo({ email: e.target.value })}
           />
-          <input
-            className="lx-input" placeholder="Contact phone" disabled={!isManager}
+          <TextField
+            label="Contact phone" type="tel" disabled={!isManager}
             value={companyForm.phone || ''} onChange={(e) => setCo({ phone: e.target.value })}
           />
-          <input
-            className="lx-input sm:col-span-2" placeholder="Address" disabled={!isManager}
+          <TextField
+            label="Address" className="sm:col-span-2" disabled={!isManager}
             value={companyForm.address || ''} onChange={(e) => setCo({ address: e.target.value })}
           />
-          <input
-            className="lx-input" placeholder="City" disabled={!isManager}
+          <TextField
+            label="City" disabled={!isManager}
             value={companyForm.city || ''} onChange={(e) => setCo({ city: e.target.value })}
           />
-          <input
-            className="lx-input" placeholder="Country" disabled={!isManager}
+          <TextField
+            label="Country" disabled={!isManager}
             value={companyForm.country || ''} onChange={(e) => setCo({ country: e.target.value })}
           />
         </div>
 
         <div className="mt-4 pt-4 border-t border-line/70">
-          <label className="block text-xs font-medium text-ink mb-1.5">Public showcase link</label>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-stone">{window.location.origin}/showcase/</span>
-            <input
-              className="lx-input flex-1 min-w-[140px]" disabled={!isManager}
-              value={companyForm.slug || ''} onChange={(e) => setCo({ slug: e.target.value })}
-            />
-          </div>
+          <Field label="Public showcase link">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-stone">{window.location.origin}/showcase/</span>
+              <input
+                className="lx-input flex-1 min-w-[140px]" disabled={!isManager}
+                value={companyForm.slug || ''} onChange={(e) => setCo({ slug: e.target.value })}
+              />
+            </div>
+          </Field>
           <div className="flex items-center gap-3 mt-2">
             <a href={showcaseUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-gold hover:underline">
               Open showcase ↗
@@ -295,20 +297,20 @@ export default function Settings() {
 
         {form.payout_method === 'bank' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              className="lx-input" placeholder="Bank name" disabled={!isManager}
+            <TextField
+              label="Bank name" disabled={!isManager}
               value={form.payout_bank_name || ''} onChange={(e) => set({ payout_bank_name: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="Account name" disabled={!isManager}
+            <TextField
+              label="Account name" disabled={!isManager}
               value={form.payout_account_name || ''} onChange={(e) => set({ payout_account_name: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="Account number" disabled={!isManager}
+            <TextField
+              label="Account number" disabled={!isManager}
               value={form.payout_account_number || ''} onChange={(e) => set({ payout_account_number: e.target.value })}
             />
-            <input
-              className="lx-input" placeholder="Branch (optional)" disabled={!isManager}
+            <TextField
+              label="Branch" hint="Optional" disabled={!isManager}
               value={form.payout_branch || ''} onChange={(e) => set({ payout_branch: e.target.value })}
             />
           </div>
@@ -316,22 +318,24 @@ export default function Settings() {
 
         {form.payout_method === 'mobile_money' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select
-              className="lx-select" disabled={!isManager}
-              value={form.payout_mobile_provider || ''}
-              onChange={(e) => set({ payout_mobile_provider: e.target.value })}
-            >
-              <option value="">Select provider…</option>
-              {MOBILE_PROVIDERS.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
-            <input
-              className="lx-input" placeholder="Mobile money number" disabled={!isManager}
+            <Field label="Provider">
+              <select
+                className="lx-select" disabled={!isManager}
+                value={form.payout_mobile_provider || ''}
+                onChange={(e) => set({ payout_mobile_provider: e.target.value })}
+              >
+                <option value="">Select provider…</option>
+                {MOBILE_PROVIDERS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </Field>
+            <TextField
+              label="Mobile money number" disabled={!isManager}
               value={form.payout_mobile_number || ''} onChange={(e) => set({ payout_mobile_number: e.target.value })}
             />
-            <input
-              className="lx-input sm:col-span-2" placeholder="Registered account name" disabled={!isManager}
+            <TextField
+              label="Registered account name" className="sm:col-span-2" disabled={!isManager}
               value={form.payout_account_name || ''} onChange={(e) => set({ payout_account_name: e.target.value })}
             />
           </div>
@@ -552,9 +556,9 @@ function PlanChangeManager({ currentPlanId, status }) {
             })}
           </div>
 
-          <input
-            className="lx-input mt-3"
-            placeholder="Optional note to Lintel (e.g. billing contact, timing)"
+          <TextField
+            label="Note to Lintel" hint="Optional — e.g. billing contact, timing"
+            className="mt-3"
             value={note}
             maxLength={500}
             onChange={(e) => setNote(e.target.value)}
@@ -738,21 +742,21 @@ function OnlinePayments({ isManager, settings, onUpdated }) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select className="lx-select" value={bankCode} onChange={(e) => setBankCode(e.target.value)} disabled={loadingBanks}>
-              <option value="">{loadingBanks ? 'Loading…' : type === 'bank' ? 'Select bank…' : 'Select provider…'}</option>
-              {banks.map((b) => (
-                <option key={b.code} value={b.code}>{b.name}</option>
-              ))}
-            </select>
-            <input
-              className="lx-input"
-              placeholder={type === 'bank' ? 'Account number' : 'Mobile money number'}
+            <Field label={type === 'bank' ? 'Bank' : 'Provider'}>
+              <select className="lx-select" value={bankCode} onChange={(e) => setBankCode(e.target.value)} disabled={loadingBanks}>
+                <option value="">{loadingBanks ? 'Loading…' : type === 'bank' ? 'Select bank…' : 'Select provider…'}</option>
+                {banks.map((b) => (
+                  <option key={b.code} value={b.code}>{b.name}</option>
+                ))}
+              </select>
+            </Field>
+            <TextField
+              label={type === 'bank' ? 'Account number' : 'Mobile money number'}
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
             />
-            <input
-              className="lx-input sm:col-span-2"
-              placeholder="Account name (as registered)"
+            <TextField
+              label="Account name" hint="As registered" className="sm:col-span-2"
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
             />

@@ -4,6 +4,7 @@ import { getTenants, createTenant, deleteTenant, readApiError } from '../api/cli
 import TierBadge from '../components/TierBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import { TextField } from '../components/Field.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const emptyForm = { first_name: '', last_name: '', email: '', phone: '', nationality: '' };
@@ -72,19 +73,7 @@ export default function Tenants() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">Every guest and resident, tracked under one permanent Lintel ID.</p>
-        {canEdit && (
-          <div className="flex gap-3 w-full sm:w-auto">
-            <Link to="/tenants/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
-              + Onboard Tenant
-            </Link>
-            <button onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
-              {showForm ? 'Cancel' : 'Quick add'}
-            </button>
-          </div>
-        )}
-      </div>
+      <p className="text-stone text-sm mb-5">Every guest and resident, tracked under one permanent Lintel ID.</p>
 
       {error && (
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
@@ -92,18 +81,18 @@ export default function Tenants() {
 
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input required placeholder="First name" className="lx-input"
-            value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
-          <input required placeholder="Last name" className="lx-input"
-            value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
-          <input placeholder="Email" className="lx-input"
-            value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input placeholder="Phone" className="lx-input"
-            value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <input placeholder="Nationality" className="lx-input sm:col-span-2"
-            value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />
+          <TextField label="First name" required value={form.first_name}
+            onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
+          <TextField label="Last name" required value={form.last_name}
+            onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
+          <TextField label="Email" type="email" value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <TextField label="Phone" type="tel" value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+          <TextField label="Nationality" className="sm:col-span-2" value={form.nationality}
+            onChange={(e) => setForm({ ...form, nationality: e.target.value })} />
           <button disabled={saving} className="lx-btn-gold sm:col-span-2 justify-self-start w-full sm:w-auto">
-            {saving ? 'Saving…' : 'Create Tenant (assigns Lintel ID)'}
+            {saving ? 'Saving…' : 'Create tenant'}
           </button>
         </form>
       )}
@@ -112,15 +101,23 @@ export default function Tenants() {
         value={query} onChange={setQuery}
         placeholder="Search name, email, phone, Lintel ID…"
         count={shownTenants.length} total={tenants.length}
+        action={canEdit && (
+          <>
+            <Link to="/tenants/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">Onboard tenant</Link>
+            <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
+              {showForm ? 'Cancel' : 'Quick add'}
+            </button>
+          </>
+        )}
       >
-        <select className="lx-select !py-2 text-sm w-auto" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
+        <select className="lx-filter" value={tierFilter} onChange={(e) => setTierFilter(e.target.value)}>
           <option value="">Any tier</option>
           <option value="guest">Guest</option>
           <option value="returning">Returning</option>
           <option value="resident">Resident</option>
           <option value="exclusive">Exclusive</option>
         </select>
-        <select className="lx-select !py-2 text-sm w-auto" value={onboardingFilter} onChange={(e) => setOnboardingFilter(e.target.value)}>
+        <select className="lx-filter" value={onboardingFilter} onChange={(e) => setOnboardingFilter(e.target.value)}>
           <option value="">Any onboarding</option>
           <option value="in_progress">Setup unfinished</option>
           <option value="complete">Complete</option>

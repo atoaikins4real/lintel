@@ -31,12 +31,33 @@ export function useSearch(items, fields, extraFilter) {
   return { query, setQuery, results };
 }
 
-export default function SearchBar({ value, onChange, placeholder = 'Search…', count, total, children }) {
+function SearchIcon(props) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-      <div className="relative flex-1 sm:max-w-xs">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
+/**
+ * The one toolbar every list page uses, so search / filters / the primary
+ * action line up identically everywhere instead of each page inventing its
+ * own arrangement. Layout:
+ *
+ *   [ search ........ ] [ filter ] [ filter ]        n of N   [ Action ]
+ *
+ * On phones it stacks to full width, top to bottom, in that order. Pass
+ * filters as children (style them `lx-filter`) and the page's primary button
+ * as `action`.
+ */
+export default function SearchBar({ value, onChange, placeholder = 'Search…', count, total, children, action }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 mb-5">
+      <div className="relative flex-1 sm:max-w-sm">
+        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-light pointer-events-none" />
         <input
-          className="lx-input pr-8"
+          className="lx-input pl-9 pr-8"
           placeholder={placeholder}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -46,7 +67,8 @@ export default function SearchBar({ value, onChange, placeholder = 'Search…', 
             type="button"
             onClick={() => onChange('')}
             title="Clear"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone hover:text-ink text-sm"
+            aria-label="Clear search"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone hover:text-ink text-base leading-none"
           >
             ×
           </button>
@@ -55,13 +77,16 @@ export default function SearchBar({ value, onChange, placeholder = 'Search…', 
 
       {children}
 
-      {/* Only show a count once something is actually narrowing the list,
-          so the UI stays quiet in the common case. */}
+      {/* A quiet count, only while the list is actually being narrowed. */}
       {total !== undefined && count !== total && (
-        <span className="text-xs text-stone whitespace-nowrap">
+        <span className="text-xs text-stone whitespace-nowrap sm:mr-1">
           {count} of {total}
         </span>
       )}
+
+      {/* Primary action rides in the same toolbar, pinned right on desktop
+          and full-width on top on mobile handled by the flex order. */}
+      {action && <div className="sm:ml-auto flex flex-col sm:flex-row gap-2 w-full sm:w-auto">{action}</div>}
     </div>
   );
 }

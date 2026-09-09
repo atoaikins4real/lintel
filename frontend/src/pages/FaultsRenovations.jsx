@@ -7,6 +7,7 @@ import {
 } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -185,29 +186,37 @@ export default function FaultsRenovations() {
           </div>
           {canEdit && showFaultForm && (
             <form onSubmit={submitFault} className="lx-card p-5 mb-4 space-y-3">
-              <select required className="lx-select" value={faultForm.unit_id}
-                onChange={(e) => setFaultForm({ ...faultForm, unit_id: e.target.value })}>
-                <option value="">Select unit…</option>
-                {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
-              </select>
-              <input required placeholder="Description" className="lx-input"
+              <Field label="Unit" required>
+                <select required className="lx-select" value={faultForm.unit_id}
+                  onChange={(e) => setFaultForm({ ...faultForm, unit_id: e.target.value })}>
+                  <option value="">Select unit…</option>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
+                </select>
+              </Field>
+              <TextField label="Description" required
                 value={faultForm.description} onChange={(e) => setFaultForm({ ...faultForm, description: e.target.value })} />
               <div className="grid grid-cols-2 gap-3">
-                <select className="lx-select" value={faultForm.severity}
-                  onChange={(e) => setFaultForm({ ...faultForm, severity: e.target.value })}>
-                  <option value="low">Low</option><option value="medium">Medium</option>
-                  <option value="high">High</option><option value="critical">Critical</option>
-                </select>
-                <select className="lx-select" value={faultForm.caused_by}
-                  onChange={(e) => setFaultForm({ ...faultForm, caused_by: e.target.value })}>
-                  <option value="unknown">Unknown</option><option value="tenant">Tenant</option>
-                  <option value="wear_and_tear">Wear & tear</option><option value="external">External</option>
-                </select>
+                <Field label="Severity">
+                  <select className="lx-select" value={faultForm.severity}
+                    onChange={(e) => setFaultForm({ ...faultForm, severity: e.target.value })}>
+                    <option value="low">Low</option><option value="medium">Medium</option>
+                    <option value="high">High</option><option value="critical">Critical</option>
+                  </select>
+                </Field>
+                <Field label="Caused by">
+                  <select className="lx-select" value={faultForm.caused_by}
+                    onChange={(e) => setFaultForm({ ...faultForm, caused_by: e.target.value })}>
+                    <option value="unknown">Unknown</option><option value="tenant">Tenant</option>
+                    <option value="wear_and_tear">Wear & tear</option><option value="external">External</option>
+                  </select>
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <input type="date" className="lx-input"
-                  value={faultForm.reported_date} onChange={(e) => setFaultForm({ ...faultForm, reported_date: e.target.value })} />
-                <input type="number" placeholder="Repair cost" className="lx-input"
+                <Field label="Reported date">
+                  <input type="date" className="lx-input"
+                    value={faultForm.reported_date} onChange={(e) => setFaultForm({ ...faultForm, reported_date: e.target.value })} />
+                </Field>
+                <TextField label="Repair cost" type="number"
                   value={faultForm.cost} onChange={(e) => setFaultForm({ ...faultForm, cost: e.target.value })} />
               </div>
               <button className="lx-btn-gold w-full sm:w-auto">Log Fault</button>
@@ -256,25 +265,31 @@ export default function FaultsRenovations() {
           </div>
           {canEdit && showRenoForm && (
             <form onSubmit={submitReno} className="lx-card p-5 mb-4 space-y-3">
-              <select required className="lx-select" value={renoForm.unit_id}
-                onChange={(e) => setRenoForm({ ...renoForm, unit_id: e.target.value })}>
-                <option value="">Select unit…</option>
-                {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
-              </select>
-              <input required placeholder="Description (e.g. kitchen upgrade)" className="lx-input"
+              <Field label="Unit" required>
+                <select required className="lx-select" value={renoForm.unit_id}
+                  onChange={(e) => setRenoForm({ ...renoForm, unit_id: e.target.value })}>
+                  <option value="">Select unit…</option>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
+                </select>
+              </Field>
+              <TextField label="Description" required hint="e.g. kitchen upgrade"
                 value={renoForm.description} onChange={(e) => setRenoForm({ ...renoForm, description: e.target.value })} />
-              <input type="number" required placeholder="Cost" className="lx-input"
+              <TextField label="Cost" required type="number"
                 value={renoForm.cost} onChange={(e) => setRenoForm({ ...renoForm, cost: e.target.value })} />
               <div className="grid grid-cols-2 gap-3">
-                <input type="date" className="lx-input"
-                  value={renoForm.start_date} onChange={(e) => setRenoForm({ ...renoForm, start_date: e.target.value })} />
-                <input type="date" className="lx-input"
-                  value={renoForm.end_date} onChange={(e) => setRenoForm({ ...renoForm, end_date: e.target.value })} />
+                <Field label="Start date">
+                  <input type="date" className="lx-input"
+                    value={renoForm.start_date} onChange={(e) => setRenoForm({ ...renoForm, start_date: e.target.value })} />
+                </Field>
+                <Field label="End date">
+                  <input type="date" className="lx-input"
+                    value={renoForm.end_date} onChange={(e) => setRenoForm({ ...renoForm, end_date: e.target.value })} />
+                </Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <input type="number" placeholder="Rate before" className="lx-input"
+                <TextField label="Rate before" type="number"
                   value={renoForm.rate_before} onChange={(e) => setRenoForm({ ...renoForm, rate_before: e.target.value })} />
-                <input type="number" placeholder="Rate after" className="lx-input"
+                <TextField label="Rate after" type="number"
                   value={renoForm.rate_after} onChange={(e) => setRenoForm({ ...renoForm, rate_after: e.target.value })} />
               </div>
               <button className="lx-btn-gold w-full sm:w-auto">Log Renovation</button>
@@ -324,23 +339,29 @@ export default function FaultsRenovations() {
 
         {canEdit && showExpenseForm && (
           <form onSubmit={submitExpense} className="lx-card p-5 mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select required className="lx-select" value={expenseForm.unit_id}
-              onChange={(e) => setExpenseForm({ ...expenseForm, unit_id: e.target.value })}>
-              <option value="">Select apartment…</option>
-              {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
-            </select>
-            <select required className="lx-select" value={expenseForm.category_id}
-              onChange={(e) => setExpenseForm({ ...expenseForm, category_id: e.target.value })}>
-              <option value="">Select category…</option>
-              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <input type="number" min="0" step="any" required placeholder="Amount" className="lx-input"
+            <Field label="Apartment" required>
+              <select required className="lx-select" value={expenseForm.unit_id}
+                onChange={(e) => setExpenseForm({ ...expenseForm, unit_id: e.target.value })}>
+                <option value="">Select apartment…</option>
+                {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
+              </select>
+            </Field>
+            <Field label="Category" required>
+              <select required className="lx-select" value={expenseForm.category_id}
+                onChange={(e) => setExpenseForm({ ...expenseForm, category_id: e.target.value })}>
+                <option value="">Select category…</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </Field>
+            <TextField label="Amount" required type="number" min="0" step="any"
               value={expenseForm.amount}
               onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
-            <input type="date" required className="lx-input"
-              value={expenseForm.expense_date}
-              onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} />
-            <input placeholder="Description (optional)" className="lx-input sm:col-span-2"
+            <Field label="Date" required>
+              <input type="date" required className="lx-input"
+                value={expenseForm.expense_date}
+                onChange={(e) => setExpenseForm({ ...expenseForm, expense_date: e.target.value })} />
+            </Field>
+            <TextField label="Description" className="sm:col-span-2" hint="Optional"
               value={expenseForm.description}
               onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} />
             <div className="sm:col-span-2 flex gap-3">

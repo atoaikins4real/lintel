@@ -4,6 +4,7 @@ import {
   getProperties, getUnits, getTenants, readApiError,
 } from '../api/client.js';
 import RowActions from '../components/RowActions.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const TYPES = [
@@ -138,55 +139,61 @@ export default function AccessCards() {
 
       {canEdit && showForm && (
         <form onSubmit={issue} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <input
-            required placeholder="Card number / serial" className="lx-input"
+          <TextField
+            label="Card number / serial" required
             value={form.card_number} onChange={(e) => setForm({ ...form, card_number: e.target.value })}
           />
-          <select className="lx-select" value={form.credential_type}
-            onChange={(e) => setForm({ ...form, credential_type: e.target.value })}>
-            {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-          </select>
-          <input
-            placeholder="Label (e.g. Spare card 2)" className="lx-input"
+          <Field label="Type">
+            <select className="lx-select" value={form.credential_type}
+              onChange={(e) => setForm({ ...form, credential_type: e.target.value })}>
+              {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </Field>
+          <TextField
+            label="Label" hint="e.g. Spare card 2"
             value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })}
           />
 
-          <select className="lx-select" value={form.tenant_id}
-            onChange={(e) => setForm({ ...form, tenant_id: e.target.value, holder_name: '' })}>
-            <option value="">Holder: tenant…</option>
-            {tenants.map((t) => (
-              <option key={t.id} value={t.id}>{t.first_name} {t.last_name} ({t.lintel_id})</option>
-            ))}
-          </select>
-          <input
-            placeholder="…or holder name (staff/contractor)" className="lx-input sm:col-span-2"
+          <Field label="Holder (tenant)">
+            <select className="lx-select" value={form.tenant_id}
+              onChange={(e) => setForm({ ...form, tenant_id: e.target.value, holder_name: '' })}>
+              <option value="">Select tenant…</option>
+              {tenants.map((t) => (
+                <option key={t.id} value={t.id}>{t.first_name} {t.last_name} ({t.lintel_id})</option>
+              ))}
+            </select>
+          </Field>
+          <TextField
+            label="Or holder name" hint="For staff or contractors" className="sm:col-span-2"
             disabled={Boolean(form.tenant_id)}
             value={form.holder_name} onChange={(e) => setForm({ ...form, holder_name: e.target.value })}
           />
 
-          <select className="lx-select" value={form.property_id}
-            onChange={(e) => setForm({ ...form, property_id: e.target.value, unit_id: '' })}>
-            <option value="">Property (building access)…</option>
-            {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <select className="lx-select" value={form.unit_id}
-            onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
-            <option value="">Unit (optional)…</option>
-            {unitsForProperty.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
-          </select>
-          <div />
+          <Field label="Property" hint="Grants building access">
+            <select className="lx-select" value={form.property_id}
+              onChange={(e) => setForm({ ...form, property_id: e.target.value, unit_id: '' })}>
+              <option value="">Select property…</option>
+              {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Unit" hint="Optional">
+            <select className="lx-select" value={form.unit_id}
+              onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
+              <option value="">Select unit…</option>
+              {unitsForProperty.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
+            </select>
+          </Field>
+          <div className="hidden lg:block" />
 
-          <div>
-            <label className="block text-xs text-stone mb-1">Valid from</label>
+          <Field label="Valid from">
             <input type="date" className="lx-input"
               value={form.valid_from} onChange={(e) => setForm({ ...form, valid_from: e.target.value })} />
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Valid until</label>
+          </Field>
+          <Field label="Valid until">
             <input type="date" className="lx-input"
               value={form.valid_until} onChange={(e) => setForm({ ...form, valid_until: e.target.value })} />
-          </div>
-          <div />
+          </Field>
+          <div className="hidden lg:block" />
 
           <button disabled={saving} className="lx-btn-gold sm:col-span-2 lg:col-span-3 justify-self-start w-full sm:w-auto">
             {saving ? 'Issuing…' : 'Issue card'}

@@ -207,7 +207,48 @@ export default function Dashboard() {
       )}
 
       {tab === 'performance' && (
-        <div className="lx-card overflow-hidden">
+        <>
+        {/* Mobile: stacked cards instead of a sideways-scrolling table */}
+        <div className="sm:hidden space-y-3">
+          {performance.map((p) => (
+            <div key={p.unit_id} className="lx-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <Link to={`/units/${p.unit_id}`} className="min-w-0 group">
+                  <div className="font-medium text-ink group-hover:text-gold transition truncate">{p.unit_code}</div>
+                  <div className="text-xs text-stone truncate">{p.property_name}</div>
+                </Link>
+                <span className="pill bg-stone/10 text-stone capitalize shrink-0">{p.class}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-stone">Revenue</div>
+                  <div className="text-sm text-ink font-medium">{money(p.revenue)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-stone">Costs</div>
+                  <div className="text-sm text-ink font-medium">{money(p.total_costs)}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-stone">Net yield</div>
+                  <div className={`text-sm font-medium ${p.net_yield < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{money(p.net_yield)}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-line/70">
+                <div className="flex-1 h-1.5 rounded-full bg-line overflow-hidden">
+                  <div className="h-full rounded-full bg-gold" style={{ width: `${Math.min(100, p.occupancy_rate)}%` }} />
+                </div>
+                <span className="text-xs text-stone w-9 text-right">{p.occupancy_rate}%</span>
+                {p.open_faults > 0 ? <StatusBadge status="open" /> : <span className="text-stone text-xs">&mdash;</span>}
+              </div>
+            </div>
+          ))}
+          {performance.length === 0 && (
+            <div className="lx-card p-8 text-center text-stone text-sm">No units yet.</div>
+          )}
+        </div>
+
+        {/* Tablet + desktop: full table */}
+        <div className="lx-card overflow-hidden hidden sm:block">
           <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-line/70 flex items-center justify-between gap-3">
             <span className="font-serif text-lg text-ink">Unit performance</span>
             <span className="text-xs text-stone hidden sm:inline">sorted worst &rarr; best net yield</span>
@@ -264,6 +305,7 @@ export default function Dashboard() {
             </table>
           </div>
         </div>
+        </>
       )}
 
       {tab === 'upgrades' && (

@@ -4,6 +4,7 @@ import {
   getPlanRequests, applyPlanRequest, declinePlanRequest,
 } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { formatMoney } from '../utils/currency.js';
 
 // Platform-owner dashboard: every company subscribed to Lintel, what
@@ -162,7 +163,7 @@ export default function Admin() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
         <Stat label="Subscribers" value={subscribers.length} />
         <Stat label="Active" value={totals.active || 0} />
         <Stat label="Trial" value={totals.trial || 0} />
@@ -221,8 +222,7 @@ export default function Admin() {
 
             {editing === s.id && (
               <div className="mt-4 pt-4 border-t border-line/70 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs text-stone mb-1">Plan</label>
+                <Field label="Plan">
                   <select className="lx-select" value={form.plan_id}
                     onChange={(e) => setForm({ ...form, plan_id: e.target.value })}>
                     <option value="">No plan</option>
@@ -232,9 +232,8 @@ export default function Admin() {
                       </option>
                     ))}
                   </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-stone mb-1">Status</label>
+                </Field>
+                <Field label="Status">
                   <select className="lx-select" value={form.status}
                     onChange={(e) => setForm({ ...form, status: e.target.value })}>
                     <option value="trial">Trial</option>
@@ -242,30 +241,19 @@ export default function Admin() {
                     <option value="past_due">Past due</option>
                     <option value="cancelled">Cancelled</option>
                   </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-stone mb-1">Amount charged</label>
-                  <input type="number" className="lx-input" value={form.amount}
-                    onChange={(e) => setForm({ ...form, amount: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-xs text-stone mb-1">Started on</label>
-                  <input type="date" className="lx-input" value={form.started_on}
-                    onChange={(e) => setForm({ ...form, started_on: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-xs text-stone mb-1">Trial ends</label>
-                  <input type="date" className="lx-input" value={form.trial_ends_on}
-                    onChange={(e) => setForm({ ...form, trial_ends_on: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-xs text-stone mb-1">Renews on</label>
-                  <input type="date" className="lx-input" value={form.renews_on}
-                    onChange={(e) => setForm({ ...form, renews_on: e.target.value })} />
-                </div>
-                <input className="lx-input sm:col-span-3" placeholder="Internal notes (not shown to the subscriber)"
+                </Field>
+                <TextField label="Amount charged" type="number" value={form.amount}
+                  onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                <TextField label="Started on" type="date" value={form.started_on}
+                  onChange={(e) => setForm({ ...form, started_on: e.target.value })} />
+                <TextField label="Trial ends" type="date" value={form.trial_ends_on}
+                  onChange={(e) => setForm({ ...form, trial_ends_on: e.target.value })} />
+                <TextField label="Renews on" type="date" value={form.renews_on}
+                  onChange={(e) => setForm({ ...form, renews_on: e.target.value })} />
+                <TextField label="Internal notes" className="sm:col-span-3"
+                  hint="Not shown to the subscriber."
                   value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-                <button disabled={saving} onClick={() => save(s.id)} className="lx-btn-primary justify-self-start">
+                <button disabled={saving} onClick={() => save(s.id)} className="lx-btn-primary w-full sm:w-auto justify-self-start">
                   {saving ? 'Saving…' : 'Save subscription'}
                 </button>
               </div>

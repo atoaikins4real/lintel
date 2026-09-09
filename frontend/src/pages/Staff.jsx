@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getStaffUsers, register, updateUserRole, deleteStaffUser, readApiError } from '../api/client.js';
 import RowActions from '../components/RowActions.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 // Two in-company roles. Stored as manager/finance; shown as Admin/Member.
@@ -104,25 +105,27 @@ export default function Staff() {
 
       {isManager && showInvite && (
         <form onSubmit={handleInvite} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input
-            required placeholder="Full name" className="lx-input"
+          <TextField
+            label="Full name" required
             value={invite.name} onChange={(e) => setInvite({ ...invite, name: e.target.value })}
           />
-          <input
-            required placeholder="Email or username" className="lx-input" autoCapitalize="none"
+          <TextField
+            label="Email or username" required autoCapitalize="none"
             value={invite.email} onChange={(e) => setInvite({ ...invite, email: e.target.value })}
           />
-          <input
-            required type="text" placeholder="Temporary password (min 8 characters)" className="lx-input"
+          <TextField
+            label="Temporary password" required type="text" hint="Minimum 8 characters"
             value={invite.password} onChange={(e) => setInvite({ ...invite, password: e.target.value })}
           />
-          <select
-            className="lx-select" value={invite.role}
-            onChange={(e) => setInvite({ ...invite, role: e.target.value })}
-          >
-            <option value="finance">Member — can edit records</option>
-            <option value="manager">Admin — full access &amp; manages members</option>
-          </select>
+          <Field label="Role">
+            <select
+              className="lx-select" value={invite.role}
+              onChange={(e) => setInvite({ ...invite, role: e.target.value })}
+            >
+              <option value="finance">Member — can edit records</option>
+              <option value="manager">Admin — full access &amp; manages members</option>
+            </select>
+          </Field>
           <p className="text-xs text-stone sm:col-span-2">
             {ROLE_HELP[invite.role]} You&apos;ll need to share the password with them directly — Lintel doesn&apos;t
             send invitation emails yet.

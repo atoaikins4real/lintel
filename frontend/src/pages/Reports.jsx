@@ -3,6 +3,7 @@ import { getMonthlyReport, getExpenseBreakdown, getReportsSummary } from '../api
 import { MoneyTotal } from '../components/Money.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
+import Field from '../components/Field.jsx';
 import { IconWallet, IconTrendUp, IconTrendDown, IconChart } from '../components/icons.jsx';
 import { downloadCsv } from '../utils/csv.js';
 import PropertyPnl from './reports/PropertyPnl.jsx';
@@ -49,13 +50,15 @@ function Overview() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <p className="text-stone text-sm">Portfolio-wide revenue, costs, and where the money goes.</p>
-        <div className="flex items-center gap-2">
-          <select className="lx-select !py-2 text-sm" value={months} onChange={(e) => setMonths(Number(e.target.value))}>
-            <option value={3}>Last 3 months</option>
-            <option value={6}>Last 6 months</option>
-            <option value={12}>Last 12 months</option>
-            <option value={24}>Last 24 months</option>
-          </select>
+        <div className="flex items-end gap-2">
+          <Field label="Time period">
+            <select className="lx-select !py-2 text-sm" value={months} onChange={(e) => setMonths(Number(e.target.value))}>
+              <option value={3}>Last 3 months</option>
+              <option value={6}>Last 6 months</option>
+              <option value={12}>Last 12 months</option>
+              <option value={24}>Last 24 months</option>
+            </select>
+          </Field>
           <button
             onClick={() =>
               downloadCsv(
@@ -157,7 +160,37 @@ function Overview() {
         </div>
       </div>
 
-      <div className="lx-card overflow-hidden mt-4 sm:mt-6">
+      {/* Mobile: stacked cards instead of a sideways-scrolling table */}
+      <div className="sm:hidden space-y-3 mt-4">
+        {monthly.map((m) => (
+          <div key={m.month} className="lx-card p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-ink">{MONTH_LABEL(m.month)}</span>
+              <span className={`text-sm font-medium ${m.net < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{money(m.net)}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-stone">Revenue</div>
+                <div className="text-sm text-ink">{money(m.revenue)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-stone">Expenses</div>
+                <div className="text-sm text-ink">{money(m.expenses)}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase tracking-wide text-stone">Renovations</div>
+                <div className="text-sm text-ink">{money(m.renovations)}</div>
+              </div>
+            </div>
+          </div>
+        ))}
+        {monthly.length === 0 && (
+          <div className="lx-card p-8 text-center text-stone text-sm">No data yet.</div>
+        )}
+      </div>
+
+      {/* Tablet + desktop: full table */}
+      <div className="lx-card overflow-hidden mt-4 sm:mt-6 hidden sm:block">
         <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-line/70 flex items-center justify-between">
           <span className="font-serif text-lg text-ink">Monthly detail</span>
           <span className="text-xs text-stone hidden sm:inline">{months} month window</span>

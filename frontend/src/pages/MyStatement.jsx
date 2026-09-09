@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { requestTenantLink, getMyStatement, initTenantPayment, verifyTenantPayment } from '../api/client.js';
 import { formatMoney } from '../utils/currency.js';
+import { TextField } from '../components/Field.jsx';
 
 const PAYABLE = ['pending', 'late', 'partial'];
 
@@ -109,8 +110,8 @@ export default function MyStatement() {
                     {error}
                   </div>
                 )}
-                <input
-                  required type="email" placeholder="you@example.com" className="lx-input"
+                <TextField
+                  label="Email address" required type="email" hint="The address your landlord has on file."
                   value={email} onChange={(e) => setEmail(e.target.value)}
                 />
                 <button disabled={sending} className="lx-btn-primary w-full">

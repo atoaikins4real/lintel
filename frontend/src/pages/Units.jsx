@@ -4,6 +4,7 @@ import { getUnits, createUnit, getProperties, readApiError } from '../api/client
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { STOCK_PHOTOS, suggestedPhotos } from '../data/stockPhotos.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -72,31 +73,7 @@ export default function Units() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">Apartments and housing, short-stay through multi-year.</p>
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          {company?.slug && (
-            <a
-              href={`/showcase/${company.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="lx-btn-ghost text-sm flex-1 sm:flex-none text-center"
-            >
-              View public showcase ↗
-            </a>
-          )}
-          {canEdit && (
-            <>
-              <Link to="/units/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
-                + Add Apartment
-              </Link>
-              <button onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
-                {showForm ? 'Cancel' : 'Quick add'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <p className="text-stone text-sm mb-5">Apartments and housing, short-stay through multi-year.</p>
 
       {error && (
         <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
@@ -111,37 +88,43 @@ export default function Units() {
 
       {canEdit && showForm && properties.length > 0 && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <input required placeholder="Unit code (e.g. Airport Res - 4B)" className="lx-input sm:col-span-2"
+          <TextField label="Unit code" required className="sm:col-span-2"
             value={form.unit_code} onChange={(e) => setForm({ ...form, unit_code: e.target.value })} />
-          <select className="lx-select" value={form.class}
-            onChange={(e) => setForm({ ...form, class: e.target.value })}>
-            <option value="standard">Standard</option>
-            <option value="premium">Premium</option>
-            <option value="luxury">Luxury</option>
-          </select>
-          <select required className="lx-select" value={form.property_id}
-            onChange={(e) => setForm({ ...form, property_id: e.target.value })}>
-            <option value="">Select property…</option>
-            {properties.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-          <select className="lx-select" value={form.unit_type}
-            onChange={(e) => setForm({ ...form, unit_type: e.target.value })}>
-            <option value="apartment">Apartment</option>
-            <option value="house">House</option>
-            <option value="townhouse">Townhouse</option>
-            <option value="studio">Studio</option>
-          </select>
-          <input placeholder="City" className="lx-input"
+          <Field label="Class">
+            <select className="lx-select" value={form.class}
+              onChange={(e) => setForm({ ...form, class: e.target.value })}>
+              <option value="standard">Standard</option>
+              <option value="premium">Premium</option>
+              <option value="luxury">Luxury</option>
+            </select>
+          </Field>
+          <Field label="Property" required>
+            <select required className="lx-select" value={form.property_id}
+              onChange={(e) => setForm({ ...form, property_id: e.target.value })}>
+              <option value="">Select property…</option>
+              {properties.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Unit type">
+            <select className="lx-select" value={form.unit_type}
+              onChange={(e) => setForm({ ...form, unit_type: e.target.value })}>
+              <option value="apartment">Apartment</option>
+              <option value="house">House</option>
+              <option value="townhouse">Townhouse</option>
+              <option value="studio">Studio</option>
+            </select>
+          </Field>
+          <TextField label="City"
             value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
-          <input type="number" placeholder="Bedrooms" className="lx-input"
+          <TextField label="Bedrooms" type="number"
             value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} />
-          <input type="number" placeholder="Bathrooms" className="lx-input"
+          <TextField label="Bathrooms" type="number"
             value={form.bathrooms} onChange={(e) => setForm({ ...form, bathrooms: e.target.value })} />
-          <input type="number" placeholder="Nightly rate (short-stay)" className="lx-input"
+          <TextField label="Nightly rate (short-stay)" type="number"
             value={form.base_rate_short} onChange={(e) => setForm({ ...form, base_rate_short: e.target.value })} />
-          <input type="number" placeholder="Monthly rate (long-stay)" className="lx-input"
+          <TextField label="Monthly rate (long-stay)" type="number"
             value={form.base_rate_long} onChange={(e) => setForm({ ...form, base_rate_long: e.target.value })} />
           <div className="sm:col-span-2 lg:col-span-3">
             <div className="flex items-center justify-between mb-2">
@@ -157,8 +140,10 @@ export default function Units() {
             </div>
 
             {showUrlInput ? (
-              <input placeholder="https://…" className="lx-input"
-                value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} />
+              <Field label="Photo URL">
+                <input placeholder="https://…" className="lx-input"
+                  value={form.photo_url} onChange={(e) => setForm({ ...form, photo_url: e.target.value })} />
+              </Field>
             ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2">
                 {(showAllPhotos ? STOCK_PHOTOS : suggestedPhotos(form.unit_type, form.class)).map((p) => {
@@ -268,15 +253,39 @@ export default function Units() {
       <SearchBar
         value={query} onChange={setQuery} placeholder="Search units, property, city…"
         count={shownUnits.length} total={units.length}
+        action={
+          <>
+            {company?.slug && (
+              <a
+                href={`/showcase/${company.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="lx-btn-ghost text-sm flex-1 sm:flex-none text-center"
+              >
+                View public showcase ↗
+              </a>
+            )}
+            {canEdit && (
+              <>
+                <Link to="/units/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
+                  + Add Apartment
+                </Link>
+                <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
+                  {showForm ? 'Cancel' : 'Quick add'}
+                </button>
+              </>
+            )}
+          </>
+        }
       >
-        <select className="lx-select !py-2 text-sm w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className="lx-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">Any status</option>
           <option value="vacant">Vacant</option>
           <option value="occupied">Occupied</option>
           <option value="maintenance">Maintenance</option>
           <option value="off_market">Off market</option>
         </select>
-        <select className="lx-select !py-2 text-sm w-auto" value={listingFilter} onChange={(e) => setListingFilter(e.target.value)}>
+        <select className="lx-filter" value={listingFilter} onChange={(e) => setListingFilter(e.target.value)}>
           <option value="">Rent or sale</option>
           <option value="rent">To rent</option>
           <option value="sale">For sale</option>

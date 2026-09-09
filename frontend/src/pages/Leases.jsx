@@ -6,6 +6,7 @@ import {
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { CurrencyField } from '../components/Money.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -138,40 +139,41 @@ export default function Leases() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">From a 2-night stay to a multi-year residency.</p>
-        {canEdit && (
-          <button onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
-            {showForm ? 'Cancel' : '+ New Lease'}
-          </button>
-        )}
-      </div>
+      <p className="text-stone text-sm mb-5">From a 2-night stay to a multi-year residency.</p>
 
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <select required className="lx-select sm:col-span-2" value={form.tenant_id}
-            onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}>
-            <option value="">Select tenant…</option>
-            {tenants.map((t) => <option key={t.id} value={t.id}>{t.lintel_id} — {t.first_name} {t.last_name}</option>)}
-          </select>
-          <select required className="lx-select" value={form.unit_id}
-            onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
-            <option value="">Select unit…</option>
-            {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
-          </select>
-          <select className="lx-select" value={form.stay_type}
-            onChange={(e) => setForm({ ...form, stay_type: e.target.value })}>
-            <option value="short_stay">Short stay</option>
-            <option value="long_stay">Long stay</option>
-          </select>
-          <select className="lx-select" value={form.rate_period}
-            onChange={(e) => setForm({ ...form, rate_period: e.target.value })}>
-            <option value="nightly">Nightly</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-            <option value="yearly">Yearly</option>
-          </select>
-          <input type="number" required placeholder="Agreed rate" className="lx-input"
+          <Field label="Tenant" required className="sm:col-span-2">
+            <select required className="lx-select" value={form.tenant_id}
+              onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}>
+              <option value="">Select tenant…</option>
+              {tenants.map((t) => <option key={t.id} value={t.id}>{t.lintel_id} — {t.first_name} {t.last_name}</option>)}
+            </select>
+          </Field>
+          <Field label="Unit" required>
+            <select required className="lx-select" value={form.unit_id}
+              onChange={(e) => setForm({ ...form, unit_id: e.target.value })}>
+              <option value="">Select unit…</option>
+              {units.map((u) => <option key={u.id} value={u.id}>{u.unit_code}</option>)}
+            </select>
+          </Field>
+          <Field label="Stay type">
+            <select className="lx-select" value={form.stay_type}
+              onChange={(e) => setForm({ ...form, stay_type: e.target.value })}>
+              <option value="short_stay">Short stay</option>
+              <option value="long_stay">Long stay</option>
+            </select>
+          </Field>
+          <Field label="Rate period">
+            <select className="lx-select" value={form.rate_period}
+              onChange={(e) => setForm({ ...form, rate_period: e.target.value })}>
+              <option value="nightly">Nightly</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </Field>
+          <TextField label="Agreed rate" required type="number"
             value={form.agreed_rate} onChange={(e) => setForm({ ...form, agreed_rate: e.target.value })} />
           {/* Per-tenant override. Left blank the lease follows its
               apartment, then the property, then the company default. */}
@@ -181,24 +183,26 @@ export default function Leases() {
             onChange={(value) => setForm({ ...form, currency: value })}
             inheritedFrom="the apartment"
           />
-          <input type="date" required className="lx-input"
-            value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
-          <input type="date" placeholder="End date (optional)" className="lx-input"
-            value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
-          <input placeholder="Source (direct, airbnb…)" className="lx-input"
+          <Field label="Start date" required>
+            <input type="date" required className="lx-input"
+              value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+          </Field>
+          <Field label="End date" hint="Optional — leave blank for an ongoing lease">
+            <input type="date" className="lx-input"
+              value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+          </Field>
+          <TextField label="Source" hint="e.g. direct, airbnb"
             value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
-          <div>
-            <label className="block text-xs text-stone mb-1">Annual increase %</label>
+          <Field label="Annual increase %">
             <input type="number" step="0.1" placeholder="e.g. 10" className="lx-input"
               value={form.escalation_percent}
               onChange={(e) => setForm({ ...form, escalation_percent: e.target.value })} />
-          </div>
-          <div>
-            <label className="block text-xs text-stone mb-1">Next rent review</label>
+          </Field>
+          <Field label="Next rent review">
             <input type="date" className="lx-input"
               value={form.next_review_on}
               onChange={(e) => setForm({ ...form, next_review_on: e.target.value })} />
-          </div>
+          </Field>
           <button disabled={saving} className="lx-btn-gold sm:col-span-2 lg:col-span-3 justify-self-start w-full sm:w-auto">
             {saving ? 'Saving…' : 'Create Lease'}
           </button>
@@ -253,8 +257,13 @@ export default function Leases() {
       <SearchBar
         value={query} onChange={setQuery} placeholder="Search tenant, unit, source…"
         count={shownLeases.length} total={leases.length}
+        action={canEdit && (
+          <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
+            {showForm ? 'Cancel' : '+ New Lease'}
+          </button>
+        )}
       >
-        <select className="lx-select !py-2 text-sm w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+        <select className="lx-filter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">Any status</option>
           <option value="active">Active</option>
           <option value="pending">Pending</option>

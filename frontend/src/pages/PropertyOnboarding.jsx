@@ -4,6 +4,7 @@ import { createProperty, getProperty, updateProperty, readApiError } from '../ap
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import PropertyUnitsStep from './PropertyUnitsStep.jsx';
 import { StepChips, WizardStep, NumField, ComboField, ChipGroup } from '../components/WizardShell.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { CurrencyField } from '../components/Money.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import {
@@ -119,17 +120,16 @@ export default function PropertyOnboarding() {
           nextLabel={propertyId ? 'Save & continue' : 'Create & continue'}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input
-              required placeholder="Property name (e.g. Airport Residency)" className="lx-input sm:col-span-2"
+            <TextField
+              label="Property name" required className="sm:col-span-2" hint="e.g. Airport Residency"
               value={form.name} onChange={(e) => set({ name: e.target.value })}
             />
-            <div>
-              <label className="block text-xs text-stone mb-1">Type</label>
+            <Field label="Type">
               <select className="lx-select" value={form.property_type}
                 onChange={(e) => set({ property_type: e.target.value })}>
                 {PROPERTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
-            </div>
+            </Field>
             <NumField label="Total units in this property" value={form.total_units}
               onChange={(v) => set({ total_units: v })} />
             {/* Set here so a portfolio can mix currencies property by
@@ -143,11 +143,12 @@ export default function PropertyOnboarding() {
               inheritedValue={currency}
             />
           </div>
-          <textarea
-            className="lx-input" rows={3}
-            placeholder="Description — this appears on your public showcase link"
-            value={form.description} onChange={(e) => set({ description: e.target.value })}
-          />
+          <Field label="Description" hint="Appears on your public showcase link">
+            <textarea
+              className="lx-textarea" rows={3}
+              value={form.description} onChange={(e) => set({ description: e.target.value })}
+            />
+          </Field>
         </WizardStep>
       )}
 
@@ -155,20 +156,19 @@ export default function PropertyOnboarding() {
         <WizardStep title="Where is it?" hint="Shown on the listing, minus the exact street address."
           onBack={() => setStep(0)} onNext={() => saveAndGo(2)} busy={saving}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input className="lx-input sm:col-span-2" placeholder="Street address"
+            <TextField label="Street address" className="sm:col-span-2"
               value={form.address} onChange={(e) => set({ address: e.target.value })} />
-            <input className="lx-input" placeholder="Digital address / GPS"
+            <TextField label="Digital address / GPS"
               value={form.digital_address} onChange={(e) => set({ digital_address: e.target.value })} />
-            <input className="lx-input" placeholder="City"
+            <TextField label="City"
               value={form.city} onChange={(e) => set({ city: e.target.value })} />
-            <input className="lx-input" placeholder="Region"
+            <TextField label="Region"
               value={form.region} onChange={(e) => set({ region: e.target.value })} />
-            <input className="lx-input" placeholder="Country"
+            <TextField label="Country"
               value={form.country} onChange={(e) => set({ country: e.target.value })} />
             <div className="grid grid-cols-2 gap-2 sm:col-span-2">
               <NumField label="Plot size" value={form.plot_size} onChange={(v) => set({ plot_size: v })} />
-              <div>
-                <label className="block text-xs text-stone mb-1">Unit</label>
+              <Field label="Unit">
                 <select className="lx-select" value={form.plot_size_unit}
                   onChange={(e) => set({ plot_size_unit: e.target.value })}>
                   <option value="sqm">sqm</option>
@@ -176,7 +176,7 @@ export default function PropertyOnboarding() {
                   <option value="acres">acres</option>
                   <option value="plots">plots</option>
                 </select>
-              </div>
+              </Field>
             </div>
           </div>
         </WizardStep>

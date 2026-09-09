@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { createUnit, getUnit, updateUnit, getProperties, readApiError } from '../api/client.js';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import { StepChips, WizardStep, NumField, ComboField, ChipGroup } from '../components/WizardShell.jsx';
+import Field, { TextField } from '../components/Field.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import {
   UNIT_TYPES, UNIT_CLASSES, FURNISHING, UNIT_FEATURES, STAIRCASE_TYPES,
@@ -116,32 +117,30 @@ export default function UnitOnboarding() {
           nextLabel={unitId ? 'Save & continue' : 'Create & continue'}
         >
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="sm:col-span-2">
-              <label className="block text-xs text-stone mb-1">Property</label>
+            <Field label="Property" required className="sm:col-span-2">
               <select className="lx-select" value={form.property_id}
                 onChange={(e) => set({ property_id: e.target.value })}>
                 <option value="">Select property…</option>
                 {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
-            </div>
-            <input className="lx-input sm:col-span-2" placeholder="Unit reference (e.g. Block A - 4B)"
+            </Field>
+            <TextField label="Unit reference" required className="sm:col-span-2" hint="e.g. Block A - 4B"
               value={form.unit_code} onChange={(e) => set({ unit_code: e.target.value })} />
-            <div>
-              <label className="block text-xs text-stone mb-1">Type</label>
+            <Field label="Type">
               <select className="lx-select" value={form.unit_type} onChange={(e) => set({ unit_type: e.target.value })}>
                 {UNIT_TYPES.map((t) => <option key={t} value={t} className="capitalize">{t}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="block text-xs text-stone mb-1">Class</label>
+            </Field>
+            <Field label="Class">
               <select className="lx-select" value={form.class} onChange={(e) => set({ class: e.target.value })}>
                 {UNIT_CLASSES.map((c) => <option key={c} value={c} className="capitalize">{c}</option>)}
               </select>
-            </div>
+            </Field>
           </div>
-          <textarea className="lx-input" rows={3}
-            placeholder="Description — this is what prospects read on your shared link"
-            value={form.description} onChange={(e) => set({ description: e.target.value })} />
+          <Field label="Description" hint="This is what prospects read on your shared link">
+            <textarea className="lx-textarea" rows={3}
+              value={form.description} onChange={(e) => set({ description: e.target.value })} />
+          </Field>
         </WizardStep>
       )}
 
@@ -171,14 +170,13 @@ export default function UnitOnboarding() {
           onBack={() => setStep(1)} onNext={() => saveAndGo(3)} busy={saving}>
           <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
             <NumField label="Floor area" value={form.floor_area} onChange={(v) => set({ floor_area: v })} placeholder="e.g. 120" />
-            <div>
-              <label className="block text-xs text-stone mb-1">Unit</label>
+            <Field label="Unit">
               <select className="lx-select" value={form.floor_area_unit}
                 onChange={(e) => set({ floor_area_unit: e.target.value })}>
                 <option value="sqm">sqm</option>
                 <option value="sqft">sqft</option>
               </select>
-            </div>
+            </Field>
           </div>
         </WizardStep>
       )}
@@ -202,13 +200,12 @@ export default function UnitOnboarding() {
             <ComboField label="Outlook / view" value={form.view_orientation}
               onChange={(v) => set({ view_orientation: v })}
               options={['Sea view', 'Garden facing', 'Street facing', 'Courtyard', 'City view', 'Pool view']} />
-            <div>
-              <label className="block text-xs text-stone mb-1">Furnishing</label>
+            <Field label="Furnishing">
               <select className="lx-select" value={form.furnishing}
                 onChange={(e) => set({ furnishing: e.target.value })}>
                 {FURNISHING.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
               </select>
-            </div>
+            </Field>
           </div>
           <label className="flex items-center gap-2 text-sm text-stone">
             <input type="checkbox" className="rounded border-line accent-ink"
@@ -264,27 +261,25 @@ export default function UnitOnboarding() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <NumField label={`Asking price (${currency})`} value={form.sale_price}
                 onChange={(v) => set({ sale_price: v })} placeholder="e.g. 950000" />
-              <div>
-                <label className="block text-xs text-stone mb-1">Sale status</label>
+              <Field label="Sale status">
                 <select className="lx-select" value={form.sale_status}
                   onChange={(e) => set({ sale_status: e.target.value })}>
                   <option value="available">Available</option>
                   <option value="under_offer">Under offer</option>
                   <option value="sold">Sold</option>
                 </select>
-              </div>
+              </Field>
             </div>
           )}
 
-          <div className="sm:max-w-xs">
-            <label className="block text-xs text-stone mb-1">Occupancy status</label>
+          <Field label="Occupancy status" className="sm:max-w-xs">
             <select className="lx-select" value={form.status} onChange={(e) => set({ status: e.target.value })}>
               <option value="vacant">Vacant</option>
               <option value="occupied">Occupied</option>
               <option value="maintenance">Maintenance</option>
               <option value="off_market">Off market (hidden from showcase)</option>
             </select>
-          </div>
+          </Field>
         </WizardStep>
       )}
 

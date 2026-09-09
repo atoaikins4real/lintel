@@ -44,8 +44,30 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 }
 
 .lx-select {
-  @apply w-full bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink
+  @apply w-full bg-canvas border border-line rounded-xl pl-3.5 pr-9 py-2.5 text-sm text-ink
     focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/50 transition appearance-none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2379746a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+}
+
+/* Field label above an input — used everywhere instead of placeholder hints. */
+.lx-label {
+  @apply block text-xs font-medium text-ink mb-1.5;
+}
+
+.lx-textarea {
+  @apply w-full bg-canvas border border-line rounded-xl px-3.5 py-2.5 text-sm text-ink placeholder:text-stone-light
+    focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/50 transition resize-y min-h-[84px];
+}
+
+/* Compact select used in list-page filter toolbars. */
+.lx-filter {
+  @apply bg-white border border-line rounded-xl pl-3 pr-8 py-2 text-sm text-ink w-full sm:w-auto
+    focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/50 transition appearance-none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2379746a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
 }
 
 .lx-btn-primary {
