@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getUnitsPerformance, getUpgradeEligible, getTenants, getUnits } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { useAuth } from '../context/AuthContext.jsx';
 import { IconBuilding, IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench } from '../components/icons.jsx';
 
 const TABS = [
@@ -13,6 +14,7 @@ const TABS = [
 
 export default function Dashboard() {
   const { money } = useSettings();
+  const { user } = useAuth();
   const [performance, setPerformance] = useState([]);
   const [units, setUnits] = useState([]);
   const [eligible, setEligible] = useState([]);
@@ -53,6 +55,11 @@ export default function Dashboard() {
   const topTenants = useMemo(() => [...tenants].sort((a, b) => b.score - a.score).slice(0, 3), [tenants]);
   const topTenant = topTenants[0];
 
+  const firstName = user?.name?.trim().split(/\s+/)[0] || 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
   const riskRatio = units.length ? totalOpenFaults / units.length : 0;
   const riskLabel = riskRatio === 0 ? 'Low risk' : riskRatio < 0.34 ? 'Low risk' : riskRatio < 0.7 ? 'Medium risk' : 'High risk';
   const riskColor = riskRatio === 0 || riskRatio < 0.34 ? 'text-emerald-600 bg-emerald-50' : riskRatio < 0.7 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
@@ -68,77 +75,53 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Hero — feature (best-performing) property */}
-      {featureUnit ? (
-        <div className="relative rounded-3xl overflow-hidden min-h-[360px] sm:min-h-[440px] mb-6">
-          {featureUnit.photo_url ? (
-            <img src={featureUnit.photo_url} alt={featureUnit.unit_code} className="absolute inset-0 w-full h-full object-cover" />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(135deg, #26241f 0%, #131313 55%, #1c1712 100%)' }}
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
+      {/* Hero — a reception/lobby backdrop with the greeting and live figures
+          over a dark ink scrim (kept dark on the left so the text stays legible
+          whatever the photo). The image lives in /public. */}
+      <div className="relative rounded-3xl overflow-hidden min-h-[300px] sm:min-h-[380px] mb-6 shadow-lift bg-ink">
+        <img
+          src="/app1.jpg"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover object-[center_60%]"
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(96deg, rgba(19,19,19,.95) 0%, rgba(19,19,19,.74) 40%, rgba(19,19,19,.34) 72%, rgba(19,19,19,.10) 100%)',
+          }}
+        />
 
-          <div className="relative z-10 h-full min-h-[360px] sm:min-h-[440px] flex flex-col justify-between p-5 sm:p-9">
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-white/55 mb-2">
-                  {bestPerf ? 'Top performing property' : 'Featured property'}
-                </div>
-                <h2 className="font-serif text-[26px] sm:text-[38px] leading-tight text-white max-w-lg">
-                  {featureUnit.property_name}
-                </h2>
-                <p className="text-white/65 text-sm mt-1">
-                  {featureUnit.unit_code}{featureUnit.city ? ` · ${featureUnit.city}` : ''}
-                </p>
+        <div className="relative z-10 min-h-[300px] sm:min-h-[380px] flex flex-col justify-between p-6 sm:p-9">
+          <div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-gold-light mb-2">{dateStr}</div>
+            <h2 className="font-serif text-[26px] sm:text-[34px] leading-tight text-white">
+              {greeting}, {firstName}.
+            </h2>
+            {units.length > 0 ? (
+              <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap mt-4">
+                <span className="font-serif text-white text-[36px] sm:text-[44px] leading-none">{money(totalRevenue)}</span>
+                <span className="text-white/70 text-sm">collected · net {money(netYield)} after costs</span>
               </div>
-
-              <div className="bg-white/95 backdrop-blur rounded-2xl p-4 shadow-lift w-full sm:w-48">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-7 h-7 rounded-lg bg-panel flex items-center justify-center text-gold shrink-0">
-                    <IconSparkle width={13} height={13} />
-                  </span>
-                  <span className="text-[10.5px] font-semibold uppercase tracking-wide text-stone">Portfolio</span>
-                </div>
-                <div className="text-xl font-sans font-bold text-ink leading-none">{units.length} units</div>
-                <div className="text-xs text-stone mt-1">{tenants.length} tenants tracked</div>
-              </div>
-            </div>
-
-            <div className="flex items-end justify-between gap-4 flex-wrap">
-              <div className="flex flex-wrap gap-2.5">
-                <HeroChip label="Occupancy" value={`${bestPerf ? bestPerf.occupancy_rate : 0}%`} />
-                <HeroChip label="Net Yield" value={money(bestPerf ? bestPerf.net_yield : 0)} />
-                <HeroChip label="Open Faults" value={bestPerf ? bestPerf.open_faults : 0} />
-                <HeroChip label="Class" value={featureUnit.class} capitalize />
-              </div>
-
-              {topTenants.length > 0 && (
-                <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md border border-white/25 rounded-full pl-2 pr-3.5 py-1.5">
-                  <div className="flex -space-x-2">
-                    {topTenants.map((t) => (
-                      <span
-                        key={t.id}
-                        title={`${t.first_name} ${t.last_name}`}
-                        className="w-7 h-7 rounded-full bg-gold text-white text-[10px] font-semibold flex items-center justify-center border-2 border-black/20"
-                      >
-                        {t.first_name[0]}{t.last_name[0]}
-                      </span>
-                    ))}
-                  </div>
-                  <span className="text-white text-xs font-medium">Top tenants</span>
-                </div>
-              )}
-            </div>
+            ) : (
+              <p className="text-white/70 text-sm mt-4 max-w-md">
+                Add your first property and unit to bring your dashboard to life.
+              </p>
+            )}
           </div>
+
+          {units.length > 0 && (
+            <div className="flex flex-wrap gap-2.5">
+              <HeroChip label="Occupancy" value={`${avgOccupancy}%`} />
+              <HeroChip label="Units" value={units.length} />
+              <HeroChip label="Tenants" value={tenants.length} />
+              <HeroChip label="Open faults" value={totalOpenFaults} />
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="lx-card p-8 text-center text-stone mb-6">
-          No units yet — add one from the Units tab to populate your dashboard.
-        </div>
-      )}
+      </div>
 
       {/* Pill tab row */}
       <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-1">
