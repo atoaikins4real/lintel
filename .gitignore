@@ -10,3 +10,6 @@ build/
 *.done
 *.stale_*
 _redirects.removed_*
+
+# Files the Claude desktop app saves here when delivered — not source
+Claude outputs/
