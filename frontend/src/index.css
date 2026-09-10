@@ -33,9 +33,38 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 ::-webkit-scrollbar-thumb { background: rgba(121, 116, 106, 0.25); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(121, 116, 106, 0.4); }
 
+/* ---------- Motion ----------
+   A light, consistent motion layer: pages rise in on navigation, cards and
+   buttons respond to hover/press. Kept subtle so a data-dense app stays calm,
+   and fully disabled for anyone who prefers reduced motion. */
+@keyframes lx-rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes lx-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.lx-page { animation: lx-rise 0.45s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
+/* Opt-in hover lift for clickable cards/tiles. */
+.lx-lift { cursor: pointer; transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.2s ease; }
+.lx-lift:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); border-color: color-mix(in srgb, var(--gold) 32%, var(--line)); }
+
+.lx-btn-primary, .lx-btn-gold, .lx-btn-ghost, .lx-icon-btn {
+  transition: transform 0.14s ease, background 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease, color 0.2s ease;
+}
+.lx-btn-primary:active, .lx-btn-gold:active, .lx-btn-ghost:active { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .lx-page { animation: none; }
+  .lx-lift { transition: none; }
+  .lx-lift:hover { transform: none; }
+  * { scroll-behavior: auto !important; }
+}
+
 /* ---------- Shared building blocks ---------- */
 .lx-card {
   @apply bg-card border border-line/80 rounded-2xl shadow-soft;
+  transition: box-shadow 0.28s ease, border-color 0.2s ease;
 }
 
 .lx-input {

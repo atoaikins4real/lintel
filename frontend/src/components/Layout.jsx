@@ -225,7 +225,11 @@ export default function Layout({ children }) {
         <main className="flex-1 pb-20 md:pb-0">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8">
             <SubscriptionBanner />
-            {children}
+            {/* key on the route so the entrance animation replays on every
+                navigation, giving each page a light rise-in. */}
+            <div key={location.pathname} className="lx-page">
+              {children}
+            </div>
           </div>
         </main>
       </div>
