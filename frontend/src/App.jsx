@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { SettingsProvider } from './context/SettingsContext.jsx';
 import RequireAuth from './components/RequireAuth.jsx';
@@ -30,6 +31,7 @@ import ShowcaseDetail from './pages/ShowcaseDetail.jsx';
 
 function App() {
   return (
+    <ThemeProvider>
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -81,6 +83,7 @@ function App() {
         />
       </Routes>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 

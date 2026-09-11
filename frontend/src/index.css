@@ -33,6 +33,71 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 ::-webkit-scrollbar-thumb { background: rgba(121, 116, 106, 0.25); border-radius: 999px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(121, 116, 106, 0.4); }
 
+/* ============================================================
+   THEME — light is the base (@theme above). Dark re-defines the same
+   tokens, so every `bg-canvas`, `text-ink`, `border-line` etc. across the
+   whole app flips automatically. A theme is always explicitly stamped on
+   <html data-theme="…"> by ThemeContext, so there's no un-themed state.
+   ============================================================ */
+:root[data-theme="dark"] {
+  --color-ink: #f2eee7;         /* primary text — warm off-white */
+  --color-ink-soft: #d7d0c6;
+  --color-canvas: #0e1418;      /* page ground — deep charcoal-teal */
+  --color-panel: #19232b;       /* muted surface / hover */
+  --color-card: #141d24;        /* card base (glass overlay added below) */
+  --color-stone: #9aa2a8;       /* secondary text */
+  --color-stone-light: #6b747b;
+  --color-line: #2a353d;        /* borders */
+  --color-gold: #d8ab63;
+  --color-gold-light: #e6bd7c;
+  --shadow-soft: 0 1px 2px rgba(0,0,0,0.40), 0 10px 26px -12px rgba(0,0,0,0.60);
+  --shadow-lift: 0 2px 6px rgba(0,0,0,0.50), 0 22px 44px -16px rgba(0,0,0,0.72);
+  color-scheme: dark;
+}
+:root[data-theme="light"] { color-scheme: light; }
+
+/* Frosted glass for cards in dark mode — the Sellution look, kept legible. */
+:root[data-theme="dark"] .lx-card {
+  background: color-mix(in srgb, #ffffff 5%, transparent);
+  border-color: color-mix(in srgb, #ffffff 11%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+/* Inputs sit a touch above the ground so fields read in dark. */
+:root[data-theme="dark"] .lx-input,
+:root[data-theme="dark"] .lx-select,
+:root[data-theme="dark"] .lx-textarea,
+:root[data-theme="dark"] .lx-filter {
+  background: color-mix(in srgb, #ffffff 4%, transparent);
+}
+/* Buttons hard-code white/ink for light mode; re-point them in dark. */
+:root[data-theme="dark"] .lx-btn-primary { background: var(--color-ink); color: var(--color-canvas); }
+:root[data-theme="dark"] .lx-btn-primary:hover { filter: brightness(0.94); }
+:root[data-theme="dark"] .lx-btn-ghost,
+:root[data-theme="dark"] .lx-icon-btn {
+  background: color-mix(in srgb, #ffffff 6%, transparent);
+  border-color: color-mix(in srgb, #ffffff 12%, transparent);
+  color: var(--color-ink);
+}
+/* Selects need a lighter chevron on dark. */
+:root[data-theme="dark"] .lx-select,
+:root[data-theme="dark"] .lx-filter {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa2a8' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+}
+/* Glass surface utility for the shell (rail, top bar). */
+.lx-glass {
+  background: color-mix(in srgb, var(--color-card) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+:root[data-theme="dark"] .lx-glass {
+  background: color-mix(in srgb, #ffffff 6%, transparent);
+  border-color: color-mix(in srgb, #ffffff 12%, transparent);
+}
+
 /* ---------- Motion ----------
    A light, consistent motion layer: pages rise in on navigation, cards and
    buttons respond to hover/press. Kept subtle so a data-dense app stays calm,
