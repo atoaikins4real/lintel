@@ -46,7 +46,6 @@ const TITLES = {
 const ROLE_LABEL = { manager: 'Admin', finance: 'Member', viewer: 'Member' };
 
 const flattenForTitle = (items) => items.flatMap((n) => (n.children ? n.children : [n]));
-const toMobileItem = (n) => ({ ...n, to: n.to || n.mobileTo, label: n.label });
 function pageTitle(pathname, items) {
   if (TITLES[pathname]) return TITLES[pathname];
   const section = flattenForTitle(items).find((n) => n.to && n.to !== '/' && pathname.startsWith(n.to));
@@ -62,8 +61,8 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const { user, logout, isPlatformAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [sheet, setSheet] = useState(null); // grouped nav item shown in the mobile sheet
   const visibleNav = isPlatformAdmin ? [...navItems, ...platformAdminItems] : navItems;
-  const mobileNavItems = visibleNav.filter((n) => n.primary).map(toMobileItem);
 
   const initials = user
     ? `${user.name.split(' ')[0]?.[0] || ''}${user.name.split(' ')[1]?.[0] || ''}`.toUpperCase() || user.name[0]?.toUpperCase()
@@ -71,7 +70,11 @@ export default function Layout({ children }) {
   const handleLogout = () => { logout(); navigate('/login', { replace: true }); };
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
+    <div className="min-h-screen text-ink">
+      {/* Ambient interior photo + scrim behind the whole shell. */}
+      <div className="lx-app-bg" style={{ backgroundImage: 'url(/app-bg.jpg)' }} aria-hidden="true" />
+      <div className="lx-app-scrim" aria-hidden="true" />
+
       {/* Floating rail — left-aligned, vertically centered (desktop + tablet). */}
       <aside className="hidden md:flex fixed left-3 top-1/2 -translate-y-1/2 z-30 flex-col items-center gap-1
                         lx-glass rounded-[22px] p-2 shadow-lift max-h-[92vh] overflow-y-auto">
@@ -94,7 +97,7 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Main column, offset to clear the floating rail on desktop. */}
-      <div className="flex flex-col min-h-screen md:pl-[84px]">
+      <div className="relative z-10 flex flex-col min-h-screen md:pl-[84px]">
         <header className="sticky top-0 z-20">
           <div className="lx-glass border-x-0 border-t-0">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-3">
@@ -136,20 +139,56 @@ export default function Layout({ children }) {
         </main>
       </div>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-20 lx-glass border-x-0 border-b-0 flex items-stretch">
-        {mobileNavItems.map((item) => (
-          <NavLink key={item.to} to={item.to} end={item.end}
-            className={({ isActive }) =>
-              `flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[9.5px] font-medium transition ${
-                isActive ? 'text-gold' : 'text-stone'
-              }`
-            }>
-            <item.icon width={18} height={18} />
-            <span className="leading-none">{item.label.split(' ')[0]}</span>
-          </NavLink>
-        ))}
+      {/* Mobile bottom tab bar — mirrors the desktop rail: every top-level
+          section is present. Grouped sections open a sheet with their pages. */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 lx-glass border-x-0 border-b-0 flex items-stretch">
+        {visibleNav.map((item) =>
+          item.children ? (
+            <button key={item.label} type="button" onClick={() => setSheet(item)}
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2.5 text-[9px] font-medium transition ${
+                childActiveFor(item, location.pathname) ? 'text-gold' : 'text-stone'
+              }`}>
+              <item.icon width={18} height={18} />
+              <span className="leading-none truncate max-w-full px-0.5">{item.label}</span>
+            </button>
+          ) : (
+            <NavLink key={item.to} to={item.to} end={item.end}
+              className={({ isActive }) =>
+                `flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2.5 text-[9px] font-medium transition ${
+                  isActive ? 'text-gold' : 'text-stone'
+                }`
+              }>
+              <item.icon width={18} height={18} />
+              <span className="leading-none truncate max-w-full px-0.5">{item.label.split(' ')[0]}</span>
+            </NavLink>
+          )
+        )}
       </nav>
+
+      {/* Mobile section sheet: lists the pages inside a grouped nav item. */}
+      {sheet && (
+        <div className="md:hidden fixed inset-0 z-40" onClick={() => setSheet(null)}>
+          <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" />
+          <div className="absolute bottom-0 inset-x-0 lx-glass border-x-0 border-b-0 rounded-t-2xl p-3 pb-7"
+               onClick={(e) => e.stopPropagation()}>
+            <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-stone/40" />
+            <div className="lx-eyebrow px-2 pb-1">{sheet.label}</div>
+            <div className="grid grid-cols-1 gap-1">
+              {sheet.children.map((c) => (
+                <NavLink key={c.to} to={c.to} onClick={() => setSheet(null)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition ${
+                      isActive ? 'bg-ink text-canvas font-medium' : 'text-ink hover:bg-panel'
+                    }`
+                  }>
+                  <c.icon width={18} height={18} />
+                  {c.label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

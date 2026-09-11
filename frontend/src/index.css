@@ -86,6 +86,32 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
   background-repeat: no-repeat;
   background-position: right 0.7rem center;
 }
+/* ---------- Ambient background photo ----------
+   A fixed interior photo sits behind the whole shell so the glass surfaces
+   have something to frost over. Kept very subtle with a canvas-tinted scrim
+   (stronger in dark) so dense tables and forms stay fully readable. */
+.lx-app-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-size: cover; background-position: center;
+  opacity: 0.10;
+}
+.lx-app-scrim {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 10%, transparent), transparent 60%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--color-canvas) 80%, transparent),
+      color-mix(in srgb, var(--color-canvas) 93%, transparent));
+}
+:root[data-theme="dark"] .lx-app-bg { opacity: 0.16; }
+:root[data-theme="dark"] .lx-app-scrim {
+  background:
+    radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 13%, transparent), transparent 60%),
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--color-canvas) 82%, transparent),
+      color-mix(in srgb, var(--color-canvas) 95%, transparent));
+}
+
 /* Glass surface utility for the shell (rail, top bar). */
 .lx-glass {
   background: color-mix(in srgb, var(--color-card) 82%, transparent);
