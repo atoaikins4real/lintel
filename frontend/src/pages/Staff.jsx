@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { getStaffUsers, register, updateUserRole, deleteStaffUser, readApiError } from '../api/client.js';
 import RowActions from '../components/RowActions.jsx';
 import Field, { TextField } from '../components/Field.jsx';
+import StatCard from '../components/StatCard.jsx';
+import Avatar from '../components/Avatar.jsx';
+import { IconUsers, IconShield } from '../components/icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 // Two in-company roles. Stored as manager/finance; shown as Admin/Member.
@@ -80,28 +83,33 @@ export default function Staff() {
     }
   };
 
+  const admins = users.filter((u) => u.role === 'manager').length;
+  const members = users.length - admins;
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+        <p className="text-stone text-sm max-w-xl">
           Everyone with access to this company. Admins have full control and can onboard members; members
           can edit records but can&apos;t manage members or settings.
         </p>
         {isManager && (
-          <button onClick={() => setShowInvite((s) => !s)} className="lx-btn-primary w-full sm:w-auto">
+          <button onClick={() => setShowInvite((s) => !s)} className="lx-btn-primary w-full sm:w-auto shrink-0">
             {showInvite ? 'Cancel' : '+ Add person'}
           </button>
         )}
       </div>
 
-      {error && (
-        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
-      )}
-      {notice && (
-        <div className="mb-5 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-          {notice}
+      {users.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <StatCard label="Team size" value={users.length} icon={IconUsers} sub="With access" />
+          <StatCard label="Admins" value={admins} icon={IconShield} sub="Full access" />
+          <StatCard label="Members" value={members} icon={IconUsers} sub="Can edit records" />
         </div>
       )}
+
+      {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
+      {notice && <div className="mb-5 lx-alert lx-alert-ok">{notice}</div>}
 
       {isManager && showInvite && (
         <form onSubmit={handleInvite} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -139,12 +147,15 @@ export default function Staff() {
       <div className="lx-card divide-y divide-line/70">
         {users.map((u) => (
           <div key={u.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-ink">
-                {u.name}
-                {u.id === user?.id && <span className="text-xs text-stone font-normal"> (you)</span>}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Avatar name={u.name} size="md" tone={u.role === 'manager' ? 'gold' : 'neutral'} />
+              <div className="min-w-0">
+                <div className="font-medium text-ink truncate">
+                  {u.name}
+                  {u.id === user?.id && <span className="text-xs text-stone font-normal"> (you)</span>}
+                </div>
+                <div className="text-xs text-stone truncate">{u.email}</div>
               </div>
-              <div className="text-xs text-stone">{u.email}</div>
             </div>
             {isManager ? (
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">

@@ -39,6 +39,15 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
    whole app flips automatically. A theme is always explicitly stamped on
    <html data-theme="…"> by ThemeContext, so there's no un-themed state.
    ============================================================ */
+/* Semantic status tones — used by .pill-* and tier badges. Defined here (not
+   as fixed Tailwind bg-emerald-50 etc.) so they stay legible in dark mode. */
+:root {
+  --tone-ok: #047857;        --tone-ok-bg: #ecfdf5;
+  --tone-warn: #b45309;      --tone-warn-bg: #fffbeb;
+  --tone-danger: #e11d48;    --tone-danger-bg: #fff1f2;
+  --tone-info: #0369a1;      --tone-info-bg: #f0f9ff;
+}
+
 :root[data-theme="dark"] {
   --color-ink: #f2eee7;         /* primary text — warm off-white */
   --color-ink-soft: #d7d0c6;
@@ -52,6 +61,10 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
   --color-gold-light: #e6bd7c;
   --shadow-soft: 0 1px 2px rgba(0,0,0,0.40), 0 10px 26px -12px rgba(0,0,0,0.60);
   --shadow-lift: 0 2px 6px rgba(0,0,0,0.50), 0 22px 44px -16px rgba(0,0,0,0.72);
+  --tone-ok: #6ee7b7;        --tone-ok-bg: rgba(16,185,129,0.16);
+  --tone-warn: #fcd34d;      --tone-warn-bg: rgba(245,158,11,0.16);
+  --tone-danger: #fda4af;    --tone-danger-bg: rgba(244,63,94,0.18);
+  --tone-info: #7dd3fc;      --tone-info-bg: rgba(56,189,248,0.16);
   color-scheme: dark;
 }
 :root[data-theme="light"] { color-scheme: light; }
@@ -232,7 +245,19 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 }
 .pill-dot { @apply w-1.5 h-1.5 rounded-full; }
 
+/* Theme-aware semantic pills. Compose with .pill. */
+.pill-ok     { background: var(--tone-ok-bg);     color: var(--tone-ok); }
+.pill-warn   { background: var(--tone-warn-bg);   color: var(--tone-warn); }
+.pill-danger { background: var(--tone-danger-bg); color: var(--tone-danger); }
+.pill-info   { background: var(--tone-info-bg);   color: var(--tone-info); }
+
+/* Inline alert banners — theme-aware. */
+.lx-alert { @apply text-sm rounded-xl px-4 py-3 border; }
+.lx-alert-ok     { color: var(--tone-ok);     background: var(--tone-ok-bg);     border-color: color-mix(in srgb, var(--tone-ok) 30%, transparent); }
+.lx-alert-warn   { color: var(--tone-warn);   background: var(--tone-warn-bg);   border-color: color-mix(in srgb, var(--tone-warn) 30%, transparent); }
+.lx-alert-danger { color: var(--tone-danger); background: var(--tone-danger-bg); border-color: color-mix(in srgb, var(--tone-danger) 30%, transparent); }
+
 .tier-guest { @apply bg-stone/10 text-stone; }
-.tier-returning { @apply bg-sky-50 text-sky-700; }
-.tier-resident { @apply bg-emerald-50 text-emerald-700; }
+.tier-returning { background: var(--tone-info-bg); color: var(--tone-info); }
+.tier-resident { background: var(--tone-ok-bg); color: var(--tone-ok); }
 .tier-exclusive { @apply bg-gold/10 text-gold; }

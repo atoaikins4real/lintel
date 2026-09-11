@@ -1,13 +1,22 @@
 import { IconTrendUp, IconTrendDown } from './icons.jsx';
 
-export default function StatCard({ label, value, sub, icon: Icon, trend, action }) {
+// A single KPI card: eyebrow label, icon chip, big bold number, optional
+// semantic delta pill (green up / red down) and a sub line. Icon chip is
+// gold-tinted by default; pass tone="neutral" for a quieter one. Colour is
+// only ever used semantically (the delta pill), keeping the ink/gold theme.
+const TONES = {
+  gold: 'bg-gold/12 text-gold',
+  neutral: 'bg-panel text-stone',
+};
+
+export default function StatCard({ label, value, sub, icon: Icon, trend, action, tone = 'gold' }) {
   return (
-    <div className="lx-card p-5 sm:p-6 flex flex-col gap-3">
+    <div className="lx-card p-5 sm:p-6 flex flex-col gap-3 lx-lift">
       <div className="flex items-start justify-between">
         <span className="lx-eyebrow">{label}</span>
         {Icon && (
-          <span className="w-8 h-8 rounded-lg bg-panel text-stone flex items-center justify-center shrink-0">
-            <Icon width={15} height={15} />
+          <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${TONES[tone] || TONES.gold}`}>
+            <Icon width={16} height={16} />
           </span>
         )}
       </div>
@@ -19,7 +28,7 @@ export default function StatCard({ label, value, sub, icon: Icon, trend, action 
         {trend && (
           <span
             className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-full mb-0.5 ${
-              trend.direction === 'down' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'
+              trend.direction === 'down' ? 'pill-danger' : 'pill-ok'
             }`}
           >
             {trend.direction === 'down' ? <IconTrendDown width={11} height={11} /> : <IconTrendUp width={11} height={11} />}

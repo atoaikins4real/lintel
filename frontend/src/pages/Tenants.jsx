@@ -5,6 +5,9 @@ import TierBadge from '../components/TierBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import { TextField } from '../components/Field.jsx';
+import StatCard from '../components/StatCard.jsx';
+import Avatar from '../components/Avatar.jsx';
+import { IconUsers, IconHome, IconFile, IconTrendUp } from '../components/icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const emptyForm = { first_name: '', last_name: '', email: '', phone: '', nationality: '' };
@@ -71,13 +74,40 @@ export default function Tenants() {
     }
   };
 
+  // Portfolio KPIs computed from the loaded list — all real, no fabricated
+  // month-over-month deltas. The on-time card compares to a fixed 90% target.
+  const total = tenants.length;
+  const residents = tenants.filter((t) => t.tier === 'resident' || t.tier === 'exclusive').length;
+  const pending = tenants.filter((t) => t.onboarding_status !== 'complete').length;
+  const rates = tenants.map((t) => Number(t.on_time_payment_rate)).filter((n) => Number.isFinite(n));
+  const avgOnTime = rates.length ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length) : null;
+  const residentPct = total ? Math.round((residents / total) * 100) : 0;
+  const TARGET = 90;
+
   return (
     <div>
       <p className="text-stone text-sm mb-5">Every guest and resident, tracked under one permanent Lintel ID.</p>
 
-      {error && (
-        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
+      {total > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <StatCard label="Total tenants" value={total} icon={IconUsers} sub="Guests & residents" />
+          <StatCard label="Residents" value={residents} icon={IconHome} sub={`${residentPct}% of portfolio`} />
+          <StatCard
+            label="Onboarding" value={pending} icon={IconFile}
+            sub={pending === 0 ? 'Everyone set up' : 'Awaiting setup'}
+          />
+          <StatCard
+            label="Avg on-time" value={avgOnTime == null ? '—' : `${avgOnTime}%`} icon={IconTrendUp}
+            sub="Target 90%"
+            trend={avgOnTime == null ? undefined : {
+              direction: avgOnTime >= TARGET ? 'up' : 'down',
+              value: `${avgOnTime - TARGET >= 0 ? '+' : ''}${avgOnTime - TARGET} vs target`,
+            }}
+          />
+        </div>
       )}
+
+      {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
 
       {canEdit && showForm && (
         <form onSubmit={handleSubmit} className="lx-card p-5 sm:p-6 mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -129,19 +159,22 @@ export default function Tenants() {
         {shownTenants.map((t) => (
           <div key={t.id} className="lx-card p-4">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <Link to={`/tenants/${t.id}`} className="font-medium text-ink hover:text-gold transition block truncate">
-                  {t.first_name} {t.last_name}
-                </Link>
-                <div className="text-xs text-stone">{t.lintel_id}</div>
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar name={`${t.first_name} ${t.last_name}`} size="md" />
+                <div className="min-w-0">
+                  <Link to={`/tenants/${t.id}`} className="font-medium text-ink hover:text-gold transition block truncate">
+                    {t.first_name} {t.last_name}
+                  </Link>
+                  <div className="text-xs text-stone">{t.lintel_id}</div>
+                </div>
               </div>
               <TierBadge tier={t.tier} />
             </div>
             <div className="flex items-center gap-x-3 gap-y-1 mt-3 flex-wrap text-xs text-stone">
               {t.onboarding_status === 'complete' ? (
-                <span className="pill bg-emerald-50 text-emerald-700">Complete</span>
+                <span className="pill pill-ok">Complete</span>
               ) : (
-                <Link to={`/tenants/${t.id}/onboard`} className="pill bg-amber-50 text-amber-700">Finish setup</Link>
+                <Link to={`/tenants/${t.id}/onboard`} className="pill pill-warn">Finish setup</Link>
               )}
               <span>Score {t.score}</span>
               <span>{t.total_stays} stays</span>
@@ -188,12 +221,17 @@ export default function Tenants() {
                       {t.lintel_id}
                     </Link>
                   </td>
-                  <td>{t.first_name} {t.last_name}</td>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <Avatar name={`${t.first_name} ${t.last_name}`} size="sm" />
+                      <span className="font-medium text-ink">{t.first_name} {t.last_name}</span>
+                    </div>
+                  </td>
                   <td>
                     {t.onboarding_status === 'complete' ? (
-                      <span className="pill bg-emerald-50 text-emerald-700">Complete</span>
+                      <span className="pill pill-ok">Complete</span>
                     ) : (
-                      <Link to={`/tenants/${t.id}/onboard`} className="pill bg-amber-50 text-amber-700 hover:underline">
+                      <Link to={`/tenants/${t.id}/onboard`} className="pill pill-warn hover:underline">
                         Finish setup
                       </Link>
                     )}
