@@ -78,12 +78,14 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-ink">
-      <img src={HERO_PHOTO} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
+    <div className="min-h-screen relative bg-ink">
+      {/* Photo is a fixed backdrop so the form scrolls over it on short
+          screens instead of being clipped — the mobile bug subscribers hit. */}
+      <img src={HERO_PHOTO} alt="" className="fixed inset-0 w-full h-full object-cover" />
+      <div className="fixed inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
 
       {/* Bottom-left caption — desktop/tablet only */}
-      <div className="hidden lg:block absolute bottom-12 left-12 max-w-sm z-10">
+      <div className="hidden lg:block fixed bottom-12 left-12 max-w-sm z-10">
         <h2 className="font-serif text-white text-3xl leading-tight mb-3">
           Because Every Property
           <br />
@@ -99,7 +101,7 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center lg:justify-end px-4 sm:px-8 lg:pr-16 py-10">
+      <div className="relative z-10 min-h-screen flex items-start lg:items-center justify-center lg:justify-end px-4 sm:px-8 lg:pr-16 py-8 sm:py-10">
         <div className="w-full max-w-sm">
           {apiError && (
             <div className="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-3">
@@ -107,7 +109,7 @@ export default function Login() {
             </div>
           )}
 
-          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-lift p-6 sm:p-8 lx-page">
+          <div className="lx-auth-card bg-white/95 backdrop-blur-xl rounded-3xl shadow-lift p-6 sm:p-8 lx-page">
             <div
               className="inline-flex items-center gap-2 bg-ink text-white rounded-full pl-1.5 pr-3.5 py-1.5 mb-6"
             >

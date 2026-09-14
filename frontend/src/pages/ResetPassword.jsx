@@ -40,13 +40,14 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-ink">
-      <img src={HERO_PHOTO} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
+    <div className="min-h-screen relative bg-ink">
+      {/* Fixed backdrop so the card scrolls over it on short screens. */}
+      <img src={HERO_PHOTO} alt="" className="fixed inset-0 w-full h-full object-cover" />
+      <div className="fixed inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
 
-      <div className="relative z-10 min-h-screen flex items-center justify-center px-4 py-10">
+      <div className="relative z-10 min-h-screen flex items-start sm:items-center justify-center px-4 py-8 sm:py-10">
         <div className="w-full max-w-sm">
-          <div className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-lift p-6 sm:p-8">
+          <div className="lx-auth-card bg-white/95 backdrop-blur-xl rounded-3xl shadow-lift p-6 sm:p-8 lx-page">
             <div className="inline-flex items-center gap-2 bg-ink text-white rounded-full pl-1.5 pr-3.5 py-1.5 mb-6">
               <span
                 className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-serif shrink-0"

@@ -69,6 +69,34 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 }
 :root[data-theme="light"] { color-scheme: light; }
 
+/* Auth cards (login, reset) are always white over the photo, so pin their
+   text/token palette to light regardless of the app theme — otherwise
+   text-ink/text-stone flip to near-white and vanish on the white card. */
+.lx-auth-card {
+  --color-ink: #131313;
+  --color-ink-soft: #2a2a2a;
+  --color-canvas: #fbfaf8;
+  --color-panel: #f6f4f0;
+  --color-card: #ffffff;
+  --color-stone: #79746a;
+  --color-stone-light: #aaa599;
+  --color-line: #e9e5dc;
+  --color-gold: #a9793a;
+  --color-gold-light: #cf9e5c;
+  --tone-ok: #047857;     --tone-ok-bg: #ecfdf5;
+  --tone-warn: #b45309;   --tone-warn-bg: #fffbeb;
+  --tone-danger: #e11d48; --tone-danger-bg: #fff1f2;
+  --tone-info: #0369a1;   --tone-info-bg: #f0f9ff;
+  color: var(--color-ink);
+}
+/* Keep inputs and the primary button in their light-mode form inside the
+   card even when the app theme is dark. */
+:root[data-theme="dark"] .lx-auth-card .lx-input,
+:root[data-theme="dark"] .lx-auth-card .lx-select,
+:root[data-theme="dark"] .lx-auth-card .lx-textarea { background: #ffffff; }
+:root[data-theme="dark"] .lx-auth-card .lx-btn-primary { background: var(--color-ink); color: #ffffff; }
+:root[data-theme="dark"] .lx-auth-card .lx-btn-ghost { background: #ffffff; color: var(--color-ink); border-color: var(--color-line); }
+
 /* Frosted glass for cards in dark mode — the Sellution look, kept legible. */
 :root[data-theme="dark"] .lx-card {
   background: color-mix(in srgb, #ffffff 5%, transparent);
