@@ -3,17 +3,23 @@ import {
   getFaults, createFault, updateFault, deleteFault,
   getRenovations, createRenovation, deleteRenovation,
   getExpenses, createExpense, updateExpense, deleteExpense, getExpenseCategories,
-  getUnits, readApiError,
+  getUnits, getTenants, readApiError,
 } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import RowActions from '../components/RowActions.jsx';
+import PhotoUploader from '../components/PhotoUploader.jsx';
 import Field, { TextField } from '../components/Field.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
-const emptyFault = { unit_id: '', description: '', severity: 'low', caused_by: 'unknown', reported_date: '', cost: '' };
+const emptyFault = {
+  unit_id: '', description: '', severity: 'low', caused_by: 'unknown', reported_date: '', cost: '',
+  tenant_id: '', reporter_name: '', reporter_contact: '',
+};
 const emptyReno = { unit_id: '', description: '', cost: '', start_date: '', end_date: '', rate_before: '', rate_after: '' };
-const emptyExpense = { unit_id: '', category_id: '', amount: '', expense_date: '', description: '' };
+const emptyExpense = { unit_id: '', category_id: '', amount: '', expense_date: '', description: '', receipt_url: '' };
+
+const today = () => new Date().toISOString().slice(0, 10);
 
 // Categories are per-company and fetched at runtime — see Settings.
 
@@ -21,6 +27,7 @@ export default function FaultsRenovations() {
   const { canEdit } = useAuth();
   const { money } = useSettings();
   const [units, setUnits] = useState([]);
+  const [tenants, setTenants] = useState([]);
   const [faults, setFaults] = useState([]);
   const [renovations, setRenovations] = useState([]);
   const [faultForm, setFaultForm] = useState(emptyFault);
@@ -43,6 +50,7 @@ export default function FaultsRenovations() {
 
   useEffect(() => {
     getUnits().then(setUnits);
+    getTenants().then(setTenants).catch(() => setTenants([]));
     getFaults().then(setFaults);
     getRenovations().then(setRenovations);
     getExpenses().then(setExpenses).catch(() => setExpenses([]));
@@ -50,6 +58,29 @@ export default function FaultsRenovations() {
   }, []);
 
   const unitLabel = (id) => units.find((u) => u.id === id)?.unit_code || id;
+  const tenantName = (id) => {
+    const t = tenants.find((x) => x.id === id);
+    return t ? `${t.first_name} ${t.last_name}`.trim() : null;
+  };
+  // Who reported a fault: a linked tenant, or a free-text person, else null.
+  const reporterOf = (f) => {
+    if (f.tenant_id) return { label: tenantName(f.tenant_id) || 'Tenant', kind: 'Tenant', contact: null };
+    if (f.reporter_name) return { label: f.reporter_name, kind: 'Reporter', contact: f.reporter_contact || null };
+    return null;
+  };
+
+  // The "Reported by" picker maps one <select> to the two stored shapes:
+  // a tenant link (tenant_id) or a free-text person (reporter_name/contact).
+  const reporterSelectValue = faultForm.tenant_id
+    ? `tenant:${faultForm.tenant_id}`
+    : faultForm.reporter_name || faultForm._other
+    ? 'other'
+    : '';
+  const onReporterSelect = (v) => {
+    if (v === '') setFaultForm({ ...faultForm, tenant_id: '', reporter_name: '', reporter_contact: '', _other: false });
+    else if (v === 'other') setFaultForm({ ...faultForm, tenant_id: '', _other: true });
+    else setFaultForm({ ...faultForm, tenant_id: v.replace('tenant:', ''), reporter_name: '', reporter_contact: '', _other: false });
+  };
 
   const submitExpense = async (e) => {
     e.preventDefault();
@@ -78,6 +109,7 @@ export default function FaultsRenovations() {
       amount: x.amount ?? '',
       expense_date: x.expense_date || '',
       description: x.description || '',
+      receipt_url: x.receipt_url || '',
     });
   };
 
@@ -104,7 +136,8 @@ export default function FaultsRenovations() {
     e.preventDefault();
     setError('');
     try {
-      await createFault(faultForm);
+      const { _other, ...payload } = faultForm; // _other is UI-only
+      await createFault(payload);
       setFaultForm(emptyFault);
       setShowFaultForm(false);
       getFaults().then(setFaults);
@@ -132,7 +165,10 @@ export default function FaultsRenovations() {
     setError('');
     setBusyId(id);
     try {
-      await updateFault(id, { status });
+      // Stamp the fix date when it's marked resolved, clear it if reopened,
+      // so "fixed on <date>" is always accurate.
+      const resolved_date = status === 'resolved' ? today() : '';
+      await updateFault(id, { status, resolved_date });
       getFaults().then(setFaults);
     } catch (err) {
       setError(readApiError(err, 'update that fault'));
@@ -169,9 +205,7 @@ export default function FaultsRenovations() {
 
   return (
     <div>
-      {error && (
-        <div className="mb-5 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
-      )}
+      {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
       <p className="text-stone text-sm mb-6">What broke, what it cost, and what it did to the unit&apos;s rate.</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
@@ -211,6 +245,29 @@ export default function FaultsRenovations() {
                   </select>
                 </Field>
               </div>
+              <Field label="Reported by" hint="Who flagged this — a tenant on file, or anyone else.">
+                <select className="lx-select" value={reporterSelectValue} onChange={(e) => onReporterSelect(e.target.value)}>
+                  <option value="">Not specified</option>
+                  {tenants.length > 0 && (
+                    <optgroup label="Tenants">
+                      {tenants.map((t) => (
+                        <option key={t.id} value={`tenant:${t.id}`}>{t.first_name} {t.last_name}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <option value="other">Someone else…</option>
+                </select>
+              </Field>
+              {reporterSelectValue === 'other' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <TextField label="Reporter name" required placeholder="e.g. Security, neighbour, caretaker"
+                    value={faultForm.reporter_name}
+                    onChange={(e) => setFaultForm({ ...faultForm, reporter_name: e.target.value })} />
+                  <TextField label="Contact" hint="Phone or email (optional)"
+                    value={faultForm.reporter_contact}
+                    onChange={(e) => setFaultForm({ ...faultForm, reporter_contact: e.target.value })} />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Reported date">
                   <input type="date" className="lx-input"
@@ -230,21 +287,32 @@ export default function FaultsRenovations() {
                   <StatusBadge status={f.status} />
                 </div>
                 <div className="text-sm text-ink/80">{f.description}</div>
+                {reporterOf(f) && (
+                  <div className="text-xs mt-1.5 flex items-center gap-1.5 flex-wrap">
+                    <span className="pill bg-stone/10 text-stone">Reported by</span>
+                    <span className="text-ink/80 font-medium">{reporterOf(f).label}</span>
+                    {reporterOf(f).contact && <span className="text-stone">· {reporterOf(f).contact}</span>}
+                  </div>
+                )}
                 <div className="text-stone text-xs mt-1">
                   {f.reported_date} · {f.severity} · caused by {f.caused_by.replace('_', ' ')}{f.cost ? ` · ${money(f.cost)}` : ''}
+                  {f.status === 'resolved' && f.resolved_date ? ` · fixed ${f.resolved_date}` : ''}
                 </div>
                 {canEdit && (
                   <div className="flex items-center justify-between gap-2 mt-2.5 pt-2.5 border-t border-line/70">
-                    <select
-                      className="lx-select !py-1 text-xs w-auto"
-                      value={f.status}
-                      disabled={busyId === f.id}
-                      onChange={(e) => setFaultStatus(f.id, e.target.value)}
-                    >
-                      <option value="open">Open</option>
-                      <option value="in_progress">In progress</option>
-                      <option value="resolved">Resolved</option>
-                    </select>
+                    <label className="flex items-center gap-2 text-xs text-stone">
+                      Status
+                      <select
+                        className="lx-select !py-1 text-xs w-auto"
+                        value={f.status}
+                        disabled={busyId === f.id}
+                        onChange={(e) => setFaultStatus(f.id, e.target.value)}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_progress">In progress</option>
+                        <option value="resolved">Resolved (fixed)</option>
+                      </select>
+                    </label>
                     <RowActions onDelete={() => removeFault(f.id)} busy={busyId === f.id} deleteLabel="Delete this fault?" />
                   </div>
                 )}
@@ -364,6 +432,27 @@ export default function FaultsRenovations() {
             <TextField label="Description" className="sm:col-span-2" hint="Optional"
               value={expenseForm.description}
               onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })} />
+
+            <div className="sm:col-span-2">
+              <span className="lx-label">Receipt <span className="text-stone font-normal">— a photo of the receipt (optional)</span></span>
+              {expenseForm.receipt_url ? (
+                <div className="flex items-center gap-3">
+                  <a href={expenseForm.receipt_url} target="_blank" rel="noreferrer" className="shrink-0">
+                    <img src={expenseForm.receipt_url} alt="Receipt"
+                      className="w-16 h-16 rounded-lg object-cover border border-line" />
+                  </a>
+                  <a href={expenseForm.receipt_url} target="_blank" rel="noreferrer" className="text-xs text-gold hover:underline">
+                    View full size
+                  </a>
+                  <button type="button" onClick={() => setExpenseForm({ ...expenseForm, receipt_url: '' })}
+                    className="text-xs text-stone hover:text-rose-600">Remove</button>
+                </div>
+              ) : (
+                <PhotoUploader label="Upload receipt"
+                  onUploaded={(urls) => setExpenseForm((f) => ({ ...f, receipt_url: urls[0] }))} />
+              )}
+            </div>
+
             <div className="sm:col-span-2 flex gap-3">
               <button className="lx-btn-gold">
                 {editingExpenseId ? 'Save changes' : 'Record Expense'}
@@ -387,6 +476,18 @@ export default function FaultsRenovations() {
                     {money(x.amount)}{x.expense_date ? ` · ${x.expense_date}` : ''}
                   </div>
                 </div>
+                {x.receipt_url ? (
+                  <a href={x.receipt_url} target="_blank" rel="noreferrer"
+                    title="View receipt" className="shrink-0 group">
+                    <img src={x.receipt_url} alt="Receipt"
+                      className="w-14 h-14 rounded-lg object-cover border border-line group-hover:border-gold transition" />
+                    <span className="block text-[10px] text-stone text-center mt-1 group-hover:text-gold">Receipt</span>
+                  </a>
+                ) : (
+                  <span className="shrink-0 text-[11px] text-stone-light border border-dashed border-line rounded-lg px-2 py-1.5">
+                    No receipt
+                  </span>
+                )}
               </div>
               {canEdit && (
                 <div className="flex justify-end mt-2.5 pt-2.5 border-t border-line/70">

@@ -16,6 +16,7 @@ const COLUMNS = [
   'amount',
   'expense_date',
   'description',
+  'receipt_url',
 ];
 
 // `category` (the old enum) is deliberately absent from COLUMNS. Each
@@ -195,7 +196,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { unit_id, category_id, amount, expense_date, description } = req.body;
+    const { unit_id, category_id, amount, expense_date, description, receipt_url } = req.body;
     if (!unit_id || !category_id || !amount || !expense_date) {
       return res.status(400).json({ error: 'unit_id, category_id, amount and expense_date are required' });
     }
@@ -215,6 +216,7 @@ router.post('/', async (req, res, next) => {
         amount: toNumber(amount),
         expense_date,
         description: blank(description),
+        receipt_url: blank(receipt_url),
       })
       .select()
       .single();
@@ -234,7 +236,7 @@ router.put('/:id', async (req, res, next) => {
       allowed: COLUMNS,
       numbers: ['amount'],
       dates: ['expense_date'],
-      texts: ['description'],
+      texts: ['description', 'receipt_url'],
     });
     delete updates.company_id; // never reassignable from the request body
     delete updates.id;

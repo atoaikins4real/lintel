@@ -20,6 +20,10 @@ const COLUMNS = [
   'reported_date',
   'resolved_date',
   'cost',
+  // Who reported it — a linked tenant (tenant_id above) or a free-text
+  // person (a neighbour, security, staff, the manager themselves).
+  'reporter_name',
+  'reporter_contact',
 ];
 
 
@@ -42,7 +46,8 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { unit_id, tenant_id, description, severity, caused_by, reported_date, cost } = req.body;
+    const { unit_id, tenant_id, description, severity, caused_by, reported_date, cost,
+      reporter_name, reporter_contact } = req.body;
     if (!unit_id || !description) {
       return res.status(400).json({ error: 'unit_id and description are required' });
     }
@@ -58,6 +63,8 @@ router.post('/', async (req, res, next) => {
         caused_by: caused_by || 'unknown',
         reported_date: blank(reported_date) || new Date().toISOString().slice(0, 10),
         cost: toNumber(cost),
+        reporter_name: blank(reporter_name),
+        reporter_contact: blank(reporter_contact),
       })
       .select()
       .single();
@@ -76,7 +83,7 @@ router.put('/:id', async (req, res, next) => {
       allowed: COLUMNS,
       numbers: ['cost'],
       dates: ['reported_date', 'resolved_date'],
-      texts: ['tenant_id', 'description'],
+      texts: ['tenant_id', 'description', 'reporter_name', 'reporter_contact'],
     });
     delete updates.company_id;
     const { data, error } = await supabase
