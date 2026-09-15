@@ -27,7 +27,7 @@ const navItems = [
   ] },
   { label: 'Operations', icon: IconWrench, mobileTo: '/faults-renovations', children: [
     { to: '/access', label: 'Access Cards', icon: IconKey },
-    { to: '/faults-renovations', label: 'Costs & Repairs', icon: IconWrench },
+    { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
     { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
   ] },
   { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
@@ -39,7 +39,7 @@ const TITLES = {
   '/': 'Portfolio Overview', '/tenants': 'Tenants', '/tenants/onboard': 'Onboard Tenant',
   '/properties': 'Properties', '/properties/onboard': 'Add Property', '/units': 'Units',
   '/units/onboard': 'Add Apartment', '/leases': 'Leases', '/access': 'Access Cards',
-  '/payments': 'Payments', '/faults-renovations': 'Costs, Faults & Renovations',
+  '/payments': 'Payments', '/faults-renovations': 'Repairs',
   '/booking-requests': 'Booking Requests', '/reports': 'Reports', '/staff': 'Staff & Access',
   '/settings': 'Settings', '/admin': 'Lintel Subscribers',
 };
