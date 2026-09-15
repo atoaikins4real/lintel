@@ -13,6 +13,7 @@ router.use(gateMutations);
 const COLUMNS = [
   'unit_id',
   'description',
+  'reno_type',
   'cost',
   'start_date',
   'end_date',
@@ -38,7 +39,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { unit_id, description, cost, start_date, end_date, rate_before, rate_after } = req.body;
+    const { unit_id, description, reno_type, cost, start_date, end_date, rate_before, rate_after } = req.body;
     if (!unit_id || !description || !cost) {
       return res.status(400).json({ error: 'unit_id, description and cost are required' });
     }
@@ -49,6 +50,7 @@ router.post('/', async (req, res, next) => {
         company_id: req.user.company_id,
         unit_id,
         description,
+        reno_type: blank(reno_type),
         cost: toNumber(cost),
         start_date: blank(start_date),
         end_date: blank(end_date),
@@ -72,7 +74,7 @@ router.put('/:id', async (req, res, next) => {
       allowed: COLUMNS,
       numbers: ['cost', 'rate_before', 'rate_after'],
       dates: ['start_date', 'end_date'],
-      texts: ['description'],
+      texts: ['description', 'reno_type'],
     });
     delete updates.company_id;
 

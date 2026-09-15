@@ -14,6 +14,7 @@ const COLUMNS = [
   'unit_id',
   'tenant_id',
   'description',
+  'fault_type',
   'severity',
   'caused_by',
   'status',
@@ -46,7 +47,7 @@ router.get('/', async (req, res, next) => {
 
 router.post('/', async (req, res, next) => {
   try {
-    const { unit_id, tenant_id, description, severity, caused_by, reported_date, cost,
+    const { unit_id, tenant_id, description, fault_type, severity, caused_by, reported_date, cost,
       reporter_name, reporter_contact } = req.body;
     if (!unit_id || !description) {
       return res.status(400).json({ error: 'unit_id and description are required' });
@@ -59,6 +60,7 @@ router.post('/', async (req, res, next) => {
         unit_id,
         tenant_id: blank(tenant_id),
         description,
+        fault_type: blank(fault_type),
         severity: severity || 'low',
         caused_by: caused_by || 'unknown',
         reported_date: blank(reported_date) || new Date().toISOString().slice(0, 10),
@@ -83,7 +85,7 @@ router.put('/:id', async (req, res, next) => {
       allowed: COLUMNS,
       numbers: ['cost'],
       dates: ['reported_date', 'resolved_date'],
-      texts: ['tenant_id', 'description', 'reporter_name', 'reporter_contact'],
+      texts: ['tenant_id', 'description', 'fault_type', 'reporter_name', 'reporter_contact'],
     });
     delete updates.company_id;
     const { data, error } = await supabase

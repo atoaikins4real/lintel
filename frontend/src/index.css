@@ -97,20 +97,28 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 :root[data-theme="dark"] .lx-auth-card .lx-btn-primary { background: var(--color-ink); color: #ffffff; }
 :root[data-theme="dark"] .lx-auth-card .lx-btn-ghost { background: #ffffff; color: var(--color-ink); border-color: var(--color-line); }
 
-/* Frosted glass for cards in dark mode — the Sellution look, kept legible. */
+/* Cards in dark mode: a mostly-solid dark surface (not near-transparent
+   glass) so list rows and their text read clearly at rest — the previous
+   5%-white fill sat too close to the page/photo and only became legible on
+   hover. Kept slightly translucent + blurred for depth over the backdrop. */
 :root[data-theme="dark"] .lx-card {
-  background: color-mix(in srgb, #ffffff 5%, transparent);
-  border-color: color-mix(in srgb, #ffffff 11%, transparent);
+  background: color-mix(in srgb, var(--color-card) 88%, transparent);
+  border-color: color-mix(in srgb, #ffffff 16%, transparent);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
-/* Inputs sit a touch above the ground so fields read in dark. */
+/* Inputs sit clearly above the surface so fields read in dark. */
 :root[data-theme="dark"] .lx-input,
 :root[data-theme="dark"] .lx-select,
 :root[data-theme="dark"] .lx-textarea,
 :root[data-theme="dark"] .lx-filter {
-  background: color-mix(in srgb, #ffffff 4%, transparent);
+  background: color-mix(in srgb, #ffffff 9%, transparent);
+  border-color: color-mix(in srgb, #ffffff 16%, transparent);
 }
+/* Table rows: a visible divider and a clearer hover, so rows are readable
+   without hovering but still give feedback when hovered. */
+:root[data-theme="dark"] .lx-table tbody tr { border-color: color-mix(in srgb, #ffffff 12%, transparent); }
+:root[data-theme="dark"] .lx-table tbody tr:hover { background: color-mix(in srgb, #ffffff 7%, transparent); }
 /* Buttons hard-code white/ink for light mode; re-point them in dark. */
 :root[data-theme="dark"] .lx-btn-primary { background: var(--color-ink); color: var(--color-canvas); }
 :root[data-theme="dark"] .lx-btn-primary:hover { filter: brightness(0.94); }
@@ -144,7 +152,7 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
       color-mix(in srgb, var(--color-canvas) 80%, transparent),
       color-mix(in srgb, var(--color-canvas) 93%, transparent));
 }
-:root[data-theme="dark"] .lx-app-bg { opacity: 0.16; }
+:root[data-theme="dark"] .lx-app-bg { opacity: 0.09; }
 :root[data-theme="dark"] .lx-app-scrim {
   background:
     radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 13%, transparent), transparent 60%),
