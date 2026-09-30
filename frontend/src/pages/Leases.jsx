@@ -329,7 +329,7 @@ export default function Leases() {
         ))}
         {shownLeases.length === 0 && (
           <div className="lx-card p-8 text-center text-stone text-sm">
-            {leases.length === 0 ? 'No leases yet.' : 'Nothing matches that search.'}
+            {leases.length === 0 ? 'No tenancies yet.' : 'Nothing matches that search.'}
           </div>
         )}
       </div>
@@ -412,7 +412,7 @@ export default function Leases() {
               {shownLeases.length === 0 && (
                 <tr>
                   <td colSpan={canEdit ? 7 : 6} className="px-5 py-10 text-center text-stone">
-                    {leases.length === 0 ? 'No leases yet.' : 'Nothing matches that search.'}
+                    {leases.length === 0 ? 'No tenancies yet.' : 'Nothing matches that search.'}
                   </td>
                 </tr>
               )}

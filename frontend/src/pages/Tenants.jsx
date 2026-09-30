@@ -90,7 +90,7 @@ export default function Tenants() {
 
       {total > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <StatCard label="Total tenants" value={total} icon={IconUsers} sub="Guests & residents" />
+          <StatCard label="Residents" value={total} icon={IconUsers} sub="Guests & residents" />
           <StatCard label="Residents" value={residents} icon={IconHome} sub={`${residentPct}% of portfolio`} />
           <StatCard
             label="Onboarding" value={pending} icon={IconFile}
@@ -133,7 +133,7 @@ export default function Tenants() {
         count={shownTenants.length} total={tenants.length}
         action={canEdit && (
           <>
-            <Link to="/tenants/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">Onboard tenant</Link>
+            <Link to="/tenants/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">Add resident</Link>
             <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
               {showForm ? 'Cancel' : 'Quick add'}
             </button>
@@ -192,7 +192,7 @@ export default function Tenants() {
         ))}
         {shownTenants.length === 0 && (
           <div className="lx-card p-8 text-center text-stone text-sm">
-            {tenants.length === 0 ? 'No tenants yet.' : 'Nothing matches that search.'}
+            {tenants.length === 0 ? 'No residents yet — add your first one.' : 'Nothing matches that search.'}
           </div>
         )}
       </div>
@@ -261,7 +261,7 @@ export default function Tenants() {
               {shownTenants.length === 0 && (
                 <tr>
                   <td colSpan={canEdit ? 8 : 7} className="px-5 py-10 text-center text-stone">
-                    {tenants.length === 0 ? 'No tenants yet.' : 'Nothing matches that search.'}
+                    {tenants.length === 0 ? 'No residents yet — add your first one.' : 'Nothing matches that search.'}
                   </td>
                 </tr>
               )}

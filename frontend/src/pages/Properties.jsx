@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import Field, { TextField } from '../components/Field.jsx';
+import EmptyState from '../components/EmptyState.jsx';
+import { IconHome } from '../components/icons.jsx';
 import { PROPERTY_TYPES as TYPES, AMENITIES as AMENITY_LIST } from '../data/specs.js';
 
 // Single source of truth lives in data/specs.js — re-exported here so the
@@ -182,12 +184,12 @@ export default function Properties() {
       )}
 
       <SearchBar
-        value={query} onChange={setQuery} placeholder="Search properties, city…"
+        value={query} onChange={setQuery} placeholder="Search buildings, city…"
         count={shownProperties.length} total={properties.length}
         action={canEdit && (
           <>
             <Link to="/properties/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
-              + Add Property
+              + Add building
             </Link>
             <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
               {showForm ? 'Cancel' : 'Quick add'}
@@ -213,7 +215,7 @@ export default function Properties() {
                 {p.city ? ` · ${p.city}` : ''}
               </div>
               <div className="flex gap-4 text-xs text-stone mt-3 pt-3 border-t border-line/70">
-                <span><span className="text-ink font-medium">{p.unit_count}</span> units</span>
+                <span><span className="text-ink font-medium">{p.unit_count}</span> apartments</span>
                 <span><span className="text-ink font-medium">{p.occupied_count}</span> occupied</span>
                 <span><span className="text-ink font-medium">{p.vacant_count}</span> vacant</span>
               </div>
@@ -221,8 +223,14 @@ export default function Properties() {
           </Link>
         ))}
         {properties.length === 0 && (
-          <div className="text-stone col-span-full text-sm">
-            No properties yet. Add one, then create the apartments or houses inside it.
+          <div className="col-span-full">
+            <EmptyState
+              icon={IconHome}
+              title="No buildings yet"
+              description="A building holds your apartments or houses. Add one, then add the homes inside it."
+              actionLabel={canEdit ? '+ Add building' : undefined}
+              actionTo={canEdit ? '/properties/onboard' : undefined}
+            />
           </div>
         )}
       </div>

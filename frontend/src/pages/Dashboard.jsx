@@ -4,7 +4,7 @@ import { getUnitsPerformance, getUpgradeEligible, getTenants, getUnits } from '.
 import StatusBadge from '../components/StatusBadge.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
-import { IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench } from '../components/icons.jsx';
+import { IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench, IconBuilding, IconHome } from '../components/icons.jsx';
 
 export default function Dashboard() {
   const { money } = useSettings();
@@ -95,7 +95,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <p className="text-white/75 text-sm mt-4 max-w-md">
-                Add your first property and unit to bring your dashboard to life.
+                Add your first building and apartment to bring your home screen to life.
               </p>
             )}
           </div>
@@ -110,6 +110,18 @@ export default function Dashboard() {
           )}
         </div>
       </section>
+
+      {/* ---------- Quick actions — big, plain-language shortcuts so anyone
+           knows what to do next, even on day one. ---------- */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <QuickAction to="/units/onboard" icon={IconBuilding} title="Add an apartment" sub="List a home" />
+        <QuickAction to="/tenants/onboard" icon={IconUsers} title="Add a resident" sub="Someone new renting" />
+        <QuickAction to="/payments" icon={IconWallet} title="Record a payment" sub="Rent received" />
+        <QuickAction
+          to={company?.slug ? `/showcase/${company.slug}` : '/settings'}
+          external={Boolean(company?.slug)}
+          icon={IconHome} title="View your public page" sub={company?.slug ? 'What renters see' : 'Set up your link'} />
+      </div>
 
       {hasData && (
         <>
@@ -126,7 +138,7 @@ export default function Dashboard() {
               <div className="lx-eyebrow mb-3">Portfolio risk</div>
               <span className={`pill ${riskColor} mb-3`}>{riskLabel}</span>
               <div className="text-sm text-stone">
-                {totalOpenFaults} open fault{totalOpenFaults === 1 ? '' : 's'} across {units.length} unit{units.length === 1 ? '' : 's'}
+                {totalOpenFaults} open repair{totalOpenFaults === 1 ? '' : 's'} across {units.length} apartment{units.length === 1 ? '' : 's'}
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <IconWrench width={14} height={14} className="text-stone" />
@@ -140,7 +152,7 @@ export default function Dashboard() {
             </div>
 
             <div className="lx-card p-5">
-              <div className="lx-eyebrow mb-3">Top tenants</div>
+              <div className="lx-eyebrow mb-3">Top residents</div>
               {topTenants.length ? (
                 <ul className="space-y-2.5">
                   {topTenants.map((t) => (
@@ -161,7 +173,7 @@ export default function Dashboard() {
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-stone">No tenants yet.</p>
+                <p className="text-sm text-stone">No residents yet.</p>
               )}
             </div>
           </div>
@@ -174,7 +186,7 @@ export default function Dashboard() {
                 <span className="lx-eyebrow text-gold">Upgrade opportunities</span>
               </div>
               <p className="text-sm text-stone mb-4">
-                These tenants qualify for an Exclusive-tier offer based on tenure and payment history.
+                These residents qualify for an Exclusive-tier offer based on how long they’ve stayed and their payment history.
               </p>
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {eligible.map((t) => (
@@ -192,8 +204,8 @@ export default function Dashboard() {
 
           {/* ---------- Unit performance ---------- */}
           <div className="flex items-baseline justify-between mb-3 px-1">
-            <h3 className="font-serif text-lg text-ink">Unit performance</h3>
-            <span className="text-xs text-stone hidden sm:inline">sorted worst → best net yield</span>
+            <h3 className="font-serif text-lg text-ink">How your homes are doing</h3>
+            <span className="text-xs text-stone hidden sm:inline">needs attention first</span>
           </div>
 
           {/* Mobile cards */}
@@ -229,7 +241,7 @@ export default function Dashboard() {
               <table className="w-full lx-table min-w-[720px]">
                 <thead>
                   <tr>
-                    <th>Unit</th><th>Class</th>
+                    <th>Home</th><th>Class</th>
                     <th className="text-right">Revenue</th><th className="text-right">Costs</th><th className="text-right">Net yield</th>
                     <th>Occupancy</th><th className="text-right">Open faults</th><th />
                   </tr>
@@ -264,6 +276,25 @@ export default function Dashboard() {
       )}
     </div>
   );
+}
+
+// Big, friendly shortcut tile for the home screen.
+function QuickAction({ to, icon: Icon, title, sub, external }) {
+  const inner = (
+    <>
+      <span className="w-10 h-10 rounded-xl bg-gold/12 text-gold flex items-center justify-center shrink-0">
+        <Icon width={18} height={18} />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-medium text-ink truncate">{title}</span>
+        <span className="block text-xs text-stone truncate">{sub}</span>
+      </span>
+    </>
+  );
+  const cls = 'lx-card lx-lift p-4 flex items-center gap-3';
+  return external
+    ? <a href={to} target="_blank" rel="noopener noreferrer" className={cls}>{inner}</a>
+    : <Link to={to} className={cls}>{inner}</Link>;
 }
 
 // Frosted KPI card that floats over the reception photo.

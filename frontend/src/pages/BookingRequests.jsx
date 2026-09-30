@@ -34,7 +34,7 @@ export default function BookingRequests() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <p className="text-stone text-sm">Requests submitted from the public showcase pages.</p>
+        <p className="text-stone text-sm">Enquiries people sent from your public home pages.</p>
         <select className="lx-select w-full sm:w-auto" value={filter} onChange={(e) => setFilter(e.target.value)}>
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
@@ -88,7 +88,7 @@ export default function BookingRequests() {
             )}
           </div>
         ))}
-        {inquiries.length === 0 && <div className="p-6 text-stone text-sm">No booking requests yet.</div>}
+        {inquiries.length === 0 && <div className="p-6 text-stone text-sm">No enquiries yet — they'll appear here when someone reaches out from a home page.</div>}
       </div>
     </div>
   );

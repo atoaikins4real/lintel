@@ -12,23 +12,23 @@ import SubscriptionBanner from './SubscriptionBanner.jsx';
 // flyout on the rail; `primary` marks what also appears in the mobile bottom
 // bar, and a group carries a `mobileTo` for that tab's single destination.
 const navItems = [
-  { to: '/', label: 'Dashboard', end: true, icon: IconGrid, primary: true },
+  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
   { label: 'People', icon: IconUsers, primary: true, mobileTo: '/tenants', children: [
-    { to: '/tenants', label: 'Tenants', icon: IconUsers },
-    { to: '/staff', label: 'Staff', icon: IconShield },
+    { to: '/tenants', label: 'Residents', icon: IconUsers },
+    { to: '/staff', label: 'Team', icon: IconShield },
   ] },
-  { label: 'Property', icon: IconHome, primary: true, mobileTo: '/properties', children: [
-    { to: '/properties', label: 'Properties', icon: IconHome },
-    { to: '/units', label: 'Units', icon: IconBuilding },
+  { label: 'Homes', icon: IconHome, primary: true, mobileTo: '/properties', children: [
+    { to: '/properties', label: 'Buildings', icon: IconHome },
+    { to: '/units', label: 'Apartments', icon: IconBuilding },
   ] },
-  { label: 'Leasing', icon: IconWallet, primary: true, mobileTo: '/payments', children: [
-    { to: '/leases', label: 'Leases', icon: IconFile },
+  { label: 'Rentals', icon: IconWallet, primary: true, mobileTo: '/payments', children: [
+    { to: '/leases', label: 'Tenancies', icon: IconFile },
     { to: '/payments', label: 'Payments', icon: IconWallet },
   ] },
-  { label: 'Operations', icon: IconWrench, mobileTo: '/faults-renovations', children: [
-    { to: '/access', label: 'Access Cards', icon: IconKey },
+  { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
+    { to: '/access', label: 'Access cards', icon: IconKey },
     { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
-    { to: '/booking-requests', label: 'Booking Requests', icon: IconCalendar },
+    { to: '/booking-requests', label: 'Enquiries', icon: IconCalendar },
   ] },
   { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
   { to: '/settings', label: 'Settings', icon: IconCog },
@@ -36,11 +36,11 @@ const navItems = [
 const platformAdminItems = [{ to: '/admin', label: 'Subscribers', icon: IconChart }];
 
 const TITLES = {
-  '/': 'Portfolio Overview', '/tenants': 'Tenants', '/tenants/onboard': 'Onboard Tenant',
-  '/properties': 'Properties', '/properties/onboard': 'Add Property', '/units': 'Units',
-  '/units/onboard': 'Add Apartment', '/leases': 'Leases', '/access': 'Access Cards',
+  '/': 'Home', '/tenants': 'Residents', '/tenants/onboard': 'Add a resident',
+  '/properties': 'Buildings', '/properties/onboard': 'Add a building', '/units': 'Apartments',
+  '/units/onboard': 'Add an apartment', '/leases': 'Tenancies', '/access': 'Access cards',
   '/payments': 'Payments', '/faults-renovations': 'Repairs',
-  '/booking-requests': 'Booking Requests', '/reports': 'Reports', '/staff': 'Staff & Access',
+  '/booking-requests': 'Enquiries', '/reports': 'Reports', '/staff': 'Your team',
   '/settings': 'Settings', '/admin': 'Lintel Subscribers',
 };
 const ROLE_LABEL = { manager: 'Admin', finance: 'Member', viewer: 'Member' };

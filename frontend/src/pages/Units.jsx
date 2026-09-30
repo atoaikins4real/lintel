@@ -5,6 +5,8 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
 import Field, { TextField } from '../components/Field.jsx';
+import EmptyState from '../components/EmptyState.jsx';
+import { IconBuilding } from '../components/icons.jsx';
 import { STOCK_PHOTOS, suggestedPhotos } from '../data/stockPhotos.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -262,13 +264,13 @@ export default function Units() {
                 rel="noopener noreferrer"
                 className="lx-btn-ghost text-sm flex-1 sm:flex-none text-center"
               >
-                View public showcase ↗
+                View public page ↗
               </a>
             )}
             {canEdit && (
               <>
                 <Link to="/units/onboard" className="lx-btn-primary flex-1 sm:flex-none text-center">
-                  + Add Apartment
+                  + Add apartment
                 </Link>
                 <button type="button" onClick={() => setShowForm((s) => !s)} className="lx-btn-ghost flex-1 sm:flex-none">
                   {showForm ? 'Cancel' : 'Quick add'}
@@ -320,7 +322,17 @@ export default function Units() {
         {units.length > 0 && shownUnits.length === 0 && (
           <div className="text-stone col-span-full text-sm">Nothing matches that search.</div>
         )}
-        {units.length === 0 && <div className="text-stone col-span-full">No units yet.</div>}
+        {units.length === 0 && (
+          <div className="col-span-full">
+            <EmptyState
+              icon={IconBuilding}
+              title="No apartments yet"
+              description="Add your first apartment or house — then you can list it, add residents and track rent."
+              actionLabel={canEdit ? '+ Add apartment' : undefined}
+              actionTo={canEdit ? '/units/onboard' : undefined}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
