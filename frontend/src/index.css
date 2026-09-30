@@ -97,6 +97,35 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 :root[data-theme="dark"] .lx-auth-card .lx-btn-primary { background: var(--color-ink); color: #ffffff; }
 :root[data-theme="dark"] .lx-auth-card .lx-btn-ghost { background: #ffffff; color: var(--color-ink); border-color: var(--color-line); }
 
+/* Public, unauthenticated pages (the shared showcase + property links) are
+   always bright and Airbnb-like, whatever theme the visitor's device is in —
+   a prospect should never get the dark app skin. Pins the light palette. */
+.lx-public {
+  --color-ink: #1a1a1a;
+  --color-ink-soft: #2a2a2a;
+  --color-canvas: #ffffff;
+  --color-panel: #f5f3ef;
+  --color-card: #ffffff;
+  --color-stone: #6f6a60;
+  --color-stone-light: #9c968a;
+  --color-line: #e7e3da;
+  --color-gold: #a9793a;
+  --color-gold-light: #cf9e5c;
+  --tone-ok: #047857;     --tone-ok-bg: #ecfdf5;
+  --tone-warn: #b45309;   --tone-warn-bg: #fffbeb;
+  --tone-danger: #e11d48; --tone-danger-bg: #fff1f2;
+  --tone-info: #0369a1;   --tone-info-bg: #f0f9ff;
+  color-scheme: light;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .lx-public .lx-card { background: #ffffff; border-color: var(--color-line); backdrop-filter: none; }
+:root[data-theme="dark"] .lx-public .lx-input,
+:root[data-theme="dark"] .lx-public .lx-select,
+:root[data-theme="dark"] .lx-public .lx-textarea { background: #ffffff; border-color: var(--color-line); }
+:root[data-theme="dark"] .lx-public .lx-btn-primary { background: var(--color-ink); color: #ffffff; }
+:root[data-theme="dark"] .lx-public .lx-btn-ghost { background: #ffffff; color: var(--color-ink); border-color: var(--color-line); }
+
 /* Cards in dark mode: a mostly-solid dark surface (not near-transparent
    glass) so list rows and their text read clearly at rest — the previous
    5%-white fill sat too close to the page/photo and only became legible on
