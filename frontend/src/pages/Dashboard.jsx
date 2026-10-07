@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [featIdx, setFeatIdx] = useState(0);
 
   useEffect(() => {
     Promise.all([getUnitsPerformance(), getUpgradeEligible(), getTenants(), getUnits()])
@@ -50,6 +51,14 @@ export default function Dashboard() {
   const riskColor = riskRatio < 0.34 ? 'text-emerald-600 bg-emerald-50' : riskRatio < 0.7 ? 'text-amber-600 bg-amber-50' : 'text-rose-600 bg-rose-50';
   const hasData = units.length > 0;
 
+  // Homes to feature in the hero carousel — prefer ones with a photo.
+  const featured = useMemo(() => {
+    const withPhoto = units.filter((u) => u.photo_url);
+    return (withPhoto.length ? withPhoto : units).slice(0, 6);
+  }, [units]);
+  const feat = featured.length ? featured[featIdx % featured.length] : null;
+  const publicHref = company?.slug ? `/showcase/${company.slug}` : '/settings';
+
   if (loading) return <div className="text-stone text-sm">Loading&hellip;</div>;
 
   return (
@@ -60,54 +69,120 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ---------- Reception hero — the image is the star, text sits on
-           localized darkening top and bottom so the middle of the photo stays
-           clear. Glass KPI cards float along the bottom edge. ---------- */}
-      <section className="relative rounded-3xl overflow-hidden mb-6 shadow-lift bg-ink min-h-[380px] sm:min-h-[480px]">
+      {/* ---------- Hero — architecture-studio style over the brand photo,
+           personalized with the subscriber's own numbers. Theme-independent
+           (explicit colours) so it keeps the warm look in light and dark. ---------- */}
+      <section className="relative rounded-[28px] overflow-hidden mb-6 shadow-lift bg-ink min-h-[600px]">
         <img
-          src="/app1.jpg"
+          src="/bg1.jpg"
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover object-[center_55%]"
-          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = '/app1.jpg'; } }}
         />
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(180deg, rgba(19,19,19,0.62) 0%, rgba(19,19,19,0.14) 26%, rgba(19,19,19,0.10) 52%, rgba(19,19,19,0.55) 82%, rgba(19,19,19,0.86) 100%)',
+              'linear-gradient(180deg, rgba(20,16,12,0.55) 0%, rgba(20,16,12,0.10) 24%, rgba(20,16,12,0.08) 46%, rgba(20,16,12,0.52) 76%, rgba(20,16,12,0.85) 100%)',
           }}
         />
 
-        <div className="relative z-10 min-h-[380px] sm:min-h-[480px] flex flex-col justify-between p-6 sm:p-9">
-          <div>
-            <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-gold-light mb-2">
-              {dateStr}
-              {company?.name ? <span className="text-white/50"> · {company.name}</span> : null}
-            </div>
-            <h2 className="font-serif text-[28px] sm:text-[38px] leading-tight text-white">
-              {greeting}, {firstName}.
-            </h2>
-            {hasData ? (
-              <div className="flex items-baseline gap-x-3 gap-y-1 flex-wrap mt-3">
-                <span className="font-serif text-white text-[34px] sm:text-[42px] leading-none">{money(totalRevenue)}</span>
-                <span className="text-white/70 text-sm">collected · net {money(netYield)} after costs</span>
+        <div className="relative z-10 flex flex-col justify-between gap-8 min-h-[600px] p-6 sm:p-9 md:p-10">
+          {/* Top: headline + CTAs, with portfolio facts stacked on the right */}
+          <div className="flex items-start justify-between gap-6">
+            <div className="max-w-xl">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-gold-light mb-3">
+                Homes <span className="text-white/40">—</span> Residents <span className="text-white/40">—</span> Rent
               </div>
-            ) : (
-              <p className="text-white/75 text-sm mt-4 max-w-md">
-                Add your first building and apartment to bring your home screen to life.
+              <h1 className="font-serif text-white leading-[1.04] text-[36px] sm:text-[52px] md:text-[60px]">
+                {greeting},<br /><span className="text-gold-light">{firstName}.</span>
+              </h1>
+              <p className="text-white/80 text-sm sm:text-base mt-4 max-w-md">
+                {hasData
+                  ? `${money(totalRevenue)} collected · net ${money(netYield)} after costs across ${units.length} ${units.length === 1 ? 'home' : 'homes'}.`
+                  : 'Add your first building and apartment to bring your home screen to life.'}
               </p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 mt-6">
+                <Link to="/units/onboard"
+                  className="inline-flex items-center gap-2 rounded-full bg-white text-ink px-5 py-3 text-sm font-medium hover:bg-white/90 transition shadow-soft">
+                  Add a home <IconArrowRight width={16} height={16} />
+                </Link>
+                <a href={publicHref} target={company?.slug ? '_blank' : undefined} rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2.5 text-white text-sm font-medium group">
+                  <span className="w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur flex items-center justify-center group-hover:bg-white/25 transition">
+                    <IconArrowRight width={16} height={16} />
+                  </span>
+                  View your public page
+                </a>
+              </div>
+            </div>
+
+            {hasData && (
+              <div className="hidden lg:flex flex-col items-end gap-3 text-right shrink-0">
+                {[['Occupancy', `${avgOccupancy}%`], ['Apartments', units.length], ['Residents', tenants.length], ['Collected', money(totalRevenue)]].map(([l, v]) => (
+                  <div key={l}>
+                    <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-white/50">{l}</div>
+                    <div className="text-white font-serif text-base leading-none mt-1">{v}</div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
-          {hasData && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-              <GlassStat label="Occupancy" value={`${avgOccupancy}%`} />
-              <GlassStat label="Revenue collected" value={money(totalRevenue)} />
-              <GlassStat label="Net income" value={money(netYield)} />
-              <GlassStat label="Open faults" value={totalOpenFaults} />
+          {/* Bottom: featured home · stats · share CTA */}
+          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.25fr_1fr] gap-3 md:gap-4">
+            <div className="rounded-2xl bg-white/90 backdrop-blur-md p-3.5 flex flex-col gap-3 text-[#1b1b1b]">
+              {feat ? (
+                <>
+                  <Link to={`/units/${feat.id}`} className="flex items-center gap-3 group">
+                    {feat.photo_url
+                      ? <img src={feat.photo_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                      : <span className="w-14 h-14 rounded-xl bg-neutral-200 shrink-0" />}
+                    <span className="min-w-0">
+                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.14em] text-gold">Featured home</span>
+                      <span className="block font-medium truncate group-hover:text-gold transition">{feat.unit_code}</span>
+                      <span className="block text-xs text-neutral-500 truncate">{feat.property_name}{feat.city ? ` · ${feat.city}` : ''}</span>
+                    </span>
+                  </Link>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-neutral-500">
+                      {String((featIdx % featured.length) + 1).padStart(2, '0')} / {String(featured.length).padStart(2, '0')}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button type="button" aria-label="Previous" onClick={() => setFeatIdx((i) => (i - 1 + featured.length) % featured.length)}
+                        className="w-7 h-7 rounded-full border border-neutral-300 flex items-center justify-center hover:bg-neutral-100 leading-none">‹</button>
+                      <button type="button" aria-label="Next" onClick={() => setFeatIdx((i) => (i + 1) % featured.length)}
+                        className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center leading-none">›</button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-sm text-neutral-500 py-4 text-center">No homes to feature yet.</div>
+              )}
             </div>
-          )}
+
+            <div className="rounded-2xl bg-white/90 backdrop-blur-md p-4 grid grid-cols-3 gap-2 text-[#1b1b1b]">
+              {[[units.length, 'Apartments', IconBuilding], [tenants.length, 'Residents', IconUsers], [`${avgOccupancy}%`, 'Occupancy', IconHome]].map(([v, l, Ic]) => (
+                <div key={l} className="flex flex-col items-center justify-center text-center">
+                  <Ic width={18} height={18} className="text-gold mb-1.5" />
+                  <div className="font-serif text-xl leading-none">{v}</div>
+                  <div className="text-[10px] text-neutral-500 mt-1">{l}</div>
+                </div>
+              ))}
+            </div>
+
+            <a href={publicHref} target={company?.slug ? '_blank' : undefined} rel="noopener noreferrer"
+              className="rounded-2xl bg-ink/88 backdrop-blur text-white p-4 flex items-center justify-between gap-3 group">
+              <span className="min-w-0">
+                <span className="block font-serif text-lg leading-tight">Share your homes</span>
+                <span className="block text-white/60 text-xs mt-1">{company?.slug ? 'Send your public page to renters' : 'Set up your public link'}</span>
+              </span>
+              <span className="w-10 h-10 rounded-full bg-white text-ink flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <IconArrowRight width={16} height={16} />
+              </span>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -295,16 +370,6 @@ function QuickAction({ to, icon: Icon, title, sub, external }) {
   return external
     ? <a href={to} target="_blank" rel="noopener noreferrer" className={cls}>{inner}</a>
     : <Link to={to} className={cls}>{inner}</Link>;
-}
-
-// Frosted KPI card that floats over the reception photo.
-function GlassStat({ label, value }) {
-  return (
-    <div className="bg-white/12 backdrop-blur-md border border-white/20 rounded-2xl px-4 py-3.5">
-      <div className="text-[9.5px] font-semibold uppercase tracking-[0.14em] text-white/60 mb-1.5">{label}</div>
-      <div className="font-serif text-white text-lg sm:text-2xl leading-none num">{value}</div>
-    </div>
-  );
 }
 
 function BarRow({ icon: Icon, label, value, max, color }) {
