@@ -35,6 +35,22 @@ const navItems = [
 ];
 const platformAdminItems = [{ to: '/admin', label: 'Subscribers', icon: IconChart }];
 
+// The hotel / resort / guest house side — a separate navigation shown when the
+// company signed up as 'hospitality'. Rooms are units; Guests are tenants.
+const hotelNavItems = [
+  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
+  { to: '/reservations', label: 'Reservations', icon: IconCalendar, primary: true },
+  { to: '/rooms', label: 'Rooms', icon: IconBuilding, primary: true },
+  { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
+  { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
+  { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
+    { to: '/access', label: 'Access cards', icon: IconKey },
+    { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
+  ] },
+  { to: '/reports', label: 'Reports', icon: IconChart },
+  { to: '/settings', label: 'Settings', icon: IconCog },
+];
+
 const TITLES = {
   '/': 'Home', '/tenants': 'Residents', '/tenants/onboard': 'Add a resident',
   '/properties': 'Buildings', '/properties/onboard': 'Add a building', '/units': 'Apartments',
@@ -42,7 +58,10 @@ const TITLES = {
   '/payments': 'Payments', '/faults-renovations': 'Repairs',
   '/booking-requests': 'Enquiries', '/reports': 'Reports', '/staff': 'Your team',
   '/settings': 'Settings', '/admin': 'Lintel Subscribers',
+  '/reservations': 'Reservations', '/rooms': 'Rooms',
 };
+// Titles that read differently on the hotel side.
+const HOTEL_TITLES = { '/tenants': 'Guests', '/tenants/onboard': 'Add a guest' };
 const ROLE_LABEL = { manager: 'Admin', finance: 'Member', viewer: 'Member' };
 
 const flattenForTitle = (items) => items.flatMap((n) => (n.children ? n.children : [n]));
@@ -59,10 +78,12 @@ function MoonIcon(p) { return (<svg viewBox="0 0 24 24" fill="none" stroke="curr
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isPlatformAdmin } = useAuth();
+  const { user, logout, isPlatformAdmin, isHotel } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [sheet, setSheet] = useState(null); // grouped nav item shown in the mobile sheet
-  const visibleNav = isPlatformAdmin ? [...navItems, ...platformAdminItems] : navItems;
+  const baseNav = isHotel ? hotelNavItems : navItems;
+  const visibleNav = isPlatformAdmin ? [...baseNav, ...platformAdminItems] : baseNav;
+  const titleFor = (pathname) => (isHotel && HOTEL_TITLES[pathname]) || pageTitle(pathname, visibleNav);
 
   const initials = user
     ? `${user.name.split(' ')[0]?.[0] || ''}${user.name.split(' ')[1]?.[0] || ''}`.toUpperCase() || user.name[0]?.toUpperCase()
@@ -106,7 +127,7 @@ export default function Layout({ children }) {
                      style={{ background: 'linear-gradient(160deg, #cf9e5c, #a9793a)' }}>L</div>
                 <div className="min-w-0">
                   <div className="lx-eyebrow hidden sm:block">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</div>
-                  <h1 className="font-serif text-lg sm:text-xl text-ink leading-tight truncate">{pageTitle(location.pathname, visibleNav)}</h1>
+                  <h1 className="font-serif text-lg sm:text-xl text-ink leading-tight truncate">{titleFor(location.pathname)}</h1>
                 </div>
               </div>
 

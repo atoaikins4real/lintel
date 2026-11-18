@@ -20,6 +20,8 @@ import TenantOnboarding from './pages/TenantOnboarding.jsx';
 import AccessCards from './pages/AccessCards.jsx';
 import Leases from './pages/Leases.jsx';
 import Payments from './pages/Payments.jsx';
+import Reservations from './pages/Reservations.jsx';
+import Rooms from './pages/Rooms.jsx';
 import FaultsRenovations from './pages/FaultsRenovations.jsx';
 import BookingRequests from './pages/BookingRequests.jsx';
 import Reports from './pages/Reports.jsx';
@@ -68,6 +70,8 @@ function App() {
                     <Route path="/units/:id" element={<UnitDetail />} />
                     <Route path="/access" element={<AccessCards />} />
                     <Route path="/leases" element={<Leases />} />
+                    <Route path="/reservations" element={<Reservations />} />
+                    <Route path="/rooms" element={<Rooms />} />
                     <Route path="/payments" element={<Payments />} />
                     <Route path="/faults-renovations" element={<FaultsRenovations />} />
                     <Route path="/booking-requests" element={<BookingRequests />} />

@@ -132,6 +132,9 @@ router.post(
 router.post('/signup', authLimiter, async (req, res, next) => {
   try {
     const { email, password, name, company_name } = req.body;
+    // What kind of business is signing up — a long-let landlord ('rental',
+    // the default) or a hotel / resort / guest house ('hospitality').
+    const business_type = req.body.business_type === 'hospitality' ? 'hospitality' : 'rental';
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'name, email and password are required' });
     }
@@ -151,8 +154,8 @@ router.post('/signup', authLimiter, async (req, res, next) => {
     const companyName = (company_name || '').trim() || `${name.trim()}'s Company`;
     const { data: company, error: companyErr } = await supabase
       .from('l_companies')
-      .insert({ name: companyName, slug: await uniqueSlug(companyName) })
-      .select('id, name, slug')
+      .insert({ name: companyName, slug: await uniqueSlug(companyName), business_type })
+      .select('id, name, slug, business_type')
       .single();
     if (companyErr) throw companyErr;
 
@@ -193,7 +196,12 @@ router.post('/signup', authLimiter, async (req, res, next) => {
       trial_ends_on: trialEnds.toISOString().slice(0, 10),
     });
 
-    await seedDemoData(company.id);
+    // The demo seeder fills a rental workspace (buildings, apartments,
+    // tenants). A hotel starts clean and adds its own rooms — seeding rental
+    // data there would just be confusing.
+    if (business_type !== 'hospitality') {
+      await seedDemoData(company.id);
+    }
 
     return createUser(
       { email, password, name, role: 'manager', companyId: company.id, company },
@@ -259,7 +267,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
 
     const { data: company } = await supabase
       .from('l_companies')
-      .select('id, name, slug, logo_url')
+      .select('id, name, slug, logo_url, business_type')
       .eq('id', user.company_id)
       .maybeSingle();
 
@@ -286,7 +294,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
   try {
     const { data: company } = await supabase
       .from('l_companies')
-      .select('id, name, slug, logo_url')
+      .select('id, name, slug, logo_url, business_type')
       .eq('id', req.user.company_id)
       .maybeSingle();
     res.json({ user: req.user, company });

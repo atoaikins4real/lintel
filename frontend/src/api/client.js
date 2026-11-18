@@ -136,6 +136,13 @@ export const getDueReviews = () => api.get('/leases/reviews/due').then((r) => r.
 export const applyRentReview = (id, payload) =>
   api.post(`/leases/${id}/apply-review`, payload).then((r) => r.data);
 
+// Reservations (hotel / hospitality). Rooms are units.
+export const getReservations = (params) => api.get('/reservations', { params }).then((r) => r.data);
+export const createReservation = (payload) => api.post('/reservations', payload).then((r) => r.data);
+export const updateReservation = (id, payload) => api.put(`/reservations/${id}`, payload).then((r) => r.data);
+export const deleteReservation = (id) => api.delete(`/reservations/${id}`).then((r) => r.data);
+export const checkAvailability = (params) => api.get('/reservations/availability', { params }).then((r) => r.data);
+
 // Payments
 export const getPayments = (params) => api.get('/payments', { params }).then((r) => r.data);
 export const createPayment = (payload) => api.post('/payments', payload).then((r) => r.data);

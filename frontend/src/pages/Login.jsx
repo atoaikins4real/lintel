@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { getBootstrapStatus, register, signup, forgotPassword, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Field, { TextField } from '../components/Field.jsx';
-import { IconEye, IconEyeOff, IconWallet, IconHome, IconWrench, IconShield, IconSparkle } from '../components/icons.jsx';
+import { IconEye, IconEyeOff, IconWallet, IconHome, IconWrench, IconShield, IconSparkle, IconCalendar } from '../components/icons.jsx';
 
 const HERO_PHOTO = 'https://images.unsplash.com/photo-1759372945658-1e9f56e751bd?w=1800&q=80&auto=format&fit=crop';
 
@@ -12,7 +12,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [needsBootstrap, setNeedsBootstrap] = useState(null);
   const [mode, setMode] = useState('login'); // 'login' | 'signup' (bootstrap overrides both)
-  const [form, setForm] = useState({ name: '', email: '', password: '', company_name: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', company_name: '', business_type: 'rental' });
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
@@ -174,13 +174,29 @@ export default function Login() {
 
   // ---------- CREATE-ACCOUNT LANDING (HomeNest-style marketing) ----------
   if (isCreate && needsBootstrap !== null) {
-    const features = [
+    const isHotelSignup = form.business_type === 'hospitality';
+    const eyebrow = isHotelSignup ? 'Run your hotel with ease' : 'Run your rentals with ease';
+    const headParts = isHotelSignup ? ['Better stays,', 'happier guests.'] : ['Better rentals,', 'brighter returns.'];
+    const pitch = isHotelSignup
+      ? 'Lintel gives your hotel, resort or guest house one calm place for rooms, reservations, guests and payments — and a page for every room you can share.'
+      : 'Lintel brings your buildings, residents, rent and repairs into one calm place — and gives every home a beautiful page you can share with renters.';
+    const features = isHotelSignup ? [
+      [IconCalendar, 'Take reservations', 'A room calendar that never double-books, with check-in and check-out.'],
+      [IconHome, 'A page for every room', 'Share a beautiful listing and take enquiries from guests.'],
+      [IconWallet, 'Collect payments', 'Mobile money settles straight to your own account.'],
+      [IconSparkle, 'Everything at a glance', 'Arrivals, occupancy and what needs attention — in one place.'],
+    ] : [
       [IconWallet, 'Collect rent online', 'Mobile money settles straight to your own account.'],
       [IconHome, 'A page for every home', 'Share a beautiful public listing with renters in one tap.'],
       [IconWrench, 'Repairs & receipts', 'Log faults, attach receipts, and see who reported what.'],
       [IconSparkle, 'Everything at a glance', 'Occupancy, income and what needs attention — in one place.'],
     ];
-    const strip = [
+    const strip = isHotelSignup ? [
+      [IconCalendar, 'Reservations', 'No double-booking'],
+      [IconHome, 'Room listings', 'Share in a tap'],
+      [IconWallet, 'Payments', 'Mobile money'],
+      [IconShield, 'Private & secure', 'Your data, yours'],
+    ] : [
       [IconWallet, 'Online rent', 'Mobile money'],
       [IconHome, 'Public listings', 'Share in a tap'],
       [IconWrench, 'Repairs tracked', 'Nothing slips'],
@@ -207,15 +223,12 @@ export default function Login() {
             {/* Marketing */}
             <div className="lx-page order-2 lg:order-1">
               <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone mb-4">
-                <span className="w-6 h-px bg-gold" /> Run your rentals with ease
+                <span className="w-6 h-px bg-gold" /> {eyebrow}
               </div>
               <h1 className="font-serif text-ink leading-[1.05] text-[40px] sm:text-[52px]">
-                Better rentals,<br /><span className="text-gold">brighter returns.</span>
+                {headParts[0]}<br /><span className="text-gold">{headParts[1]}</span>
               </h1>
-              <p className="text-stone text-sm sm:text-base mt-4 max-w-md leading-relaxed">
-                Lintel brings your buildings, residents, rent and repairs into one calm place — and gives every
-                home a beautiful page you can share with renters.
-              </p>
+              <p className="text-stone text-sm sm:text-base mt-4 max-w-md leading-relaxed">{pitch}</p>
               <ul className="mt-6 space-y-3.5 max-w-md">
                 {features.map(([Icon, title, desc]) => (
                   <li key={title} className="flex items-start gap-3">
@@ -236,7 +249,22 @@ export default function Login() {
             <div className="order-1 lg:order-2">
               <div className="lx-auth-card bg-white rounded-3xl shadow-lift p-6 sm:p-8 lx-page">
                 <h2 className="font-serif text-2xl text-ink mb-1">{heading}</h2>
-                <p className="text-stone text-xs mb-6">{subheading}</p>
+                <p className="text-stone text-xs mb-4">{subheading}</p>
+                {!needsBootstrap && (
+                  <div className="mb-5">
+                    <span className="lx-label mb-1.5">What do you manage?</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[['rental', 'Rentals'], ['hospitality', 'Hotel / guest house']].map(([v, l]) => (
+                        <button key={v} type="button" onClick={() => setForm({ ...form, business_type: v })}
+                          className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                            form.business_type === v ? 'border-gold bg-gold/10 text-ink' : 'border-line text-stone hover:border-ink/30'
+                          }`}>
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {formEl}
                 {toggleEl}
               </div>

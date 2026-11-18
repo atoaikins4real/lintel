@@ -54,10 +54,13 @@ export function AuthProvider({ children }) {
   // in-company role happens to be. The backend enforces the same override.
   const canEdit = isPlatformAdmin || (user ? ['manager', 'finance'].includes(user.role) : false);
   const isManager = isPlatformAdmin || user?.role === 'manager';
+  // Hotel / resort / guest house mode — chosen at sign-up. Switches the app to
+  // the hospitality side (Rooms, Reservations, Guests) instead of long-let.
+  const isHotel = company?.business_type === 'hospitality';
 
   const value = useMemo(
-    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin }),
-    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin]
+    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, isHotel }),
+    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, isHotel]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
