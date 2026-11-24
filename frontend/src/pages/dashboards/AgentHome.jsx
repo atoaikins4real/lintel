@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getUnits, getBookingInquiries, getTenants, readApiError } from '../../api/client.js';
 import StatCard from '../../components/StatCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
-import EmptyState from '../../components/EmptyState.jsx';
+import GettingStarted from '../../components/GettingStarted.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconBuilding, IconUsers, IconHome, IconCalendar, IconArrowRight, IconSparkle } from '../../components/icons.jsx';
@@ -98,9 +98,7 @@ export default function AgentHome() {
       </div>
 
       {!hasListings ? (
-        <EmptyState icon={IconBuilding} title="Add your first listing"
-          description="List the properties you're selling — add photos and details — and buyers can send enquiries straight from the page you share."
-          actionLabel={canEdit ? 'Add a listing' : undefined} actionTo={canEdit ? '/units/onboard' : undefined} />
+        <GettingStarted />
       ) : (
         <>
           {/* Quick actions */}

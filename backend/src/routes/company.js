@@ -41,6 +41,16 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       if (value !== undefined) updates[key] = blank(value);
     }
 
+    // The business role (landlord | hotelier | shortlet | agent) chosen at
+    // sign-up and switchable here. Switching it changes the navigation and
+    // dashboard; existing records are untouched. Legacy values alias on.
+    if (req.body.business_type !== undefined) {
+      const LEGACY = { rental: 'landlord', hospitality: 'hotelier' };
+      const ROLES = ['landlord', 'hotelier', 'shortlet', 'agent'];
+      const v = String(req.body.business_type || '').toLowerCase().trim();
+      updates.business_type = ROLES.includes(v) ? v : (LEGACY[v] || 'landlord');
+    }
+
     // The slug is part of the public showcase URL, so it has to stay
     // URL-safe and unique across all companies.
     if (slug !== undefined) {

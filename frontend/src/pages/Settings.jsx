@@ -7,7 +7,17 @@ import {
 } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
+import { resolveRole } from '../config/roles.js';
 import { CURRENCY_LABELS } from '../utils/currency.js';
+
+// The business roles a company can switch between. Keep in step with the
+// sign-up picker and backend (landlord | hotelier | shortlet | agent).
+const ROLE_CHOICES = [
+  ['landlord', 'Rentals (landlord)', 'Apartments & houses on long tenancies'],
+  ['hotelier', 'Hotel / guest house', 'Rooms let by the night'],
+  ['shortlet', 'Short-let / Airbnb', 'Serviced places, nightly stays'],
+  ['agent', 'Estate agent', 'Listings for sale & buyer enquiries'],
+];
 import ExpenseCategories from '../components/ExpenseCategories.jsx';
 import UtilityTypes from '../components/UtilityTypes.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
@@ -183,6 +193,39 @@ export default function Settings() {
             </button>
           </div>
         </div>
+      </section>
+
+      {/* What you manage — the business role. Switching it changes the
+          navigation and home dashboard to match; existing records stay put. */}
+      <section className="lx-card p-5 sm:p-6">
+        <h2 className="font-serif text-lg text-ink mb-1">What you manage</h2>
+        <p className="text-xs text-stone mb-4">
+          Sets your dashboard, menus and wording. Switching won’t delete anything — your buildings,
+          rooms, guests and payments all stay; they’re just shown in the new role’s language.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {ROLE_CHOICES.map(([v, label, desc]) => {
+            const selected = resolveRole(companyForm.business_type) === v;
+            return (
+              <button
+                key={v} type="button" disabled={!isManager}
+                onClick={() => setCo({ business_type: v })}
+                className={`text-left rounded-xl border px-3.5 py-3 transition disabled:opacity-60 ${
+                  selected ? 'border-gold bg-gold/10' : 'border-line hover:border-ink/30'
+                }`}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className={`text-sm font-medium ${selected ? 'text-ink' : 'text-stone'}`}>{label}</span>
+                  {selected && <span className="pill bg-gold/15 text-gold">Current</span>}
+                </span>
+                <span className="block text-[11px] text-stone leading-tight mt-0.5">{desc}</span>
+              </button>
+            );
+          })}
+        </div>
+        {isManager && (
+          <p className="text-[11px] text-stone mt-2">Pick one, then press “Save settings” at the bottom to apply it.</p>
+        )}
       </section>
 
       {/* Email delivery status. Only managers see it — it's an operational

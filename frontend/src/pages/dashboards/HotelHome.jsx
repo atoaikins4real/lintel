@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getReservations, getUnits, updateReservation, readApiError } from '../../api/client.js';
 import StatCard from '../../components/StatCard.jsx';
-import EmptyState from '../../components/EmptyState.jsx';
+import GettingStarted from '../../components/GettingStarted.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconCalendar, IconUsers, IconHome, IconBuilding, IconArrowRight, IconWallet, IconWrench } from '../../components/icons.jsx';
@@ -119,9 +119,7 @@ export default function HotelHome() {
       </div>
 
       {!hasRooms ? (
-        <EmptyState icon={IconBuilding} title="Your hotel is ready to set up"
-          description="Add your rooms — give each a number and a nightly rate — then you can take reservations and run the front desk from here."
-          actionLabel={canEdit ? 'Add a room' : undefined} actionTo={canEdit ? '/units/onboard' : undefined} />
+        <GettingStarted />
       ) : (
         <>
           {/* Front desk board */}

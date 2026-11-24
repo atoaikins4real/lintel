@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getReservations, getUnits, readApiError } from '../../api/client.js';
 import StatCard from '../../components/StatCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
-import EmptyState from '../../components/EmptyState.jsx';
+import GettingStarted from '../../components/GettingStarted.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconCalendar, IconUsers, IconHome, IconBuilding, IconArrowRight, IconWallet } from '../../components/icons.jsx';
@@ -112,9 +112,7 @@ export default function ShortletHome() {
       </div>
 
       {!hasListings ? (
-        <EmptyState icon={IconBuilding} title="Add your first listing"
-          description="Set up each place you let — a name and a nightly rate — and your booking calendar opens up so you can start taking stays."
-          actionLabel={canEdit ? 'Add a listing' : undefined} actionTo={canEdit ? '/units/onboard' : undefined} />
+        <GettingStarted />
       ) : (
         <>
           {/* Week-ahead occupancy strip */}

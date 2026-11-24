@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getUnitsPerformance, getUpgradeEligible, getTenants, getUnits } from '../../api/client.js';
 import StatusBadge from '../../components/StatusBadge.jsx';
+import GettingStarted from '../../components/GettingStarted.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench, IconBuilding, IconHome } from '../../components/icons.jsx';
@@ -185,6 +186,9 @@ export default function LandlordHome() {
           </div>
         </div>
       </section>
+
+      {/* First-run guide — only while the workspace is still empty. */}
+      {!hasData && <GettingStarted />}
 
       {/* ---------- Quick actions — big, plain-language shortcuts so anyone
            knows what to do next, even on day one. ---------- */}
