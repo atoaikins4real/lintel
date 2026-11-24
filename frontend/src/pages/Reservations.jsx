@@ -24,7 +24,50 @@ const STATUS_LABEL = {
   cancelled: 'Cancelled', no_show: 'No-show',
 };
 const ACTIVE = ['confirmed', 'checked_in'];
-const emptyForm = { unit_id: '', guest_tenant_id: '', guest_name: '', guest_contact: '', check_in: TODAY, check_out: addDays(TODAY, 1), nightly_rate: '', notes: '' };
+const emptyForm = {
+  unit_id: '', guest_tenant_id: '', guest_name: '', guest_contact: '',
+  check_in: TODAY, check_out: addDays(TODAY, 1), nightly_rate: '', notes: '',
+  // Guest register / tourist details (optional).
+  guests_count: '', nationality: '', id_type: '', id_number: '',
+  purpose_of_visit: '', arriving_from: '', next_destination: '',
+};
+
+const ID_TYPES = [['', 'ID type…'], ['passport', 'Passport'], ['ghana_card', 'Ghana Card'], ['drivers_license', "Driver's licence"], ['other', 'Other']];
+const PURPOSES = [['', 'Reason for visit…'], ['leisure', 'Leisure / tourism'], ['business', 'Business'], ['other', 'Other']];
+const PURPOSE_LABEL = { leisure: 'Leisure', business: 'Business', other: 'Other' };
+
+// Builds a CSV of the guest register and triggers a download. This is what a
+// property shares with a tourism board — one row per stay, with the standard
+// arrival questions alongside the booking.
+function exportGuestRegister(rows, roomLabel) {
+  const cols = [
+    ['Guest', (r) => r.guest_display],
+    ['Room', (r) => r.unit_code || roomLabel(r.unit_id)],
+    ['Check-in', (r) => r.check_in],
+    ['Check-out', (r) => r.check_out],
+    ['Guests', (r) => r.guests_count ?? ''],
+    ['Nationality', (r) => r.nationality || ''],
+    ['ID type', (r) => r.id_type || ''],
+    ['ID number', (r) => r.id_number || ''],
+    ['Purpose of visit', (r) => r.purpose_of_visit || ''],
+    ['Arriving from', (r) => r.arriving_from || ''],
+    ['Next destination', (r) => r.next_destination || ''],
+    ['Contact', (r) => r.guest_contact || ''],
+    ['Status', (r) => r.status],
+  ];
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [cols.map((c) => esc(c[0])).join(',')];
+  rows.forEach((r) => lines.push(cols.map((c) => esc(c[1](r))).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `guest-register-${TODAY}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 export default function Reservations() {
   const { canEdit } = useAuth();
@@ -118,7 +161,14 @@ export default function Reservations() {
 
   return (
     <div>
-      <p className="text-stone text-sm mb-5">Bookings, arrivals and room availability — at a glance.</p>
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <p className="text-stone text-sm">Bookings, arrivals and room availability — at a glance.</p>
+        {reservations.length > 0 && (
+          <button onClick={() => exportGuestRegister([...house, ...upcoming, ...past], roomLabel)}
+            title="Download the guest register as a CSV — ready to share with a tourism board"
+            className="lx-btn-ghost text-xs shrink-0 whitespace-nowrap">Export guest register</button>
+        )}
+      </div>
       {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
 
       {/* KPIs */}
@@ -250,6 +300,37 @@ export default function Reservations() {
                 </div>
               </div>
               <TextField label="Notes" hint="Optional" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+
+              {/* Guest register — the standard arrival questions, kept per stay
+                  so the data can later be exported for a tourism board. All
+                  optional, so a quick walk-in booking stays quick. */}
+              <details className="rounded-xl border border-line/80 bg-panel/40 px-3.5 py-3">
+                <summary className="text-sm font-medium text-ink cursor-pointer select-none">Guest &amp; travel details <span className="text-xs text-stone font-normal">· optional, for your register</span></summary>
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextField label="Number of guests" type="number" min="1" value={form.guests_count} onChange={(e) => setForm({ ...form, guests_count: e.target.value })} />
+                    <TextField label="Nationality" value={form.nationality} onChange={(e) => setForm({ ...form, nationality: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="ID type">
+                      <select className="lx-select" value={form.id_type} onChange={(e) => setForm({ ...form, id_type: e.target.value })}>
+                        {ID_TYPES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </Field>
+                    <TextField label="ID number" value={form.id_number} onChange={(e) => setForm({ ...form, id_number: e.target.value })} />
+                  </div>
+                  <Field label="Reason for visit">
+                    <select className="lx-select" value={form.purpose_of_visit} onChange={(e) => setForm({ ...form, purpose_of_visit: e.target.value })}>
+                      {PURPOSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                    </select>
+                  </Field>
+                  <div className="grid grid-cols-2 gap-3">
+                    <TextField label="Arriving from" hint="City / country" value={form.arriving_from} onChange={(e) => setForm({ ...form, arriving_from: e.target.value })} />
+                    <TextField label="Next destination" hint="Optional" value={form.next_destination} onChange={(e) => setForm({ ...form, next_destination: e.target.value })} />
+                  </div>
+                </div>
+              </details>
+
               <div className="flex gap-3 pt-1">
                 <button disabled={saving || (avail && avail.available === false)} className="lx-btn-gold">
                   {saving ? 'Saving…' : 'Create reservation'}
@@ -288,6 +369,15 @@ function ResGroup({ title, rows, empty, money, roomLabel, canEdit, busyId, setSt
                       {r.guest_contact ? ` · ${r.guest_contact}` : ''}
                     </div>
                     {r.notes && <div className="text-xs text-stone/90 mt-1">{r.notes}</div>}
+                    {(r.guests_count || r.nationality || r.purpose_of_visit) && (
+                      <div className="text-[11px] text-stone/80 mt-1">
+                        {[
+                          r.guests_count ? `${r.guests_count} guest${Number(r.guests_count) === 1 ? '' : 's'}` : null,
+                          r.nationality || null,
+                          r.purpose_of_visit ? (PURPOSE_LABEL[r.purpose_of_visit] || r.purpose_of_visit) : null,
+                        ].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
                   </div>
                   {canEdit && (
                     <div className="flex items-center gap-2 shrink-0">

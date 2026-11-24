@@ -11,6 +11,10 @@ router.use(gateMutations);
 const COLUMNS = [
   'unit_id', 'guest_tenant_id', 'guest_name', 'guest_contact',
   'check_in', 'check_out', 'nightly_rate', 'status', 'source', 'notes',
+  // Guest register / tourist details (optional) — kept per stay so the data
+  // can be exported and, if desired, shared with a tourism board.
+  'purpose_of_visit', 'nationality', 'id_type', 'id_number',
+  'arriving_from', 'next_destination', 'guests_count',
 ];
 // Statuses that actually hold a room (block the dates). A cancelled/no-show/
 // checked-out reservation frees the room for someone else.
@@ -117,6 +121,13 @@ router.post('/', async (req, res, next) => {
         status,
         source: blank(req.body.source),
         notes: blank(req.body.notes),
+        purpose_of_visit: blank(req.body.purpose_of_visit),
+        nationality: blank(req.body.nationality),
+        id_type: blank(req.body.id_type),
+        id_number: blank(req.body.id_number),
+        arriving_from: blank(req.body.arriving_from),
+        next_destination: blank(req.body.next_destination),
+        guests_count: toNumber(req.body.guests_count),
       })
       .select()
       .single();
@@ -131,9 +142,10 @@ router.put('/:id', async (req, res, next) => {
   try {
     const updates = clean(req.body, {
       allowed: COLUMNS,
-      numbers: ['nightly_rate'],
+      numbers: ['nightly_rate', 'guests_count'],
       dates: ['check_in', 'check_out'],
-      texts: ['guest_tenant_id', 'guest_name', 'guest_contact', 'source', 'notes', 'status'],
+      texts: ['guest_tenant_id', 'guest_name', 'guest_contact', 'source', 'notes', 'status',
+        'purpose_of_visit', 'nationality', 'id_type', 'id_number', 'arriving_from', 'next_destination'],
     });
     delete updates.company_id;
 

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getToken, storeToken, clearToken, getMe, login as apiLogin, setOnUnauthorized } from '../api/client.js';
+import { resolveRole, isStayRole } from '../config/roles.js';
 
 const AuthContext = createContext(null);
 
@@ -54,13 +55,17 @@ export function AuthProvider({ children }) {
   // in-company role happens to be. The backend enforces the same override.
   const canEdit = isPlatformAdmin || (user ? ['manager', 'finance'].includes(user.role) : false);
   const isManager = isPlatformAdmin || user?.role === 'manager';
-  // Hotel / resort / guest house mode — chosen at sign-up. Switches the app to
-  // the hospitality side (Rooms, Reservations, Guests) instead of long-let.
-  const isHotel = company?.business_type === 'hospitality';
+  // The business role chosen at sign-up (landlord | hotelier | shortlet |
+  // agent), resolved from the company's stored business_type. Everything that
+  // changes per role — the navigation, the home dashboard, the wording — reads
+  // this. `isHotel` stays true for any stay/booking role (hotel + short-let),
+  // which is what drives the rooms/reservations side.
+  const role = resolveRole(company?.business_type);
+  const isHotel = isStayRole(role);
 
   const value = useMemo(
-    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, isHotel }),
-    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, isHotel]
+    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, role, isHotel }),
+    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, role, isHotel]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

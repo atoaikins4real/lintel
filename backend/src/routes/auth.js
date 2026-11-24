@@ -5,7 +5,6 @@ const mailer = require('../utils/mailer');
 const { supabase } = require('../config/supabase');
 const { signToken, requireAuth, requireRole } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
-const { seedDemoData } = require('../utils/seedDemoData');
 const { enforceSubscription } = require('../middleware/subscription');
 const { enforcePlanLimit } = require('../middleware/planLimits');
 
@@ -126,15 +125,25 @@ router.post(
 );
 
 // POST /api/auth/signup — public, self-service. Creates a NEW company
-// workspace, makes the signer its manager, and seeds it with sample data
-// so they land in a working system. Their data is isolated from every
-// other company from the first request.
+// workspace and makes the signer its manager. The workspace starts EMPTY —
+// no sample/demo records — so the first thing the subscriber sees is their
+// own data. Their data is isolated from every other company from the first
+// request.
 router.post('/signup', authLimiter, async (req, res, next) => {
   try {
     const { email, password, name, company_name } = req.body;
-    // What kind of business is signing up — a long-let landlord ('rental',
-    // the default) or a hotel / resort / guest house ('hospitality').
-    const business_type = req.body.business_type === 'hospitality' ? 'hospitality' : 'rental';
+    // The role chosen at sign-up, stored on the company and used throughout
+    // the app to pick the right navigation, dashboard and wording:
+    //   landlord  — long-let rentals (the default)
+    //   hotelier  — hotel / resort / guest house
+    //   shortlet  — short-let / Airbnb host
+    //   agent     — estate agent (sales)
+    // Legacy values from before the role picker map onto the new ones so
+    // older accounts keep working: rental -> landlord, hospitality -> hotelier.
+    const LEGACY = { rental: 'landlord', hospitality: 'hotelier' };
+    const ROLES = ['landlord', 'hotelier', 'shortlet', 'agent'];
+    const requested = String(req.body.business_type || '').toLowerCase().trim();
+    const business_type = ROLES.includes(requested) ? requested : (LEGACY[requested] || 'landlord');
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'name, email and password are required' });
     }
@@ -196,12 +205,10 @@ router.post('/signup', authLimiter, async (req, res, next) => {
       trial_ends_on: trialEnds.toISOString().slice(0, 10),
     });
 
-    // The demo seeder fills a rental workspace (buildings, apartments,
-    // tenants). A hotel starts clean and adds its own rooms — seeding rental
-    // data there would just be confusing.
-    if (business_type !== 'hospitality') {
-      await seedDemoData(company.id);
-    }
+    // No demo/sample data is seeded. Every new workspace — whatever the role —
+    // starts empty and is filled with the subscriber's own records. The only
+    // things pre-created above are the functional defaults a workspace cannot
+    // operate without (settings row, expense categories, utility types, trial).
 
     return createUser(
       { email, password, name, role: 'manager', companyId: company.id, company },

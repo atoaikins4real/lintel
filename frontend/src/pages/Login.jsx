@@ -3,16 +3,97 @@ import { useNavigate } from 'react-router-dom';
 import { getBootstrapStatus, register, signup, forgotPassword, readApiError } from '../api/client.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Field, { TextField } from '../components/Field.jsx';
-import { IconEye, IconEyeOff, IconWallet, IconHome, IconWrench, IconShield, IconSparkle, IconCalendar } from '../components/icons.jsx';
+import { IconEye, IconEyeOff, IconWallet, IconHome, IconWrench, IconShield, IconSparkle, IconCalendar, IconBuilding, IconUsers, IconKey } from '../components/icons.jsx';
 
 const HERO_PHOTO = 'https://images.unsplash.com/photo-1759372945658-1e9f56e751bd?w=1800&q=80&auto=format&fit=crop';
+
+// What each role should pick at sign-up, and the marketing that goes with it.
+// The key is stored on the company as business_type and drives the whole app
+// afterwards (navigation, dashboard, wording).
+const ROLE_OPTIONS = [
+  ['landlord', 'Rentals', 'Apartments & houses on long tenancies'],
+  ['hotelier', 'Hotel / guest house', 'Rooms let by the night'],
+  ['shortlet', 'Short-let / Airbnb', 'Serviced places, nightly stays'],
+  ['agent', 'Estate agent', 'Listings for sale & buyer enquiries'],
+];
+
+const SIGNUP_COPY = {
+  landlord: {
+    eyebrow: 'Run your rentals with ease',
+    head: ['Better rentals,', 'brighter returns.'],
+    pitch: 'Lintel brings your buildings, residents, rent and repairs into one calm place — and gives every home a beautiful page you can share with renters.',
+    features: [
+      [IconWallet, 'Collect rent online', 'Mobile money settles straight to your own account.'],
+      [IconHome, 'A page for every home', 'Share a beautiful public listing with renters in one tap.'],
+      [IconWrench, 'Repairs & receipts', 'Log faults, attach receipts, and see who reported what.'],
+      [IconSparkle, 'Everything at a glance', 'Occupancy, income and what needs attention — in one place.'],
+    ],
+    strip: [
+      [IconWallet, 'Online rent', 'Mobile money'],
+      [IconHome, 'Public listings', 'Share in a tap'],
+      [IconWrench, 'Repairs tracked', 'Nothing slips'],
+      [IconShield, 'Private & secure', 'Your data, yours'],
+    ],
+  },
+  hotelier: {
+    eyebrow: 'Run your hotel with ease',
+    head: ['Better stays,', 'happier guests.'],
+    pitch: 'Lintel gives your hotel, resort or guest house one calm place for rooms, reservations, guests and payments — and a page for every room you can share.',
+    features: [
+      [IconCalendar, 'Take reservations', 'A room calendar that never double-books, with check-in and check-out.'],
+      [IconHome, 'A page for every room', 'Share a beautiful listing and take enquiries from guests.'],
+      [IconWallet, 'Collect payments', 'Mobile money settles straight to your own account.'],
+      [IconSparkle, 'Everything at a glance', 'Arrivals, occupancy and what needs attention — in one place.'],
+    ],
+    strip: [
+      [IconCalendar, 'Reservations', 'No double-booking'],
+      [IconHome, 'Room listings', 'Share in a tap'],
+      [IconWallet, 'Payments', 'Mobile money'],
+      [IconShield, 'Private & secure', 'Your data, yours'],
+    ],
+  },
+  shortlet: {
+    eyebrow: 'Run your short-lets with ease',
+    head: ['More nights booked,', 'less juggling.'],
+    pitch: 'Lintel keeps your serviced apartments and short-stay places in one calm place — a booking calendar that never clashes, guest details on file, and payouts you can track.',
+    features: [
+      [IconCalendar, 'One clash-free calendar', 'Every listing and every stay in a single view — no double-bookings.'],
+      [IconHome, 'A page for every listing', 'Share a beautiful page and take enquiries directly.'],
+      [IconUsers, 'Guest register', 'Keep guest and travel details on file for every stay.'],
+      [IconWallet, 'Track your payouts', 'See what each stay earns, settled to your own account.'],
+    ],
+    strip: [
+      [IconCalendar, 'Clash-free', 'One calendar'],
+      [IconHome, 'Listings', 'Share in a tap'],
+      [IconUsers, 'Guest register', 'Details on file'],
+      [IconShield, 'Private & secure', 'Your data, yours'],
+    ],
+  },
+  agent: {
+    eyebrow: 'Sell more, chase less',
+    head: ['Every listing,', 'every lead — sorted.'],
+    pitch: 'Lintel keeps your properties for sale, your buyer enquiries and your contacts in one calm place — with a beautiful page for every listing you can share anywhere.',
+    features: [
+      [IconBuilding, 'Your listings, organised', 'Every property you represent, with photos and asking price.'],
+      [IconHome, 'A page for every listing', 'Share a polished page with buyers in one tap.'],
+      [IconCalendar, 'Never miss an enquiry', 'Buyer enquiries land in one place, ready to follow up.'],
+      [IconUsers, 'Contacts on file', 'Keep every buyer and seller detail to hand.'],
+    ],
+    strip: [
+      [IconBuilding, 'Listings', 'All in one place'],
+      [IconHome, 'Share pages', 'In a tap'],
+      [IconCalendar, 'Enquiries', 'Nothing slips'],
+      [IconShield, 'Private & secure', 'Your data, yours'],
+    ],
+  },
+};
 
 export default function Login() {
   const { login, setSession, user } = useAuth();
   const navigate = useNavigate();
   const [needsBootstrap, setNeedsBootstrap] = useState(null);
   const [mode, setMode] = useState('login'); // 'login' | 'signup' (bootstrap overrides both)
-  const [form, setForm] = useState({ name: '', email: '', password: '', company_name: '', business_type: 'rental' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', company_name: '', business_type: 'landlord' });
   const [remember, setRemember] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
@@ -82,7 +163,7 @@ export default function Login() {
   const subheading = needsBootstrap
     ? 'No accounts exist yet — the first account created here becomes the manager.'
     : isCreate
-    ? 'Set up your private workspace, pre-loaded with sample homes so you can explore straight away.'
+    ? 'Set up your own private workspace — it starts empty, ready for your real properties.'
     : 'Sign in to your portfolio.';
   const submitLabel = saving ? 'Please wait…' : needsBootstrap ? 'Create account & sign in' : isCreate ? 'Create my workspace' : 'Login';
 
@@ -174,34 +255,8 @@ export default function Login() {
 
   // ---------- CREATE-ACCOUNT LANDING (HomeNest-style marketing) ----------
   if (isCreate && needsBootstrap !== null) {
-    const isHotelSignup = form.business_type === 'hospitality';
-    const eyebrow = isHotelSignup ? 'Run your hotel with ease' : 'Run your rentals with ease';
-    const headParts = isHotelSignup ? ['Better stays,', 'happier guests.'] : ['Better rentals,', 'brighter returns.'];
-    const pitch = isHotelSignup
-      ? 'Lintel gives your hotel, resort or guest house one calm place for rooms, reservations, guests and payments — and a page for every room you can share.'
-      : 'Lintel brings your buildings, residents, rent and repairs into one calm place — and gives every home a beautiful page you can share with renters.';
-    const features = isHotelSignup ? [
-      [IconCalendar, 'Take reservations', 'A room calendar that never double-books, with check-in and check-out.'],
-      [IconHome, 'A page for every room', 'Share a beautiful listing and take enquiries from guests.'],
-      [IconWallet, 'Collect payments', 'Mobile money settles straight to your own account.'],
-      [IconSparkle, 'Everything at a glance', 'Arrivals, occupancy and what needs attention — in one place.'],
-    ] : [
-      [IconWallet, 'Collect rent online', 'Mobile money settles straight to your own account.'],
-      [IconHome, 'A page for every home', 'Share a beautiful public listing with renters in one tap.'],
-      [IconWrench, 'Repairs & receipts', 'Log faults, attach receipts, and see who reported what.'],
-      [IconSparkle, 'Everything at a glance', 'Occupancy, income and what needs attention — in one place.'],
-    ];
-    const strip = isHotelSignup ? [
-      [IconCalendar, 'Reservations', 'No double-booking'],
-      [IconHome, 'Room listings', 'Share in a tap'],
-      [IconWallet, 'Payments', 'Mobile money'],
-      [IconShield, 'Private & secure', 'Your data, yours'],
-    ] : [
-      [IconWallet, 'Online rent', 'Mobile money'],
-      [IconHome, 'Public listings', 'Share in a tap'],
-      [IconWrench, 'Repairs tracked', 'Nothing slips'],
-      [IconShield, 'Private & secure', 'Your data, yours'],
-    ];
+    const copy = SIGNUP_COPY[form.business_type] || SIGNUP_COPY.landlord;
+    const { eyebrow, head: headParts, pitch, features, strip } = copy;
     return (
       <div className="lx-public min-h-screen" style={{ background: '#f4efe6' }}>
         <header className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -254,15 +309,17 @@ export default function Login() {
                   <div className="mb-5">
                     <span className="lx-label mb-1.5">What do you manage?</span>
                     <div className="grid grid-cols-2 gap-2">
-                      {[['rental', 'Rentals'], ['hospitality', 'Hotel / guest house']].map(([v, l]) => (
+                      {ROLE_OPTIONS.map(([v, l, d]) => (
                         <button key={v} type="button" onClick={() => setForm({ ...form, business_type: v })}
-                          className={`rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                            form.business_type === v ? 'border-gold bg-gold/10 text-ink' : 'border-line text-stone hover:border-ink/30'
+                          className={`text-left rounded-xl border px-3 py-2.5 transition ${
+                            form.business_type === v ? 'border-gold bg-gold/10' : 'border-line hover:border-ink/30'
                           }`}>
-                          {l}
+                          <span className={`block text-sm font-medium ${form.business_type === v ? 'text-ink' : 'text-stone'}`}>{l}</span>
+                          <span className="block text-[11px] text-stone leading-tight mt-0.5">{d}</span>
                         </button>
                       ))}
                     </div>
+                    <p className="text-[11px] text-stone mt-2">This sets up the right dashboard and tools for you.</p>
                   </div>
                 )}
                 {formEl}

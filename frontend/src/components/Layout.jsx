@@ -33,6 +33,44 @@ const navItems = [
   { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
   { to: '/settings', label: 'Settings', icon: IconCog },
 ];
+// Short-let / Airbnb host — the same booking machinery as a hotel, but the
+// property is a "listing" and the calendar leads. Rooms are units; guests are
+// tenants; reservations are the booking calendar.
+const shortletNavItems = [
+  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
+  { to: '/reservations', label: 'Calendar', icon: IconCalendar, primary: true },
+  { to: '/rooms', label: 'Listings', icon: IconBuilding, primary: true },
+  { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
+  { to: '/payments', label: 'Payouts', icon: IconWallet, primary: true },
+  { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
+    { to: '/access', label: 'Access & keys', icon: IconKey },
+    { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
+  ] },
+  { to: '/reports', label: 'Reports', icon: IconChart },
+  { to: '/settings', label: 'Settings', icon: IconCog },
+];
+
+// Real-estate agent (sales) — listings for sale, buyer enquiries and the
+// people (contacts) behind them. Listings are units; enquiries are the public
+// "book/enquire" submissions; contacts are tenants.
+const agentNavItems = [
+  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
+  { label: 'Listings', icon: IconHome, primary: true, mobileTo: '/units', children: [
+    { to: '/units', label: 'For sale', icon: IconBuilding },
+    { to: '/properties', label: 'Developments', icon: IconHome },
+  ] },
+  { to: '/booking-requests', label: 'Enquiries', icon: IconCalendar, primary: true },
+  { to: '/tenants', label: 'Contacts', icon: IconUsers, primary: true },
+  { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
+  { to: '/settings', label: 'Settings', icon: IconCog },
+];
+
+const NAV_BY_ROLE = {
+  landlord: navItems,
+  hotelier: hotelNavItems,
+  shortlet: shortletNavItems,
+  agent: agentNavItems,
+};
 const platformAdminItems = [{ to: '/admin', label: 'Subscribers', icon: IconChart }];
 
 // The hotel / resort / guest house side — a separate navigation shown when the
@@ -60,8 +98,21 @@ const TITLES = {
   '/settings': 'Settings', '/admin': 'Lintel Subscribers',
   '/reservations': 'Reservations', '/rooms': 'Rooms',
 };
-// Titles that read differently on the hotel side.
-const HOTEL_TITLES = { '/tenants': 'Guests', '/tenants/onboard': 'Add a guest' };
+// Titles that read differently per role. Each role's map overrides the shared
+// TITLES above for the paths where its wording differs.
+const TITLE_OVERRIDES = {
+  hotelier: { '/tenants': 'Guests', '/tenants/onboard': 'Add a guest' },
+  shortlet: {
+    '/tenants': 'Guests', '/tenants/onboard': 'Add a guest',
+    '/reservations': 'Calendar', '/rooms': 'Listings',
+    '/units/onboard': 'Add a listing', '/payments': 'Payouts',
+  },
+  agent: {
+    '/tenants': 'Contacts', '/tenants/onboard': 'Add a contact',
+    '/units': 'Listings for sale', '/units/onboard': 'Add a listing',
+    '/properties': 'Developments', '/booking-requests': 'Enquiries',
+  },
+};
 const ROLE_LABEL = { manager: 'Admin', finance: 'Member', viewer: 'Member' };
 
 const flattenForTitle = (items) => items.flatMap((n) => (n.children ? n.children : [n]));
@@ -78,12 +129,13 @@ function MoonIcon(p) { return (<svg viewBox="0 0 24 24" fill="none" stroke="curr
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isPlatformAdmin, isHotel } = useAuth();
+  const { user, logout, isPlatformAdmin, role } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [sheet, setSheet] = useState(null); // grouped nav item shown in the mobile sheet
-  const baseNav = isHotel ? hotelNavItems : navItems;
+  const baseNav = NAV_BY_ROLE[role] || navItems;
   const visibleNav = isPlatformAdmin ? [...baseNav, ...platformAdminItems] : baseNav;
-  const titleFor = (pathname) => (isHotel && HOTEL_TITLES[pathname]) || pageTitle(pathname, visibleNav);
+  const overrides = TITLE_OVERRIDES[role] || {};
+  const titleFor = (pathname) => overrides[pathname] || pageTitle(pathname, visibleNav);
 
   const initials = user
     ? `${user.name.split(' ')[0]?.[0] || ''}${user.name.split(' ')[1]?.[0] || ''}`.toUpperCase() || user.name[0]?.toUpperCase()
