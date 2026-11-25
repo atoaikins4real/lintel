@@ -7,6 +7,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import SubscriptionBanner from './SubscriptionBanner.jsx';
+import NotificationsBell from './NotificationsBell.jsx';
 
 // Nav is a mix of flat links and grouped links. A group expands into a hover
 // flyout on the rail; `primary` marks what also appears in the mobile bottom
@@ -184,6 +185,7 @@ export default function Layout({ children }) {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <NotificationsBell />
                 <button type="button" onClick={toggleTheme}
                   title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
                   aria-label="Toggle theme" className="lx-icon-btn">
