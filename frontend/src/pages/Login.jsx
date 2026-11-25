@@ -342,40 +342,76 @@ export default function Login() {
   }
 
   // ---------- LOGIN (photo backdrop) ----------
+  const loginFeatures = [
+    [IconWallet, 'Collect rent online', 'Mobile money, straight to you'],
+    [IconHome, 'A page for every home', 'Share your listings in a tap'],
+    [IconWrench, 'Repairs, tracked', 'Nothing slips through'],
+  ];
   return (
     <div className="min-h-screen relative bg-ink">
-      <img src={HERO_PHOTO} alt="" className="fixed inset-0 w-full h-full object-cover" />
-      <div className="fixed inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
+      {/* Brand hero image — the same architecture photo the app uses, so the
+          door to Lintel looks like Lintel. Falls back if bg1 is missing. */}
+      <img
+        src="/bg1.jpg" alt="" aria-hidden="true"
+        className="fixed inset-0 w-full h-full object-cover"
+        onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = '/app1.jpg'; } }}
+      />
+      {/* Directional scrim — deep on the left so the editorial copy reads, light
+          through the middle so the photo breathes, settling again on the right. */}
+      <div
+        className="fixed inset-0"
+        style={{ background: 'linear-gradient(100deg, rgba(16,12,9,0.88) 0%, rgba(16,12,9,0.55) 38%, rgba(16,12,9,0.32) 64%, rgba(16,12,9,0.62) 100%)' }}
+      />
 
-      <div className="hidden lg:block fixed bottom-12 left-12 max-w-sm z-10">
-        <h2 className="font-serif text-white text-3xl leading-tight mb-3">Because Every Home<br />Deserves Attention</h2>
-        <p className="text-white/70 text-sm">Homes, residents, rent and repairs — tracked in one place, not a dozen spreadsheets.</p>
-        <div className="flex items-center gap-1.5 mt-5">
-          <span className="w-6 h-1 rounded-full bg-white/90" />
-          <span className="w-1.5 h-1.5 rounded-full bg-white/35" />
-          <span className="w-1.5 h-1.5 rounded-full bg-white/35" />
+      <div className="relative z-10 min-h-screen max-w-6xl mx-auto px-5 sm:px-8 lg:px-10 grid lg:grid-cols-2 gap-10 lg:gap-16 items-center py-10">
+        {/* Editorial brand panel — desktop only */}
+        <div className="hidden lg:flex flex-col justify-between self-stretch py-4">
+          <BrandMark onLight={false} />
+          <div className="max-w-md">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-light mb-4">Property management, simplified</div>
+            <h1 className="font-serif text-white leading-[1.04] text-[42px] xl:text-[50px]">
+              Because every home<br /><span className="text-gold-light">deserves attention.</span>
+            </h1>
+            <p className="text-white/75 text-sm mt-4 max-w-sm leading-relaxed">
+              Homes, residents, rent and repairs — tracked in one calm place, not a dozen spreadsheets.
+            </p>
+            <ul className="mt-8 space-y-4">
+              {loginFeatures.map(([Icon, title, desc]) => (
+                <li key={title} className="flex items-start gap-3">
+                  <span className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-gold-light flex items-center justify-center shrink-0">
+                    <Icon width={16} height={16} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-medium text-white">{title}</span>
+                    <span className="block text-xs text-white/55">{desc}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="text-white/40 text-xs">Built for landlords, hoteliers, short-let hosts & agents.</p>
         </div>
-      </div>
 
-      <div className="relative z-10 min-h-screen flex items-start lg:items-center justify-center lg:justify-end px-4 sm:px-8 lg:pr-16 py-8 sm:py-10">
-        <div className="w-full max-w-sm">
+        {/* Sign-in card */}
+        <div className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto">
           {apiError && (
             <div className="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-3">{apiError}</div>
           )}
-          <div className="lx-auth-card bg-white/95 backdrop-blur-xl rounded-3xl shadow-lift p-6 sm:p-8 lx-page">
-            <div className="inline-flex items-center gap-2 bg-ink text-white rounded-full pl-1.5 pr-3.5 py-1.5 mb-6">
-              <span className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-serif shrink-0"
-                style={{ background: 'linear-gradient(160deg, #cf9e5c, #a9793a)' }}>L</span>
-              <span className="text-xs font-medium">Lintel</span>
-            </div>
+          <div className="lx-auth-card bg-white/97 backdrop-blur-xl rounded-[28px] shadow-lift p-7 sm:p-9 lx-page">
+            <div className="lg:hidden mb-6"><BrandMark onLight /></div>
             {needsBootstrap === null ? (
               <p className="text-stone text-sm text-center py-6">Loading&hellip;</p>
             ) : (
               <>
-                <h1 className="font-serif text-2xl text-ink mb-1">{heading}</h1>
-                <p className="text-stone text-xs mb-6">{subheading}</p>
+                <div className="lx-eyebrow text-gold mb-2">Welcome back</div>
+                <h2 className="font-serif text-[28px] text-ink leading-tight mb-1">Sign in to Lintel</h2>
+                <p className="text-stone text-xs mb-6">Pick up right where you left off.</p>
                 {formEl}
                 {toggleEl}
+                <div className="mt-6 pt-5 border-t border-line flex items-center justify-center gap-2 text-[11px] text-stone">
+                  <IconShield width={13} height={13} className="text-gold" />
+                  Secure sign-in · your data stays private
+                </div>
               </>
             )}
           </div>
