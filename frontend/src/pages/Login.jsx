@@ -103,6 +103,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [apiError, setApiError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(1); // signup wizard: 1 role · 2 your login · 3 workspace
 
   useEffect(() => {
     getBootstrapStatus()
@@ -121,6 +122,9 @@ export default function Login() {
     if (user) navigate('/', { replace: true });
   }, [user, navigate]);
 
+  // Always start the sign-up wizard at step 1 when entering sign-up mode.
+  useEffect(() => { if (mode === 'signup') setStep(1); }, [mode]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -137,6 +141,9 @@ export default function Login() {
       }
       navigate('/', { replace: true });
     } catch (err) {
+      // A duplicate email means the account already exists — send them back to
+      // the login step of the wizard so they can fix the address or sign in.
+      if (err.response?.status === 409) setStep(2);
       setError(err.response?.data?.error || 'Something went wrong. Please try again.');
     } finally {
       setSaving(false);
@@ -303,26 +310,13 @@ export default function Login() {
             {/* Form card */}
             <div className="order-1 lg:order-2">
               <div className="lx-auth-card bg-white rounded-3xl shadow-lift p-6 sm:p-8 lx-page">
-                <h2 className="font-serif text-2xl text-ink mb-1">{heading}</h2>
-                <p className="text-stone text-xs mb-4">{subheading}</p>
-                {!needsBootstrap && (
-                  <div className="mb-5">
-                    <span className="lx-label mb-1.5">What do you manage?</span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {ROLE_OPTIONS.map(([v, l, d]) => (
-                        <button key={v} type="button" onClick={() => setForm({ ...form, business_type: v })}
-                          className={`text-left rounded-xl border px-3 py-2.5 transition ${
-                            form.business_type === v ? 'border-gold bg-gold/10' : 'border-line hover:border-ink/30'
-                          }`}>
-                          <span className={`block text-sm font-medium ${form.business_type === v ? 'text-ink' : 'text-stone'}`}>{l}</span>
-                          <span className="block text-[11px] text-stone leading-tight mt-0.5">{d}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-[11px] text-stone mt-2">This sets up the right dashboard and tools for you.</p>
-                  </div>
-                )}
-                {formEl}
+                <SignupWizard
+                  step={step} setStep={setStep}
+                  form={form} setForm={setForm}
+                  error={error} setError={setError}
+                  saving={saving} onSubmit={handleSubmit}
+                  showPassword={showPassword} setShowPassword={setShowPassword}
+                />
                 {toggleEl}
               </div>
             </div>
@@ -388,6 +382,117 @@ export default function Login() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------- SIGN-UP WIZARD ----------
+// Three calm steps instead of one busy form: pick what you manage, create your
+// login, name your workspace. Each step validates before moving on, the final
+// button is disabled while saving (so a double-tap can't create two accounts),
+// and it's clear up front that the person creating the account becomes its
+// admin.
+const emailLooksValid = (e) => /\S+@\S+\.\S+/.test(String(e || '').trim());
+
+function SignupWizard({ step, setStep, form, setForm, error, setError, saving, onSubmit, showPassword, setShowPassword }) {
+  const step2Ok = form.name.trim() && emailLooksValid(form.email) && form.password.length >= 8;
+
+  const toStep2 = () => { setError(''); setStep(2); };
+  const submitStep2 = (e) => {
+    e.preventDefault();
+    if (!step2Ok) {
+      setError('Enter your name, a valid email, and a password of at least 8 characters.');
+      return;
+    }
+    setError(''); setStep(3);
+  };
+
+  return (
+    <>
+      {/* progress */}
+      <div className="flex items-center gap-1.5 mb-4">
+        {[1, 2, 3].map((n) => (
+          <span key={n} className={`h-1.5 flex-1 rounded-full transition-colors ${n <= step ? 'bg-gold' : 'bg-line'}`} />
+        ))}
+      </div>
+      <div className="lx-eyebrow mb-2">Step {step} of 3</div>
+
+      {error && (
+        <div className="mb-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2.5">{error}</div>
+      )}
+
+      {step === 1 && (
+        <>
+          <h2 className="font-serif text-2xl text-ink mb-1">What do you manage?</h2>
+          <p className="text-stone text-xs mb-4">This sets up the right dashboard and tools for you.</p>
+          <div className="grid grid-cols-1 gap-2">
+            {ROLE_OPTIONS.map(([v, l, d]) => (
+              <button key={v} type="button" onClick={() => setForm({ ...form, business_type: v })}
+                className={`text-left rounded-xl border px-3.5 py-3 transition ${
+                  form.business_type === v ? 'border-gold bg-gold/10' : 'border-line hover:border-ink/30'
+                }`}>
+                <span className="flex items-center justify-between gap-2">
+                  <span className={`text-sm font-medium ${form.business_type === v ? 'text-ink' : 'text-stone'}`}>{l}</span>
+                  {form.business_type === v && <span className="w-4 h-4 rounded-full bg-gold text-white text-[10px] flex items-center justify-center">✓</span>}
+                </span>
+                <span className="block text-[11px] text-stone leading-tight mt-0.5">{d}</span>
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={toStep2} className="lx-btn-primary w-full !py-3 mt-5">Continue</button>
+        </>
+      )}
+
+      {step === 2 && (
+        <form onSubmit={submitStep2} className="space-y-4">
+          <div>
+            <h2 className="font-serif text-2xl text-ink mb-1">Create your login</h2>
+            <p className="text-stone text-xs">You’ll be the admin of this new workspace.</p>
+          </div>
+          <TextField label="Full name" required value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <TextField label="Email" required type="text" autoCapitalize="none" autoCorrect="off" hint="you@example.com"
+            value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <Field label="Password" hint="At least 8 characters">
+            <div className="relative">
+              <input required type={showPassword ? 'text' : 'password'} className="lx-input pr-10"
+                value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+              <button type="button" onClick={() => setShowPassword((s) => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone hover:text-ink"
+                title={showPassword ? 'Hide password' : 'Show password'}>
+                {showPassword ? <IconEyeOff width={16} height={16} /> : <IconEye width={16} height={16} />}
+              </button>
+            </div>
+          </Field>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => { setError(''); setStep(1); }} className="lx-btn-ghost">Back</button>
+            <button type="submit" className="lx-btn-primary flex-1 !py-3">Continue</button>
+          </div>
+        </form>
+      )}
+
+      {step === 3 && (
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div>
+            <h2 className="font-serif text-2xl text-ink mb-1">Name your workspace</h2>
+            <p className="text-stone text-xs">Last step — you can change this anytime in Settings.</p>
+          </div>
+          <Field label="Company name" hint="Optional">
+            <input className="lx-input" placeholder={`${form.name.trim() || 'My'}’s Company`}
+              value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} />
+          </Field>
+          <div className="rounded-xl bg-panel/50 border border-line/70 px-3.5 py-3 text-xs text-stone leading-relaxed">
+            You’ll sign in as <b className="text-ink">{form.email.trim() || 'your email'}</b> and be the{' '}
+            <b className="text-ink">admin</b> of this workspace. You can invite your team later from Settings.
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={() => { setError(''); setStep(2); }} className="lx-btn-ghost">Back</button>
+            <button disabled={saving} type="submit" className="lx-btn-primary flex-1 !py-3">
+              {saving ? 'Creating…' : 'Create my workspace'}
+            </button>
+          </div>
+        </form>
+      )}
+    </>
   );
 }
 
