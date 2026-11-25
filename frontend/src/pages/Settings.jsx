@@ -18,6 +18,26 @@ const ROLE_CHOICES = [
   ['shortlet', 'Short-let / Airbnb', 'Serviced places, nightly stays'],
   ['agent', 'Estate agent', 'Listings for sale & buyer enquiries'],
 ];
+
+// Branding accents. The empty value means "use the default gold" (clears the
+// stored override). [storedValue, label, swatch].
+const ACCENTS = [
+  ['', 'Gold', '#a9793a'],
+  ['#0369a1', 'Ocean', '#0369a1'],
+  ['#047857', 'Emerald', '#047857'],
+  ['#7c3aed', 'Plum', '#7c3aed'],
+  ['#be123c', 'Rose', '#be123c'],
+  ['#475569', 'Slate', '#475569'],
+];
+
+// Top-level modules each role can hide from its navigation (Home & Settings
+// are never hideable). Labels must match the nav labels in Layout.jsx.
+const HIDEABLE = {
+  landlord: ['People', 'Homes', 'Rentals', 'Upkeep', 'Reports'],
+  hotelier: ['Reservations', 'Rooms', 'Guests', 'Payments', 'Upkeep', 'Reports'],
+  shortlet: ['Calendar', 'Listings', 'Guests', 'Payouts', 'Upkeep', 'Reports'],
+  agent: ['Listings', 'Enquiries', 'Contacts', 'Reports'],
+};
 import ExpenseCategories from '../components/ExpenseCategories.jsx';
 import UtilityTypes from '../components/UtilityTypes.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
@@ -26,7 +46,7 @@ import Field, { TextField } from '../components/Field.jsx';
 const MOBILE_PROVIDERS = ['MTN Mobile Money', 'Telecel Cash', 'AirtelTigo Money', 'Other'];
 
 export default function Settings() {
-  const { isManager, setCompany } = useAuth();
+  const { isManager, setCompany, role } = useAuth();
   const { settings, setSettings } = useSettings();
   const [form, setForm] = useState(null);
   const [companyForm, setCompanyForm] = useState(null);
@@ -226,6 +246,66 @@ export default function Settings() {
         {isManager && (
           <p className="text-[11px] text-stone mt-2">Pick one, then press “Save settings” at the bottom to apply it.</p>
         )}
+      </section>
+
+      {/* Appearance & branding — accent colour and the default theme. These
+          re-skin the whole workspace for everyone in it. */}
+      <section className="lx-card p-5 sm:p-6">
+        <h2 className="font-serif text-lg text-ink mb-1">Appearance &amp; branding</h2>
+        <p className="text-xs text-stone mb-4">Make Lintel look like yours. These apply across the app for everyone in your workspace (your logo and name are set under Company profile above).</p>
+
+        <span className="lx-label mb-1.5">Accent colour</span>
+        <div className="flex flex-wrap gap-2">
+          {ACCENTS.map(([val, label, swatch]) => {
+            const selected = (form.accent_color || '') === val;
+            return (
+              <button key={label} type="button" disabled={!isManager}
+                onClick={() => set({ accent_color: val || null })}
+                className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition disabled:opacity-60 ${
+                  selected ? 'border-ink bg-panel' : 'border-line text-stone hover:border-ink/30'
+                }`}>
+                <span className="w-4 h-4 rounded-full border border-black/10" style={{ background: swatch }} />
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-5">
+          <span className="lx-label mb-1.5">Default theme for new users</span>
+          <div className="flex gap-2">
+            {['light', 'dark'].map((t) => (
+              <button key={t} type="button" disabled={!isManager}
+                onClick={() => set({ default_theme: t })}
+                className={`px-4 py-2 rounded-xl border text-sm capitalize transition disabled:opacity-60 ${
+                  form.default_theme === t ? 'border-gold bg-gold/10 text-ink font-medium' : 'border-line text-stone hover:border-ink/30'
+                }`}>
+                {t}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-stone mt-1.5">Anyone who hasn’t set their own theme starts here. Each person’s own choice (the top-bar toggle) always wins for them.</p>
+        </div>
+      </section>
+
+      {/* Features — hide modules the workspace doesn't use. */}
+      <section className="lx-card p-5 sm:p-6">
+        <h2 className="font-serif text-lg text-ink mb-1">Features</h2>
+        <p className="text-xs text-stone mb-4">Turn off modules you don’t use — they’re removed from the menu for everyone. Home and Settings always stay.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {(HIDEABLE[role] || HIDEABLE.landlord).map((label) => {
+            const hiddenList = form.hidden_features || [];
+            const isOn = !hiddenList.includes(label);
+            return (
+              <label key={label} className="flex items-center justify-between gap-3 rounded-xl border border-line px-3.5 py-2.5">
+                <span className="text-sm text-ink">{label}</span>
+                <input type="checkbox" disabled={!isManager} checked={isOn}
+                  onChange={(e) => set({ hidden_features: e.target.checked ? hiddenList.filter((x) => x !== label) : [...hiddenList, label] })}
+                  className="accent-gold w-4 h-4" />
+              </label>
+            );
+          })}
+        </div>
       </section>
 
       {/* Email delivery status. Only managers see it — it's an operational

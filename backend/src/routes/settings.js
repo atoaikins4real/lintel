@@ -146,6 +146,32 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
     // The on/off switch for online payments. Turning it ON is only allowed
     // once a settlement account is linked — otherwise a tenant could tap
     // "Pay" and reach a dead end. Turning it OFF is always allowed.
+    // App customization (manager-only, like the rest of settings).
+    //  - accent_color: a hex like #a9793a that re-skins the app's accent. Null
+    //    clears it back to the default gold.
+    //  - default_theme: 'light' | 'dark' — what new users start in.
+    //  - hidden_features: list of top-level module labels to hide from the nav.
+    if (req.body.accent_color !== undefined) {
+      const v = str(req.body.accent_color);
+      if (v && !/^#[0-9a-fA-F]{6}$/.test(v)) {
+        return res.status(400).json({ error: 'accent_color must be a hex colour like #a9793a' });
+      }
+      updates.accent_color = v;
+    }
+    if (req.body.default_theme !== undefined) {
+      const v = str(req.body.default_theme);
+      if (v && !['light', 'dark'].includes(v)) {
+        return res.status(400).json({ error: "default_theme must be 'light' or 'dark'" });
+      }
+      updates.default_theme = v;
+    }
+    if (req.body.hidden_features !== undefined) {
+      if (!Array.isArray(req.body.hidden_features)) {
+        return res.status(400).json({ error: 'hidden_features must be an array' });
+      }
+      updates.hidden_features = req.body.hidden_features.map((x) => String(x)).slice(0, 40);
+    }
+
     if (req.body.online_payments_enabled !== undefined) {
       const wantOn = req.body.online_payments_enabled === true || req.body.online_payments_enabled === 'true';
       if (wantOn && !existing.paystack_subaccount_code) {

@@ -5,6 +5,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 // <html data-theme="…"> so the token overrides in index.css re-skin everything.
 const ThemeContext = createContext(null);
 const KEY = 'lintel_theme';
+// Set once the viewer has chosen a theme themselves (toggle or explicit set).
+// Until then the workspace's default_theme is allowed to apply.
+const SETKEY = 'lintel_theme_chosen';
+function markChosen() { try { localStorage.setItem(SETKEY, '1'); } catch { /* ignore */ } }
+function hasChosen() { try { return localStorage.getItem(SETKEY) === '1'; } catch { return false; } }
 
 function initialTheme() {
   try {
@@ -33,10 +38,20 @@ export function ThemeProvider({ children }) {
     }
   }, [theme]);
 
-  const setTheme = useCallback((t) => setThemeState(t === 'light' ? 'light' : 'dark'), []);
-  const toggleTheme = useCallback(() => setThemeState((t) => (t === 'dark' ? 'light' : 'dark')), []);
+  const setTheme = useCallback((t) => { markChosen(); setThemeState(t === 'light' ? 'light' : 'dark'); }, []);
+  const toggleTheme = useCallback(() => { markChosen(); setThemeState((t) => (t === 'dark' ? 'light' : 'dark')); }, []);
 
-  const value = useMemo(() => ({ theme, setTheme, toggleTheme }), [theme, setTheme, toggleTheme]);
+  // Apply the workspace's default theme, but never override a viewer who has
+  // already picked one themselves.
+  const applyCompanyDefault = useCallback((t) => {
+    if (hasChosen()) return;
+    if (t === 'light' || t === 'dark') setThemeState(t);
+  }, []);
+
+  const value = useMemo(
+    () => ({ theme, setTheme, toggleTheme, applyCompanyDefault }),
+    [theme, setTheme, toggleTheme, applyCompanyDefault]
+  );
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

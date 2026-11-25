@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   IconGrid, IconUsers, IconFile, IconWallet, IconWrench, IconChart,
@@ -6,8 +6,20 @@ import {
 } from './icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
+import { useSettings } from '../context/SettingsContext.jsx';
 import SubscriptionBanner from './SubscriptionBanner.jsx';
 import NotificationsBell from './NotificationsBell.jsx';
+
+// Lighten a hex colour toward white by `amt` (0–1) — used to derive the lighter
+// accent shade from the one branding colour a workspace picks.
+function lighten(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  r = Math.round(r + (255 - r) * amt);
+  g = Math.round(g + (255 - g) * amt);
+  b = Math.round(b + (255 - b) * amt);
+  return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
 
 // Nav is a mix of flat links and grouped links. A group expands into a hover
 // flyout on the rail; `primary` marks what also appears in the mobile bottom
@@ -131,9 +143,35 @@ export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout, isPlatformAdmin, role } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, applyCompanyDefault } = useTheme();
+  const { settings } = useSettings();
   const [sheet, setSheet] = useState(null); // grouped nav item shown in the mobile sheet
-  const baseNav = NAV_BY_ROLE[role] || navItems;
+
+  // Apply this workspace's branding accent app-wide by overriding the gold
+  // token (and its lighter shade). Cleared back to default when unset.
+  useEffect(() => {
+    const root = document.documentElement;
+    const accent = settings?.accent_color;
+    if (accent && /^#[0-9a-fA-F]{6}$/.test(accent)) {
+      root.style.setProperty('--color-gold', accent);
+      root.style.setProperty('--color-gold-light', lighten(accent, 0.25));
+    } else {
+      root.style.removeProperty('--color-gold');
+      root.style.removeProperty('--color-gold-light');
+    }
+  }, [settings?.accent_color]);
+
+  // Apply the workspace's default theme for viewers who haven't chosen one.
+  useEffect(() => {
+    if (settings?.default_theme) applyCompanyDefault(settings.default_theme);
+  }, [settings?.default_theme, applyCompanyDefault]);
+
+  // Modules the workspace has chosen to hide from its navigation. Home and
+  // Settings can never be hidden.
+  const hidden = useMemo(() => new Set(settings?.hidden_features || []), [settings?.hidden_features]);
+  const baseNav = (NAV_BY_ROLE[role] || navItems).filter(
+    (it) => it.label === 'Home' || it.label === 'Settings' || !hidden.has(it.label)
+  );
   const visibleNav = isPlatformAdmin ? [...baseNav, ...platformAdminItems] : baseNav;
   const overrides = TITLE_OVERRIDES[role] || {};
   const titleFor = (pathname) => overrides[pathname] || pageTitle(pathname, visibleNav);
