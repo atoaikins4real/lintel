@@ -97,6 +97,28 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 :root[data-theme="dark"] .lx-auth-card .lx-btn-primary { background: var(--color-ink); color: #ffffff; }
 :root[data-theme="dark"] .lx-auth-card .lx-btn-ghost { background: #ffffff; color: var(--color-ink); border-color: var(--color-line); }
 
+/* Sign-up / login legibility: the default field border (border-line) is almost
+   invisible on a white card, so people struggle to see where to type. On the
+   auth + public pages give fields a crisp white fill with a clearly visible,
+   slightly heavier warm-grey edge, a gold focus ring, and give the card itself
+   a defined border so the whole sign-up area stands out from the page. Scoped
+   to .lx-auth-card / .lx-public so the in-app forms are unchanged. */
+.lx-auth-card .lx-input, .lx-auth-card .lx-select, .lx-auth-card .lx-textarea,
+.lx-public   .lx-input, .lx-public   .lx-select, .lx-public   .lx-textarea {
+  background: #ffffff;
+  border-color: #bdb6a4;
+  border-width: 1.5px;
+}
+.lx-auth-card .lx-input::placeholder, .lx-public .lx-input::placeholder,
+.lx-auth-card .lx-textarea::placeholder, .lx-public .lx-textarea::placeholder { color: #9a9488; }
+.lx-auth-card .lx-input:focus, .lx-auth-card .lx-select:focus, .lx-auth-card .lx-textarea:focus,
+.lx-public   .lx-input:focus, .lx-public   .lx-select:focus, .lx-public   .lx-textarea:focus {
+  border-color: var(--color-gold);
+  box-shadow: 0 0 0 3px rgba(169, 121, 58, 0.18);
+}
+.lx-public .lx-auth-card { border: 1px solid #ded7c8; }
+.lx-auth-card .lx-label { color: #1a1a1a; font-weight: 600; }
+
 /* Public, unauthenticated pages (the shared showcase + property links) are
    always bright and Airbnb-like, whatever theme the visitor's device is in —
    a prospect should never get the dark app skin. Pins the light palette. */
