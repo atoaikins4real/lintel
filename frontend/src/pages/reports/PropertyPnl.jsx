@@ -50,7 +50,7 @@ export default function PropertyPnl() {
             onClick={() =>
               downloadCsv(
                 `property-pnl${range.from ? `-${range.from}` : ''}${range.to ? `-to-${range.to}` : ''}.csv`,
-                ['Property', 'City', 'Units', 'Occupied', 'Revenue', 'Expenses', 'Renovations', 'Fault costs', 'Total costs', 'Net', 'Margin %'],
+                ['Property', 'Location', 'Units', 'Occupied', 'Revenue', 'Expenses', 'Renovations', 'Fault costs', 'Total costs', 'Net', 'Margin %'],
                 data.rows.map((r) => [
                   r.property_name, r.city || '', r.units, r.occupied,
                   r.revenue, r.expenses, r.renovations, r.fault_costs, r.costs, r.net,

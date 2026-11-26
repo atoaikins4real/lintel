@@ -98,7 +98,7 @@ export default function Properties() {
               value={form.digital_address} onChange={(e) => setForm({ ...form, digital_address: e.target.value })}
             />
             <TextField
-              label="City"
+              label="Location"
               value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
             />
             <TextField
@@ -184,7 +184,7 @@ export default function Properties() {
       )}
 
       <SearchBar
-        value={query} onChange={setQuery} placeholder="Search buildings, city…"
+        value={query} onChange={setQuery} placeholder="Search buildings, location…"
         count={shownProperties.length} total={properties.length}
         action={canEdit && (
           <>

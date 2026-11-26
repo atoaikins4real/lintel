@@ -214,11 +214,14 @@ export function roleHero(role) {
 // an agent green, a landlord gold. This is only the DEFAULT: an organisation's
 // own brand colour (Settings → branding) overrides it everywhere, which is how
 // a subscriber brands their workspace. One knob, two outcomes.
+// Muted, earthy tones that sit with the stone / warm-grey luxury palette
+// (rather than loud, saturated colours) — each still clearly its own, each
+// readable as text on the light canvas.
 export const ROLE_ACCENT = {
-  landlord: '#b07d2b', // warm gold — homes & rent
-  hotelier: '#15746e', // teal — hospitality
-  shortlet: '#d9544d', // coral — hosting
-  agent: '#2f7d55',    // emerald — real estate
+  landlord: '#a9793a', // antique gold — homes & rent
+  hotelier: '#2f6b66', // deep muted teal — hospitality
+  shortlet: '#bd5f45', // terracotta / clay — hosting
+  agent: '#5c6f4a',    // olive — real estate
 };
 export function roleAccent(role) {
   return ROLE_ACCENT[role] || ROLE_ACCENT.landlord;

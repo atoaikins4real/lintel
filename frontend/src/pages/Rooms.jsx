@@ -47,7 +47,7 @@ export default function Rooms() {
       )}
 
       <SearchBar
-        value={query} onChange={setQuery} placeholder="Search room, type, city…"
+        value={query} onChange={setQuery} placeholder="Search room, type, location…"
         count={shown.length} total={total}
         action={canEdit && (
           <Link to="/units/onboard" className="lx-btn-primary w-full sm:w-auto text-center">+ Add room</Link>

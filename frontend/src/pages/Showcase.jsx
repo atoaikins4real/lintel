@@ -59,7 +59,7 @@ export default function Showcase() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-7">
             <div className="relative flex-1 sm:max-w-sm">
               <svg viewBox="0 0 24 24" className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-light pointer-events-none" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or city…"
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search by name or location…"
                 className="w-full bg-canvas border border-line rounded-full pl-10 pr-4 py-2.5 text-sm text-ink shadow-soft focus:outline-none focus:ring-2 focus:ring-gold/25 focus:border-gold/50 transition" />
             </div>
             {types.length > 1 && (

@@ -240,7 +240,7 @@ export default function UnitDetail() {
               inheritedValue={parentProperty?.currency || currency}
             />
 
-            <TextField label="City" value={form.city} onChange={(e) => set({ city: e.target.value })} />
+            <TextField label="Location" value={form.city} onChange={(e) => set({ city: e.target.value })} />
             <Field label="Internal notes" className="sm:col-span-2">
               <textarea rows={2} className="lx-textarea" value={form.notes}
                 onChange={(e) => set({ notes: e.target.value })} />

@@ -151,7 +151,7 @@ export default function PropertyDetail() {
               value={form.digital_address || ''} onChange={(e) => setForm({ ...form, digital_address: e.target.value })}
             />
             <TextField
-              label="City"
+              label="Location"
               value={form.city || ''} onChange={(e) => setForm({ ...form, city: e.target.value })}
             />
             <TextField

@@ -160,7 +160,7 @@ export default function PropertyOnboarding() {
               value={form.address} onChange={(e) => set({ address: e.target.value })} />
             <TextField label="Digital address / GPS"
               value={form.digital_address} onChange={(e) => set({ digital_address: e.target.value })} />
-            <TextField label="City"
+            <TextField label="Location"
               value={form.city} onChange={(e) => set({ city: e.target.value })} />
             <TextField label="Region"
               value={form.region} onChange={(e) => set({ region: e.target.value })} />

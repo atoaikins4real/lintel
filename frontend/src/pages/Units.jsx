@@ -118,7 +118,7 @@ export default function Units() {
               <option value="studio">Studio</option>
             </select>
           </Field>
-          <TextField label="City"
+          <TextField label="Location"
             value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
           <TextField label="Bedrooms" type="number"
             value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: e.target.value })} />
@@ -253,7 +253,7 @@ export default function Units() {
       )}
 
       <SearchBar
-        value={query} onChange={setQuery} placeholder="Search units, property, city…"
+        value={query} onChange={setQuery} placeholder="Search units, property, location…"
         count={shownUnits.length} total={units.length}
         action={
           <>
