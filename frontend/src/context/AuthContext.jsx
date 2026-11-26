@@ -63,9 +63,18 @@ export function AuthProvider({ children }) {
   const role = resolveRole(company?.business_type);
   const isHotel = isStayRole(role);
 
+  // Fine-grained permissions for workers. Managers and the Lintel operator can
+  // do everything; a member can do exactly what their assigned role allows
+  // (server-computed, delivered on login and /me).
+  const permissions = user?.permissions || [];
+  const can = useCallback(
+    (key) => isPlatformAdmin || user?.role === 'manager' || permissions.includes(key),
+    [isPlatformAdmin, user?.role, permissions]
+  );
+
   const value = useMemo(
-    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, role, isHotel }),
-    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, role, isHotel]
+    () => ({ user, company, setCompany, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, role, isHotel, permissions, can }),
+    [user, company, loading, login, logout, setSession, canEdit, isManager, isPlatformAdmin, role, isHotel, permissions, can]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

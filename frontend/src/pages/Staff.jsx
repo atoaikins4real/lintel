@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getStaffUsers, register, updateUserRole, deleteStaffUser, readApiError } from '../api/client.js';
+import { getStaffUsers, register, updateUserRole, deleteStaffUser, getRoles, readApiError } from '../api/client.js';
 import RowActions from '../components/RowActions.jsx';
 import Field, { TextField } from '../components/Field.jsx';
 import StatCard from '../components/StatCard.jsx';
@@ -19,6 +19,7 @@ const emptyInvite = { name: '', email: '', password: '', role: 'finance' };
 export default function Staff() {
   const { user, isManager } = useAuth();
   const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [invite, setInvite] = useState(emptyInvite);
   const [showInvite, setShowInvite] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -33,6 +34,7 @@ export default function Staff() {
 
   useEffect(() => {
     load();
+    getRoles().then(setRoles).catch(() => setRoles([]));
   }, []);
 
   const handleInvite = async (e) => {
@@ -74,10 +76,25 @@ export default function Staff() {
     setNotice('');
     setBusyId(id);
     try {
-      await updateUserRole(id, role);
+      await updateUserRole(id, { role });
       load();
     } catch (err) {
       setError(readApiError(err, 'change that role'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // Assign (or clear) a member's custom access role.
+  const assignRole = async (u, custom_role_id) => {
+    setError('');
+    setNotice('');
+    setBusyId(u.id);
+    try {
+      await updateUserRole(u.id, { role: u.role, custom_role_id: custom_role_id || null });
+      load();
+    } catch (err) {
+      setError(readApiError(err, 'set that access role'));
     } finally {
       setBusyId(null);
     }
@@ -159,15 +176,31 @@ export default function Staff() {
             </div>
             {isManager ? (
               <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-                <select
-                  className="lx-select flex-1 sm:w-56"
-                  disabled={busyId === u.id}
-                  value={u.role}
-                  onChange={(e) => changeRole(u.id, e.target.value)}
-                >
-                  <option value="finance">Member — can edit records</option>
-                  <option value="manager">Admin — full access &amp; manages members</option>
-                </select>
+                <div className="flex flex-col gap-1.5 flex-1 sm:w-56">
+                  <select
+                    className="lx-select"
+                    disabled={busyId === u.id}
+                    value={u.role}
+                    onChange={(e) => changeRole(u.id, e.target.value)}
+                  >
+                    <option value="finance">Member — limited by access role</option>
+                    <option value="manager">Admin — full access &amp; manages members</option>
+                  </select>
+                  {u.role !== 'manager' && (
+                    <select
+                      className="lx-select text-xs"
+                      disabled={busyId === u.id}
+                      value={u.custom_role_id || ''}
+                      onChange={(e) => assignRole(u, e.target.value)}
+                      title="Access role"
+                    >
+                      <option value="">Full member access</option>
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 {/* Removing your own account would end your session, so
                     that's blocked server-side and hidden here. */}
                 {u.id !== user?.id && (

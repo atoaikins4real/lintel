@@ -34,6 +34,7 @@ const documentsRouter = require('./routes/documents');
 const settingsRouter = require('./routes/settings');
 const subscriptionRouter = require('./routes/subscription');
 const companyRouter = require('./routes/company');
+const rolesRouter = require('./routes/roles');
 const propertiesRouter = require('./routes/properties');
 const tenantOnboardingRouter = require('./routes/tenantOnboarding');
 const accessRouter = require('./routes/access');
@@ -138,6 +139,7 @@ app.use('/api/documents', documentsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/company', companyRouter);
+app.use('/api/roles', rolesRouter);
 // Platform-owner only. The single place that reads across companies —
 // gated by requirePlatformAdmin, which re-checks the flag in the database
 // on every request rather than trusting the 7-day token.

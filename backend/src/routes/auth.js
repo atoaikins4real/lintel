@@ -7,6 +7,7 @@ const { signToken, requireAuth, requireRole } = require('../middleware/auth');
 const { authLimiter } = require('../middleware/rateLimit');
 const { enforceSubscription } = require('../middleware/subscription');
 const { enforcePlanLimit } = require('../middleware/planLimits');
+const { permissionsForUser } = require('../utils/permissions');
 
 const router = express.Router();
 
@@ -279,6 +280,7 @@ router.post('/login', authLimiter, async (req, res, next) => {
       .maybeSingle();
 
     const token = signToken(user);
+    const permissions = await permissionsForUser(user);
     res.json({
       token,
       user: {
@@ -288,6 +290,8 @@ router.post('/login', authLimiter, async (req, res, next) => {
         role: user.role,
         created_at: user.created_at,
         company_id: user.company_id,
+        custom_role_id: user.custom_role_id || null,
+        permissions,
       },
       company,
     });
@@ -304,7 +308,15 @@ router.get('/me', requireAuth, async (req, res, next) => {
       .select('id, name, slug, logo_url, business_type')
       .eq('id', req.user.company_id)
       .maybeSingle();
-    res.json({ user: req.user, company });
+    // The JWT doesn't carry the custom role, so read it live to compute
+    // this worker's current permissions.
+    const { data: acct } = await supabase
+      .from('l_users')
+      .select('custom_role_id')
+      .eq('id', req.user.id)
+      .maybeSingle();
+    const permissions = await permissionsForUser({ ...req.user, custom_role_id: acct?.custom_role_id || null });
+    res.json({ user: { ...req.user, custom_role_id: acct?.custom_role_id || null, permissions }, company });
   } catch (err) {
     next(err);
   }
@@ -326,7 +338,7 @@ router.get('/users', requireAuth, requireRole('manager'), async (req, res, next)
   try {
     const { data, error } = await supabase
       .from('l_users')
-      .select('id, email, name, role, created_at')
+      .select('id, email, name, role, created_at, custom_role_id')
       .eq('company_id', req.user.company_id)
       .order('created_at', { ascending: true });
     if (error) throw error;
@@ -366,16 +378,35 @@ router.patch('/users/:id', requireAuth, requireRole('manager'), async (req, res,
       }
     }
 
+    // Optional: assign a custom role (a named permission set) to a Member.
+    // A manager has full access regardless, so a custom role only matters for
+    // members. null clears it (back to default member access). The role must
+    // belong to this company.
+    const patch = { role, session_valid_from: new Date().toISOString() };
+    if (req.body.custom_role_id !== undefined) {
+      const crid = req.body.custom_role_id || null;
+      if (crid) {
+        const { data: roleRow } = await supabase
+          .from('l_roles')
+          .select('id')
+          .eq('id', crid)
+          .eq('company_id', req.user.company_id)
+          .maybeSingle();
+        if (!roleRow) return res.status(400).json({ error: 'That role does not exist' });
+      }
+      patch.custom_role_id = role === 'manager' ? null : crid;
+    }
+
     // The company_id filter is what stops a manager changing roles for
     // users belonging to a different company.
     // Bump session_valid_from so the role change takes effect on the target's
     // next request, not whenever their 7-day token happens to expire.
     const { data, error } = await supabase
       .from('l_users')
-      .update({ role, session_valid_from: new Date().toISOString() })
+      .update(patch)
       .eq('id', id)
       .eq('company_id', req.user.company_id)
-      .select('id, email, name, role, created_at')
+      .select('id, email, name, role, created_at, custom_role_id')
       .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'User not found' });

@@ -77,7 +77,15 @@ export const forgotPassword = (email) => api.post('/auth/forgot-password', { ema
 export const resetPassword = (token, password) =>
   api.post('/auth/reset-password', { token, password }).then((r) => r.data);
 export const getStaffUsers = () => api.get('/auth/users').then((r) => r.data);
-export const updateUserRole = (id, role) => api.patch(`/auth/users/${id}`, { role }).then((r) => r.data);
+// payload: { role, custom_role_id? }. A string is accepted for backward compat.
+export const updateUserRole = (id, payload) =>
+  api.patch(`/auth/users/${id}`, typeof payload === 'string' ? { role: payload } : payload).then((r) => r.data);
+
+// Custom worker roles (named permission sets).
+export const getRoles = () => api.get('/roles').then((r) => r.data);
+export const createRole = (payload) => api.post('/roles', payload).then((r) => r.data);
+export const updateRole = (id, payload) => api.put(`/roles/${id}`, payload).then((r) => r.data);
+export const deleteRole = (id) => api.delete(`/roles/${id}`).then((r) => r.data);
 // Tenants
 export const getTenants = (params) => api.get('/tenants', { params }).then((r) => r.data);
 export const getTenant = (id) => api.get(`/tenants/${id}`).then((r) => r.data);

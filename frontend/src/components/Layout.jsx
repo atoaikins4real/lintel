@@ -145,10 +145,22 @@ const childActiveFor = (item, pathname) => item.children?.some((c) => pathname =
 function SunIcon(p) { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>); }
 function MoonIcon(p) { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8"/></svg>); }
 
+// The permission a nav destination needs to be visible. Paths not listed
+// (Home, Settings) are always shown; Settings gates its own sections inside.
+const PATH_PERM = {
+  '/tenants': 'people.view', '/staff': 'staff.manage',
+  '/properties': 'buildings.view', '/units': 'rooms.view',
+  '/leases': 'leases.view', '/payments': 'payments.view',
+  '/access': 'access.view', '/faults-renovations': 'repairs.view',
+  '/booking-requests': 'enquiries.view', '/reports': 'reports.view',
+  '/reservations': 'reservations.view', '/rooms': 'rooms.view',
+  '/housekeeping': 'housekeeping.view',
+};
+
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, isPlatformAdmin, role } = useAuth();
+  const { user, logout, isPlatformAdmin, role, can } = useAuth();
   const { theme, toggleTheme, applyCompanyDefault } = useTheme();
   const { settings } = useSettings();
   const [sheet, setSheet] = useState(null); // grouped nav item shown in the mobile sheet
@@ -175,7 +187,13 @@ export default function Layout({ children }) {
   // Modules the workspace has chosen to hide from its navigation. Home and
   // Settings can never be hidden.
   const hidden = useMemo(() => new Set(settings?.hidden_features || []), [settings?.hidden_features]);
-  const baseNav = (NAV_BY_ROLE[role] || navItems).filter(
+  // Hide anything this worker's role can't access: drop permitted-out children,
+  // then drop groups left with none and flat links they can't see.
+  const permitted = (it) => !it.to || !PATH_PERM[it.to] || can(PATH_PERM[it.to]);
+  const roleNav = (NAV_BY_ROLE[role] || navItems)
+    .map((it) => (it.children ? { ...it, children: it.children.filter(permitted) } : it))
+    .filter((it) => (it.children ? it.children.length > 0 : permitted(it)));
+  const baseNav = roleNav.filter(
     (it) => it.label === 'Home' || it.label === 'Settings' || !hidden.has(it.label)
   );
   const visibleNav = isPlatformAdmin ? [...baseNav, ...platformAdminItems] : baseNav;

@@ -39,6 +39,7 @@ const HIDEABLE = {
   agent: ['Listings', 'Enquiries', 'Contacts', 'Reports'],
 };
 import ExpenseCategories from '../components/ExpenseCategories.jsx';
+import RolesManager from '../components/RolesManager.jsx';
 import UtilityTypes from '../components/UtilityTypes.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
 import Field, { TextField } from '../components/Field.jsx';
@@ -307,6 +308,8 @@ export default function Settings() {
           })}
         </div>
       </section>
+
+      {isManager && <RolesManager />}
 
       {/* Email delivery status. Only managers see it — it's an operational
           warning, not something a viewer can act on. */}
