@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import {
-  IconGrid, IconUsers, IconFile, IconWallet, IconWrench, IconChart,
-  IconCog, IconShield, IconKey, IconHome, IconLogout, IconBuilding, IconCalendar, IconSparkle,
-} from './icons.jsx';
+import { IconChart, IconLogout } from './icons.jsx';
+import { NAV_BY_ROLE, PATH_PERM } from '../config/apps.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import SubscriptionBanner from './SubscriptionBanner.jsx';
 import NotificationsBell from './NotificationsBell.jsx';
+import QuickAdd from './QuickAdd.jsx';
+import CommandPalette from './CommandPalette.jsx';
 
 // Lighten a hex colour toward white by `amt` (0–1) — used to derive the lighter
 // accent shade from the one branding colour a workspace picks.
@@ -21,95 +21,12 @@ function lighten(hex, amt) {
   return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
 }
 
-// Nav is a mix of flat links and grouped links. A group expands into a hover
-// flyout on the rail; `primary` marks what also appears in the mobile bottom
-// bar, and a group carries a `mobileTo` for that tab's single destination.
-const navItems = [
-  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
-  { label: 'People', icon: IconUsers, primary: true, mobileTo: '/tenants', children: [
-    { to: '/tenants', label: 'Residents', icon: IconUsers },
-    { to: '/staff', label: 'Team', icon: IconShield },
-  ] },
-  { label: 'Homes', icon: IconHome, primary: true, mobileTo: '/properties', children: [
-    { to: '/properties', label: 'Buildings', icon: IconHome },
-    { to: '/units', label: 'Apartments', icon: IconBuilding },
-  ] },
-  { label: 'Rentals', icon: IconWallet, primary: true, mobileTo: '/payments', children: [
-    { to: '/leases', label: 'Tenancies', icon: IconFile },
-    { to: '/payments', label: 'Payments', icon: IconWallet },
-  ] },
-  { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
-    { to: '/access', label: 'Access cards', icon: IconKey },
-    { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
-    { to: '/booking-requests', label: 'Enquiries', icon: IconCalendar },
-  ] },
-  { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
-  { to: '/settings', label: 'Settings', icon: IconCog },
-];
-// Short-let / Airbnb host — the same booking machinery as a hotel, but the
-// property is a "listing" and the calendar leads. Rooms are units; guests are
-// tenants; reservations are the booking calendar.
-const shortletNavItems = [
-  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
-  { to: '/reservations', label: 'Calendar', icon: IconCalendar, primary: true },
-  { to: '/rooms', label: 'Listings', icon: IconBuilding, primary: true },
-  { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
-  { to: '/payments', label: 'Payouts', icon: IconWallet, primary: true },
-  { to: '/staff', label: 'Team', icon: IconShield },
-  { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
-    { to: '/access', label: 'Access & keys', icon: IconKey },
-    { to: '/housekeeping', label: 'Housekeeping', icon: IconSparkle },
-    { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
-  ] },
-  { to: '/reports', label: 'Reports', icon: IconChart },
-  { to: '/settings', label: 'Settings', icon: IconCog },
-];
-
-// Real-estate agent (sales) — listings for sale, buyer enquiries and the
-// people (contacts) behind them. Listings are units; enquiries are the public
-// "book/enquire" submissions; contacts are tenants.
-const agentNavItems = [
-  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
-  { label: 'Listings', icon: IconHome, primary: true, mobileTo: '/units', children: [
-    { to: '/units', label: 'For sale', icon: IconBuilding },
-    { to: '/properties', label: 'Developments', icon: IconHome },
-  ] },
-  { to: '/booking-requests', label: 'Enquiries', icon: IconCalendar, primary: true },
-  { to: '/tenants', label: 'Contacts', icon: IconUsers, primary: true },
-  { to: '/staff', label: 'Team', icon: IconShield },
-  { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
-  { to: '/settings', label: 'Settings', icon: IconCog },
-];
-
+// Nav, per-role module catalog and the permission each route needs all live in
+// one place now — src/config/apps.js — so the rail, the home app-launcher, the
+// ⌘K palette and the + quick-add menu stay in lock-step. This shell only lays
+// them out. `primary` marks what also appears in the mobile bottom bar; a group
+// carries a `mobileTo` for that tab's single destination.
 const platformAdminItems = [{ to: '/admin', label: 'Subscribers', icon: IconChart }];
-
-// The hotel / resort / guest house side — a separate navigation shown when the
-// company signed up as 'hospitality'. Rooms are units; Guests are tenants.
-const hotelNavItems = [
-  { to: '/', label: 'Home', end: true, icon: IconGrid, primary: true },
-  { to: '/reservations', label: 'Reservations', icon: IconCalendar, primary: true },
-  { to: '/rooms', label: 'Rooms', icon: IconBuilding, primary: true },
-  { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
-  { to: '/housekeeping', label: 'Housekeeping', icon: IconSparkle },
-  { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
-  { to: '/staff', label: 'Team', icon: IconShield },
-  { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
-    { to: '/access', label: 'Access cards', icon: IconKey },
-    { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
-  ] },
-  { to: '/reports', label: 'Reports', icon: IconChart },
-  { to: '/settings', label: 'Settings', icon: IconCog },
-];
-
-// Map each role to its nav. Defined AFTER all four arrays so each one is fully
-// initialised first — referencing a `const` before its own line yields
-// undefined here, which previously made hoteliers fall back to the landlord nav.
-const NAV_BY_ROLE = {
-  landlord: navItems,
-  hotelier: hotelNavItems,
-  shortlet: shortletNavItems,
-  agent: agentNavItems,
-};
 
 const TITLES = {
   '/': 'Home', '/tenants': 'Residents', '/tenants/onboard': 'Add a resident',
@@ -148,18 +65,6 @@ const childActiveFor = (item, pathname) => item.children?.some((c) => pathname =
 function SunIcon(p) { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" {...p}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>); }
 function MoonIcon(p) { return (<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8"/></svg>); }
 
-// The permission a nav destination needs to be visible. Paths not listed
-// (Home, Settings) are always shown; Settings gates its own sections inside.
-const PATH_PERM = {
-  '/tenants': 'people.view', '/staff': 'staff.manage',
-  '/properties': 'buildings.view', '/units': 'rooms.view',
-  '/leases': 'leases.view', '/payments': 'payments.view',
-  '/access': 'access.view', '/faults-renovations': 'repairs.view',
-  '/booking-requests': 'enquiries.view', '/reports': 'reports.view',
-  '/reservations': 'reservations.view', '/rooms': 'rooms.view',
-  '/housekeeping': 'housekeeping.view',
-};
-
 export default function Layout({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -193,7 +98,7 @@ export default function Layout({ children }) {
   // Hide anything this worker's role can't access: drop permitted-out children,
   // then drop groups left with none and flat links they can't see.
   const permitted = (it) => !it.to || !PATH_PERM[it.to] || can(PATH_PERM[it.to]);
-  const roleNav = (NAV_BY_ROLE[role] || navItems)
+  const roleNav = (NAV_BY_ROLE[role] || NAV_BY_ROLE.landlord)
     .map((it) => (it.children ? { ...it, children: it.children.filter(permitted) } : it))
     .filter((it) => (it.children ? it.children.length > 0 : permitted(it)));
   const baseNav = roleNav.filter(
@@ -250,6 +155,8 @@ export default function Layout({ children }) {
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                <QuickAdd />
+                <CommandPalette />
                 <NotificationsBell />
                 <button type="button" onClick={toggleTheme}
                   title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}

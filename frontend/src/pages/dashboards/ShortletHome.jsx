@@ -4,6 +4,7 @@ import { getReservations, getUnits, readApiError } from '../../api/client.js';
 import StatCard from '../../components/StatCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import GettingStarted from '../../components/GettingStarted.jsx';
+import AppLauncher from '../../components/AppLauncher.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconCalendar, IconUsers, IconHome, IconBuilding, IconArrowRight, IconWallet } from '../../components/icons.jsx';
@@ -103,6 +104,9 @@ export default function ShortletHome() {
         </div>
       </section>
 
+      {/* The home hub — every app this role manages, in one grid. */}
+      <AppLauncher />
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard label="Booked tonight" value={`${bookedTonight}/${total || 0}`} icon={IconHome} sub={`${occupancyTonight}% of your places`} />
@@ -136,15 +140,6 @@ export default function ShortletHome() {
                 );
               })}
             </div>
-          </div>
-
-          {/* Quick actions */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <QuickAction to="/reservations" icon={IconCalendar} title="New booking" sub="Block some dates" />
-            <QuickAction to="/units/onboard" icon={IconBuilding} title="Add a listing" sub="A new place to let" />
-            <QuickAction to="/tenants" icon={IconUsers} title="Guest register" sub="Who's stayed" />
-            <QuickAction to={publicHref} external={Boolean(company?.slug)} icon={IconHome}
-              title="Share your listings" sub={company?.slug ? 'What guests see' : 'Set up your link'} />
           </div>
 
           {/* Upcoming stays + listings */}

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getReservations, getUnits, updateReservation, readApiError } from '../../api/client.js';
 import StatCard from '../../components/StatCard.jsx';
 import GettingStarted from '../../components/GettingStarted.jsx';
+import AppLauncher from '../../components/AppLauncher.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconCalendar, IconUsers, IconHome, IconBuilding, IconArrowRight, IconWallet, IconWrench } from '../../components/icons.jsx';
@@ -110,6 +111,9 @@ export default function HotelHome() {
         </div>
       </section>
 
+      {/* The home hub — every app this role manages, in one grid. */}
+      <AppLauncher />
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard label="Arrivals today" value={arrivals.length} icon={IconCalendar} sub="Due to check in" />
@@ -130,15 +134,6 @@ export default function HotelHome() {
             <DeskColumn title="Leaving today" empty="No departures today." rows={departures}
               money={money} canEdit={canEdit} busyId={busyId}
               action={(r) => canEdit && <button disabled={busyId === r.id} onClick={() => move(r.id, 'checked_out')} className="lx-btn-primary !py-1.5 !px-3 text-xs">Check out</button>} />
-          </div>
-
-          {/* Quick actions */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <QuickAction to="/reservations" icon={IconCalendar} title="New reservation" sub="Book a stay" />
-            <QuickAction to="/units/onboard" icon={IconBuilding} title="Add a room" sub="Grow your inventory" />
-            <QuickAction to="/payments" icon={IconWallet} title="Record a payment" sub="Payment received" />
-            <QuickAction to={publicHref} external={Boolean(company?.slug)} icon={IconHome}
-              title="View your public page" sub={company?.slug ? 'What guests see' : 'Set up your link'} />
           </div>
 
           {/* Upcoming + rooms needing attention */}

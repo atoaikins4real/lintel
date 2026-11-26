@@ -4,6 +4,7 @@ import { getUnits, getBookingInquiries, getTenants, readApiError } from '../../a
 import StatCard from '../../components/StatCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import GettingStarted from '../../components/GettingStarted.jsx';
+import AppLauncher from '../../components/AppLauncher.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconBuilding, IconUsers, IconHome, IconCalendar, IconArrowRight, IconSparkle } from '../../components/icons.jsx';
@@ -89,6 +90,9 @@ export default function AgentHome() {
         </div>
       </section>
 
+      {/* The home hub — every app this role manages, in one grid. */}
+      <AppLauncher />
+
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard label="Listings" value={total} icon={IconBuilding} sub="Properties you represent" />
@@ -101,15 +105,6 @@ export default function AgentHome() {
         <GettingStarted />
       ) : (
         <>
-          {/* Quick actions */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-            <QuickAction to="/units/onboard" icon={IconBuilding} title="Add a listing" sub="A property for sale" />
-            <QuickAction to="/booking-requests" icon={IconCalendar} title="View enquiries" sub="Follow up with buyers" />
-            <QuickAction to="/tenants/onboard" icon={IconUsers} title="Add a contact" sub="A buyer or seller" />
-            <QuickAction to={publicHref} external={Boolean(company?.slug)} icon={IconHome}
-              title="Share your listings" sub={company?.slug ? 'What buyers see' : 'Set up your link'} />
-          </div>
-
           {/* Enquiries + listings */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lx-card p-5 lg:col-span-2">

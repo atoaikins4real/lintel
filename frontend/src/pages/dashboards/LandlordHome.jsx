@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getUnitsPerformance, getUpgradeEligible, getTenants, getUnits } from '../../api/client.js';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import GettingStarted from '../../components/GettingStarted.jsx';
+import AppLauncher from '../../components/AppLauncher.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench, IconBuilding, IconHome } from '../../components/icons.jsx';
@@ -187,20 +188,11 @@ export default function LandlordHome() {
         </div>
       </section>
 
+      {/* The home hub — every app this role manages, in one grid. */}
+      <AppLauncher />
+
       {/* First-run guide — only while the workspace is still empty. */}
       {!hasData && <GettingStarted />}
-
-      {/* ---------- Quick actions — big, plain-language shortcuts so anyone
-           knows what to do next, even on day one. ---------- */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <QuickAction to="/units/onboard" icon={IconBuilding} title="Add an apartment" sub="List a home" />
-        <QuickAction to="/tenants/onboard" icon={IconUsers} title="Add a resident" sub="Someone new renting" />
-        <QuickAction to="/payments" icon={IconWallet} title="Record a payment" sub="Rent received" />
-        <QuickAction
-          to={company?.slug ? `/showcase/${company.slug}` : '/settings'}
-          external={Boolean(company?.slug)}
-          icon={IconHome} title="View your public page" sub={company?.slug ? 'What renters see' : 'Set up your link'} />
-      </div>
 
       {hasData && (
         <>
