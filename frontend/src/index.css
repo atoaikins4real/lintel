@@ -224,6 +224,19 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
   border-color: color-mix(in srgb, #ffffff 12%, transparent);
 }
 
+/* Opaque shell bars. The sticky top bar and the mobile bottom nav must FULLY
+   hide whatever scrolls beneath them — a translucent bar lets page content
+   bleed through and look muddled. Solid background, no blur. */
+.lx-topbar {
+  background: var(--color-canvas);
+  border-bottom: 1px solid var(--color-line);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03), 0 6px 16px -12px rgba(0, 0, 0, 0.18);
+}
+.lx-bottombar {
+  background: var(--color-canvas);
+  border-top: 1px solid var(--color-line);
+}
+
 /* ---------- Motion ----------
    A light, consistent motion layer: pages rise in on navigation, cards and
    buttons respond to hover/press. Kept subtle so a data-dense app stays calm,

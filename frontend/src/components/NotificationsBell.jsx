@@ -13,6 +13,9 @@ const TODAY = iso(new Date());
 // so the bell is useful from day one and literally notifies about updates.
 // Add an entry (with a NEW id) whenever a feature ships.
 const RELEASES = [
+  { id: 'rel-2026-11-workers', title: 'Workers & custom roles', detail: 'Add your team and give each worker a custom role — a receptionist, housekeeper or accountant sees only their tools.' },
+  { id: 'rel-2026-11-housekeeping', title: 'Housekeeping board', detail: 'Track every room’s cleaning status; rooms flip to “needs cleaning” on checkout.' },
+  { id: 'rel-2026-11-customize', title: 'Make it yours', detail: 'Set an accent colour, a default theme, and hide the modules you don’t use in Settings.' },
   { id: 'rel-2026-11-signin', title: 'A fresh sign-in experience', detail: 'A cleaner, clearer login and a 3-step sign-up wizard.' },
   { id: 'rel-2026-11-notifications', title: 'Activity notifications', detail: 'This bell now flags arrivals, overdue rent, new enquiries and open repairs.' },
   { id: 'rel-2026-11-roles', title: 'Choose your role', detail: 'Landlord, hotelier, short-let host or estate agent — each with its own dashboard. Switch anytime in Settings.' },

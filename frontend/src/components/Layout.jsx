@@ -237,8 +237,8 @@ export default function Layout({ children }) {
 
       {/* Main column, offset to clear the floating rail on desktop. */}
       <div className="relative z-10 flex flex-col min-h-screen md:pl-[84px]">
-        <header className="sticky top-0 z-20">
-          <div className="lx-glass border-x-0 border-t-0">
+        <header className="sticky top-0 z-30">
+          <div className="lx-topbar">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="md:hidden w-8 h-8 rounded-lg text-white font-serif text-sm flex items-center justify-center shrink-0"
@@ -281,7 +281,7 @@ export default function Layout({ children }) {
 
       {/* Mobile bottom tab bar — mirrors the desktop rail: every top-level
           section is present. Grouped sections open a sheet with their pages. */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 lx-glass border-x-0 border-b-0 flex items-stretch">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 lx-bottombar flex items-stretch">
         {visibleNav.map((item) =>
           item.children ? (
             <button key={item.label} type="button" onClick={() => setSheet(item)}
