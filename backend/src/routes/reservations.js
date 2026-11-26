@@ -175,6 +175,18 @@ router.put('/:id', async (req, res, next) => {
       .maybeSingle();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Reservation not found' });
+
+    // When a guest checks out, the room needs cleaning — flag it dirty for
+    // housekeeping. Best-effort: never fail the checkout over this.
+    if (updates.status === 'checked_out') {
+      await supabase
+        .from('l_units')
+        .update({ housekeeping_status: 'dirty' })
+        .eq('id', unitId)
+        .eq('company_id', req.user.company_id)
+        .then(() => {}, () => {});
+    }
+
     res.json(data);
   } catch (err) {
     next(err);

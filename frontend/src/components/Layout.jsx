@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   IconGrid, IconUsers, IconFile, IconWallet, IconWrench, IconChart,
-  IconCog, IconShield, IconKey, IconHome, IconLogout, IconBuilding, IconCalendar,
+  IconCog, IconShield, IconKey, IconHome, IconLogout, IconBuilding, IconCalendar, IconSparkle,
 } from './icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -57,6 +57,7 @@ const shortletNavItems = [
   { to: '/payments', label: 'Payouts', icon: IconWallet, primary: true },
   { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
     { to: '/access', label: 'Access & keys', icon: IconKey },
+    { to: '/housekeeping', label: 'Housekeeping', icon: IconSparkle },
     { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
   ] },
   { to: '/reports', label: 'Reports', icon: IconChart },
@@ -78,12 +79,6 @@ const agentNavItems = [
   { to: '/settings', label: 'Settings', icon: IconCog },
 ];
 
-const NAV_BY_ROLE = {
-  landlord: navItems,
-  hotelier: hotelNavItems,
-  shortlet: shortletNavItems,
-  agent: agentNavItems,
-};
 const platformAdminItems = [{ to: '/admin', label: 'Subscribers', icon: IconChart }];
 
 // The hotel / resort / guest house side — a separate navigation shown when the
@@ -93,6 +88,7 @@ const hotelNavItems = [
   { to: '/reservations', label: 'Reservations', icon: IconCalendar, primary: true },
   { to: '/rooms', label: 'Rooms', icon: IconBuilding, primary: true },
   { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
+  { to: '/housekeeping', label: 'Housekeeping', icon: IconSparkle },
   { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
   { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
     { to: '/access', label: 'Access cards', icon: IconKey },
@@ -102,6 +98,16 @@ const hotelNavItems = [
   { to: '/settings', label: 'Settings', icon: IconCog },
 ];
 
+// Map each role to its nav. Defined AFTER all four arrays so each one is fully
+// initialised first — referencing a `const` before its own line yields
+// undefined here, which previously made hoteliers fall back to the landlord nav.
+const NAV_BY_ROLE = {
+  landlord: navItems,
+  hotelier: hotelNavItems,
+  shortlet: shortletNavItems,
+  agent: agentNavItems,
+};
+
 const TITLES = {
   '/': 'Home', '/tenants': 'Residents', '/tenants/onboard': 'Add a resident',
   '/properties': 'Buildings', '/properties/onboard': 'Add a building', '/units': 'Apartments',
@@ -109,7 +115,7 @@ const TITLES = {
   '/payments': 'Payments', '/faults-renovations': 'Repairs',
   '/booking-requests': 'Enquiries', '/reports': 'Reports', '/staff': 'Your team',
   '/settings': 'Settings', '/admin': 'Lintel Subscribers',
-  '/reservations': 'Reservations', '/rooms': 'Rooms',
+  '/reservations': 'Reservations', '/rooms': 'Rooms', '/housekeeping': 'Housekeeping',
 };
 // Titles that read differently per role. Each role's map overrides the shared
 // TITLES above for the paths where its wording differs.

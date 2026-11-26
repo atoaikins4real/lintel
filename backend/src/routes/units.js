@@ -44,6 +44,7 @@ const COLUMNS = [
   'base_rate_short',
   'base_rate_long',
   'status',
+  'housekeeping_status',
   'notes',
   'photo_url',
   'photo_urls',
@@ -76,6 +77,10 @@ const COLUMNS = [
   'sale_currency',
   'currency',
 ];
+
+// Housekeeping room status (hotel side). Rooms move clean → occupied/used →
+// dirty on checkout → inspected → clean. out_of_service blocks a room entirely.
+const HOUSEKEEPING = ['clean', 'dirty', 'inspected', 'out_of_service'];
 
 const FURNISHING = ['unfurnished', 'semi_furnished', 'fully_furnished'];
 const LISTING_TYPES = ['rent', 'sale', 'both'];
@@ -299,6 +304,10 @@ router.put('/:id', async (req, res, next) => {
 
     const currencyError = applyCurrencyFields(updates, req.body);
     if (currencyError) return res.status(400).json({ error: currencyError });
+
+    if ('housekeeping_status' in updates && updates.housekeeping_status && !HOUSEKEEPING.includes(updates.housekeeping_status)) {
+      return res.status(400).json({ error: `Housekeeping status must be one of: ${HOUSEKEEPING.join(', ')}` });
+    }
 
     delete updates.company_id; // never reassignable from the request body
 

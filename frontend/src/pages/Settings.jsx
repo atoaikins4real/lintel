@@ -34,7 +34,7 @@ const ACCENTS = [
 // are never hideable). Labels must match the nav labels in Layout.jsx.
 const HIDEABLE = {
   landlord: ['People', 'Homes', 'Rentals', 'Upkeep', 'Reports'],
-  hotelier: ['Reservations', 'Rooms', 'Guests', 'Payments', 'Upkeep', 'Reports'],
+  hotelier: ['Reservations', 'Rooms', 'Guests', 'Housekeeping', 'Payments', 'Upkeep', 'Reports'],
   shortlet: ['Calendar', 'Listings', 'Guests', 'Payouts', 'Upkeep', 'Reports'],
   agent: ['Listings', 'Enquiries', 'Contacts', 'Reports'],
 };
