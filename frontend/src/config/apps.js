@@ -119,12 +119,27 @@ export const PATH_PERM = (() => {
 })();
 
 // Flatten a role's nav into its launchable "apps" — every leaf except Home
-// (which is the launcher itself). Used by the home app-launcher and ⌘K.
+// (which is the launcher itself). Used by ⌘K and the search index.
 export function roleApps(role) {
   const nav = NAV_BY_ROLE[role] || landlordNav;
   return nav
     .flatMap((it) => (it.children ? it.children : [it]))
     .filter((leaf) => leaf.to && leaf.to !== '/');
+}
+
+// The five most-relevant apps per role for the home dock — the day-to-day ones,
+// in priority order. Everything else stays one tap away in the rail and ⌘K, so
+// the dashboard stays tidy. Any dock app a worker can't access is dropped.
+const DOCK = {
+  landlord: ['/tenants', '/units', '/leases', '/payments', '/faults-renovations'],
+  hotelier: ['/reservations', '/rooms', '/tenants', '/housekeeping', '/payments'],
+  shortlet: ['/reservations', '/rooms', '/tenants', '/payments', '/housekeeping'],
+  agent: ['/units', '/booking-requests', '/tenants', '/properties', '/reports'],
+};
+export function dockApps(role) {
+  const apps = roleApps(role);
+  const order = DOCK[role] || DOCK.landlord;
+  return order.map((to) => apps.find((a) => a.to === to)).filter(Boolean);
 }
 
 // ── Global quick-add (＋) — what this role can create from anywhere ────────

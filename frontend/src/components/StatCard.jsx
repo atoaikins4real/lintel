@@ -11,18 +11,18 @@ const TONES = {
 
 export default function StatCard({ label, value, sub, icon: Icon, trend, action, tone = 'gold' }) {
   return (
-    <div className="lx-card p-5 sm:p-6 flex flex-col gap-3 lx-lift">
+    <div className="lx-card p-4 sm:p-5 flex flex-col gap-2.5 lx-lift">
       <div className="flex items-start justify-between">
         <span className="lx-eyebrow">{label}</span>
         {Icon && (
-          <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${TONES[tone] || TONES.gold}`}>
-            <Icon width={16} height={16} />
+          <span className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${TONES[tone] || TONES.gold}`}>
+            <Icon width={15} height={15} />
           </span>
         )}
       </div>
 
       <div className="flex items-end gap-3 flex-wrap">
-        <div className="font-sans font-bold text-[30px] sm:text-[34px] leading-none text-ink tracking-tight">
+        <div className="font-sans font-bold text-[28px] sm:text-[32px] leading-none text-ink tracking-tight">
           {value}
         </div>
         {trend && (

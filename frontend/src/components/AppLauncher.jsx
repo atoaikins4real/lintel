@@ -1,19 +1,19 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
-import { roleApps } from '../config/apps.js';
+import { dockApps } from '../config/apps.js';
 import { IconGrid } from './icons.jsx';
 
-// A compact dock of the role's apps — small icon buttons with labels, lined up
-// so the dashboard stays tidy and the numbers below show at a glance. Built
-// from the same catalog as the rail and ⌘K, filtered to what you can open.
-// One scrollable row on phones, wraps on wider screens.
+// A compact dock of the role's five most-relevant apps — small icon buttons
+// with labels, lined up so the dashboard stays tidy and the numbers below show
+// at a glance. Everything else is one tap away in the rail and ⌘K. Filtered to
+// what this worker can open.
 export default function AppLauncher() {
   const { role, can } = useAuth();
-  const apps = roleApps(role).filter((a) => !a.perm || can(a.perm));
+  const apps = dockApps(role).filter((a) => !a.perm || can(a.perm));
   if (!apps.length) return null;
 
   return (
-    <div className="flex gap-x-4 gap-y-3 overflow-x-auto sm:flex-wrap pb-1 sm:justify-start"
+    <div className="flex gap-x-6 sm:gap-x-8 gap-y-3 overflow-x-auto pb-1 justify-start sm:justify-center"
       style={{ scrollbarWidth: 'none' }}>
       {apps.map((a) => {
         const Icon = a.icon || IconGrid;

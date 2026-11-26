@@ -19,7 +19,7 @@ export default function DashboardTop() {
   return (
     <section className="mb-6">
       {/* Representative hero — compact, theme-independent colours over the photo. */}
-      <div className="relative rounded-[24px] overflow-hidden shadow-lift h-[200px] sm:h-[240px]">
+      <div className="relative rounded-[24px] overflow-hidden shadow-lift h-[280px] sm:h-[360px]">
         <img
           src={hero.src} alt={hero.alt} aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover"
