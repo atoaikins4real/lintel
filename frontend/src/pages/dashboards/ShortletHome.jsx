@@ -4,7 +4,7 @@ import { getReservations, getUnits, readApiError } from '../../api/client.js';
 import StatCard from '../../components/StatCard.jsx';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import GettingStarted from '../../components/GettingStarted.jsx';
-import AppLauncher from '../../components/AppLauncher.jsx';
+import DashboardTop from '../../components/DashboardTop.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconCalendar, IconUsers, IconHome, IconBuilding, IconArrowRight, IconWallet } from '../../components/icons.jsx';
@@ -67,45 +67,8 @@ export default function ShortletHome() {
     <div>
       {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
 
-      {/* Hero */}
-      <section className="relative rounded-[28px] overflow-hidden mb-6 shadow-lift bg-ink min-h-[420px]">
-        <img src="/bg1.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = '/app1.jpg'; } }} />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,16,12,0.5) 0%, rgba(20,16,12,0.12) 32%, rgba(20,16,12,0.5) 76%, rgba(20,16,12,0.88) 100%)' }} />
-        <div className="relative z-10 flex flex-col justify-between gap-8 min-h-[420px] p-6 sm:p-9 md:p-10">
-          <div className="flex items-start justify-between gap-6">
-            <div className="max-w-xl">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-gold-light mb-3">
-                Calendar <span className="text-white/40">—</span> Guests <span className="text-white/40">—</span> Payouts
-              </div>
-              <h1 className="font-serif text-white leading-[1.04] text-[34px] sm:text-[48px] md:text-[54px]">
-                {greeting},<br /><span className="text-gold-light">{firstName}.</span>
-              </h1>
-              <p className="text-white/80 text-sm sm:text-base mt-4 max-w-md">
-                {hasListings
-                  ? `${bookedTonight} of ${total} ${total === 1 ? 'place' : 'places'} booked tonight · ${money(expected)} expected over the next 30 days.`
-                  : 'Add your first listing to open your booking calendar and start taking stays.'}
-              </p>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 mt-6">
-                <Link to={hasListings ? '/reservations' : '/units/onboard'}
-                  className="inline-flex items-center gap-2 rounded-full bg-white text-ink px-5 py-3 text-sm font-medium hover:bg-white/90 transition shadow-soft">
-                  {hasListings ? 'New booking' : 'Add your first listing'} <IconArrowRight width={16} height={16} />
-                </Link>
-                <a href={publicHref} target={company?.slug ? '_blank' : undefined} rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 text-white text-sm font-medium group">
-                  <span className="w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur flex items-center justify-center group-hover:bg-white/25 transition">
-                    <IconArrowRight width={16} height={16} />
-                  </span>
-                  Share your listings
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The home hub — every app this role manages, in one grid. */}
-      <AppLauncher />
+      {/* Compact hero + search + app dock. */}
+      <DashboardTop />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">

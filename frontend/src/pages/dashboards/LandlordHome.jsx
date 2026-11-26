@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { getUnitsPerformance, getUpgradeEligible, getTenants, getUnits } from '../../api/client.js';
 import StatusBadge from '../../components/StatusBadge.jsx';
 import GettingStarted from '../../components/GettingStarted.jsx';
-import AppLauncher from '../../components/AppLauncher.jsx';
+import DashboardTop from '../../components/DashboardTop.jsx';
+import StatCard from '../../components/StatCard.jsx';
 import { useSettings } from '../../context/SettingsContext.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { IconUsers, IconSparkle, IconArrowRight, IconWallet, IconWrench, IconBuilding, IconHome } from '../../components/icons.jsx';
@@ -71,125 +72,18 @@ export default function LandlordHome() {
         </div>
       )}
 
-      {/* ---------- Hero — architecture-studio style over the brand photo,
-           personalized with the subscriber's own numbers. Theme-independent
-           (explicit colours) so it keeps the warm look in light and dark. ---------- */}
-      <section className="relative rounded-[28px] overflow-hidden mb-6 shadow-lift bg-ink min-h-[600px]">
-        <img
-          src="/bg1.jpg"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = '/app1.jpg'; } }}
-        />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(180deg, rgba(20,16,12,0.55) 0%, rgba(20,16,12,0.10) 24%, rgba(20,16,12,0.08) 46%, rgba(20,16,12,0.52) 76%, rgba(20,16,12,0.85) 100%)',
-          }}
-        />
+      {/* Compact hero + search + app dock. */}
+      <DashboardTop />
 
-        <div className="relative z-10 flex flex-col justify-between gap-8 min-h-[600px] p-6 sm:p-9 md:p-10">
-          {/* Top: headline + CTAs, with portfolio facts stacked on the right */}
-          <div className="flex items-start justify-between gap-6">
-            <div className="max-w-xl">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-gold-light mb-3">
-                Homes <span className="text-white/40">—</span> Residents <span className="text-white/40">—</span> Rent
-              </div>
-              <h1 className="font-serif text-white leading-[1.04] text-[36px] sm:text-[52px] md:text-[60px]">
-                {greeting},<br /><span className="text-gold-light">{firstName}.</span>
-              </h1>
-              <p className="text-white/80 text-sm sm:text-base mt-4 max-w-md">
-                {hasData
-                  ? `${money(totalRevenue)} collected · net ${money(netYield)} after costs across ${units.length} ${units.length === 1 ? 'home' : 'homes'}.`
-                  : 'Add your first building and apartment to bring your home screen to life.'}
-              </p>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-3 mt-6">
-                <Link to="/units/onboard"
-                  className="inline-flex items-center gap-2 rounded-full bg-white text-ink px-5 py-3 text-sm font-medium hover:bg-white/90 transition shadow-soft">
-                  Add a home <IconArrowRight width={16} height={16} />
-                </Link>
-                <a href={publicHref} target={company?.slug ? '_blank' : undefined} rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2.5 text-white text-sm font-medium group">
-                  <span className="w-10 h-10 rounded-full bg-white/15 border border-white/30 backdrop-blur flex items-center justify-center group-hover:bg-white/25 transition">
-                    <IconArrowRight width={16} height={16} />
-                  </span>
-                  View your public page
-                </a>
-              </div>
-            </div>
-
-            {hasData && (
-              <div className="hidden lg:flex flex-col items-end gap-3 text-right shrink-0">
-                {[['Occupancy', `${avgOccupancy}%`], ['Apartments', units.length], ['Residents', tenants.length], ['Collected', money(totalRevenue)]].map(([l, v]) => (
-                  <div key={l}>
-                    <div className="text-[9.5px] font-semibold uppercase tracking-[0.16em] text-white/50">{l}</div>
-                    <div className="text-white font-serif text-base leading-none mt-1">{v}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Bottom: featured home · stats · share CTA */}
-          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1.25fr_1fr] gap-3 md:gap-4">
-            <div className="rounded-2xl bg-white/90 backdrop-blur-md p-3.5 flex flex-col gap-3 text-[#1b1b1b]">
-              {feat ? (
-                <>
-                  <Link to={`/units/${feat.id}`} className="flex items-center gap-3 group">
-                    {feat.photo_url
-                      ? <img src={feat.photo_url} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
-                      : <span className="w-14 h-14 rounded-xl bg-neutral-200 shrink-0" />}
-                    <span className="min-w-0">
-                      <span className="block text-[9.5px] font-semibold uppercase tracking-[0.14em] text-gold">Featured home</span>
-                      <span className="block font-medium truncate group-hover:text-gold transition">{feat.unit_code}</span>
-                      <span className="block text-xs text-neutral-500 truncate">{feat.property_name}{feat.city ? ` · ${feat.city}` : ''}</span>
-                    </span>
-                  </Link>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-neutral-500">
-                      {String((featIdx % featured.length) + 1).padStart(2, '0')} / {String(featured.length).padStart(2, '0')}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button type="button" aria-label="Previous" onClick={() => setFeatIdx((i) => (i - 1 + featured.length) % featured.length)}
-                        className="w-7 h-7 rounded-full border border-neutral-300 flex items-center justify-center hover:bg-neutral-100 leading-none">‹</button>
-                      <button type="button" aria-label="Next" onClick={() => setFeatIdx((i) => (i + 1) % featured.length)}
-                        className="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center leading-none">›</button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-neutral-500 py-4 text-center">No homes to feature yet.</div>
-              )}
-            </div>
-
-            <div className="rounded-2xl bg-white/90 backdrop-blur-md p-4 grid grid-cols-3 gap-2 text-[#1b1b1b]">
-              {[[units.length, 'Apartments', IconBuilding], [tenants.length, 'Residents', IconUsers], [`${avgOccupancy}%`, 'Occupancy', IconHome]].map(([v, l, Ic]) => (
-                <div key={l} className="flex flex-col items-center justify-center text-center">
-                  <Ic width={18} height={18} className="text-gold mb-1.5" />
-                  <div className="font-serif text-xl leading-none">{v}</div>
-                  <div className="text-[10px] text-neutral-500 mt-1">{l}</div>
-                </div>
-              ))}
-            </div>
-
-            <a href={publicHref} target={company?.slug ? '_blank' : undefined} rel="noopener noreferrer"
-              className="rounded-2xl bg-ink/88 backdrop-blur text-white p-4 flex items-center justify-between gap-3 group">
-              <span className="min-w-0">
-                <span className="block font-serif text-lg leading-tight">Share your homes</span>
-                <span className="block text-white/60 text-xs mt-1">{company?.slug ? 'Send your public page to renters' : 'Set up your public link'}</span>
-              </span>
-              <span className="w-10 h-10 rounded-full bg-white text-ink flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                <IconArrowRight width={16} height={16} />
-              </span>
-            </a>
-          </div>
+      {/* At-a-glance numbers, high up. */}
+      {hasData && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <StatCard label="Collected" value={money(totalRevenue)} icon={IconWallet} sub={`Net ${money(netYield)} after costs`} />
+          <StatCard label="Occupancy" value={`${avgOccupancy}%`} icon={IconHome} sub="Across your homes" />
+          <StatCard label="Apartments" value={units.length} icon={IconBuilding} sub="Homes you manage" />
+          <StatCard label="Residents" value={tenants.length} icon={IconUsers} sub="People renting" />
         </div>
-      </section>
-
-      {/* The home hub — every app this role manages, in one grid. */}
-      <AppLauncher />
+      )}
 
       {/* First-run guide — only while the workspace is still empty. */}
       {!hasData && <GettingStarted />}

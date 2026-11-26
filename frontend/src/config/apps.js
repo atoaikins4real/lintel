@@ -161,3 +161,58 @@ const QUICK_ADD = {
 export function quickAddActions(role) {
   return QUICK_ADD[role] || QUICK_ADD.landlord;
 }
+
+// ── Role hero imagery ────────────────────────────────────────────────────
+// Each role's dashboard leads with a photo that represents what it manages.
+// `src` is a royalty-free hotlink (Unsplash); `fallback` is a bundled image so
+// the hero is never broken if the network blocks the CDN. Swap `src` for your
+// own brand photo any time — nothing else needs to change.
+const U = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=70`;
+export const ROLE_HERO = {
+  landlord: {
+    src: U('photo-1545324418-cc1a3fa10c00'), fallback: '/bg1.jpg',
+    eyebrow: 'Homes · Residents · Rent', alt: 'Apartment building',
+    tagline: 'Your buildings, residents and rent — all in one place.',
+  },
+  hotelier: {
+    src: U('photo-1566073771259-6a8506099945'), fallback: '/bg1.jpg',
+    eyebrow: 'Rooms · Reservations · Guests', alt: 'Aerial view of a hotel resort',
+    tagline: 'Your front desk, from arrivals to payments.',
+  },
+  shortlet: {
+    src: U('photo-1505693416388-ac5ce068fe85'), fallback: '/app1.jpg',
+    eyebrow: 'Listings · Calendar · Guests', alt: 'Modern minimalist room',
+    tagline: 'Your calendar, guests and payouts at a glance.',
+  },
+  agent: {
+    src: U('photo-1512917774080-9991f1c4c750'), fallback: '/app1.jpg',
+    eyebrow: 'Listings · Enquiries · Contacts', alt: 'Modern house for sale',
+    tagline: 'Your listings, buyer enquiries and pipeline.',
+  },
+};
+export function roleHero(role) {
+  return ROLE_HERO[role] || ROLE_HERO.landlord;
+}
+
+// Record types each role can search from the dashboard, mapped to their detail
+// route and the role's word for them. Consumed by the search index hook.
+export const RECORD_SOURCES = {
+  landlord: [
+    { type: 'tenants', kind: 'Resident', perm: 'people.view', to: (r) => `/tenants/${r.id}` },
+    { type: 'units', kind: 'Apartment', perm: 'rooms.view', to: (r) => `/units/${r.id}` },
+    { type: 'properties', kind: 'Building', perm: 'buildings.view', to: (r) => `/properties/${r.id}` },
+  ],
+  hotelier: [
+    { type: 'tenants', kind: 'Guest', perm: 'people.view', to: (r) => `/tenants/${r.id}` },
+    { type: 'units', kind: 'Room', perm: 'rooms.view', to: (r) => `/units/${r.id}` },
+  ],
+  shortlet: [
+    { type: 'tenants', kind: 'Guest', perm: 'people.view', to: (r) => `/tenants/${r.id}` },
+    { type: 'units', kind: 'Listing', perm: 'rooms.view', to: (r) => `/units/${r.id}` },
+  ],
+  agent: [
+    { type: 'tenants', kind: 'Contact', perm: 'people.view', to: (r) => `/tenants/${r.id}` },
+    { type: 'units', kind: 'Listing', perm: 'rooms.view', to: (r) => `/units/${r.id}` },
+    { type: 'properties', kind: 'Development', perm: 'buildings.view', to: (r) => `/properties/${r.id}` },
+  ],
+};
