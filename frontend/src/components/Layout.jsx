@@ -55,6 +55,7 @@ const shortletNavItems = [
   { to: '/rooms', label: 'Listings', icon: IconBuilding, primary: true },
   { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
   { to: '/payments', label: 'Payouts', icon: IconWallet, primary: true },
+  { to: '/staff', label: 'Team', icon: IconShield },
   { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
     { to: '/access', label: 'Access & keys', icon: IconKey },
     { to: '/housekeeping', label: 'Housekeeping', icon: IconSparkle },
@@ -75,6 +76,7 @@ const agentNavItems = [
   ] },
   { to: '/booking-requests', label: 'Enquiries', icon: IconCalendar, primary: true },
   { to: '/tenants', label: 'Contacts', icon: IconUsers, primary: true },
+  { to: '/staff', label: 'Team', icon: IconShield },
   { to: '/reports', label: 'Reports', icon: IconChart, primary: true },
   { to: '/settings', label: 'Settings', icon: IconCog },
 ];
@@ -90,6 +92,7 @@ const hotelNavItems = [
   { to: '/tenants', label: 'Guests', icon: IconUsers, primary: true },
   { to: '/housekeeping', label: 'Housekeeping', icon: IconSparkle },
   { to: '/payments', label: 'Payments', icon: IconWallet, primary: true },
+  { to: '/staff', label: 'Team', icon: IconShield },
   { label: 'Upkeep', icon: IconWrench, mobileTo: '/faults-renovations', children: [
     { to: '/access', label: 'Access cards', icon: IconKey },
     { to: '/faults-renovations', label: 'Repairs', icon: IconWrench },
