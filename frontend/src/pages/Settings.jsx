@@ -51,9 +51,11 @@ export default function Settings() {
   const { settings, setSettings } = useSettings();
   const [form, setForm] = useState(null);
   const [companyForm, setCompanyForm] = useState(null);
+  const [companyLoaded, setCompanyLoaded] = useState(null); // last-saved copy, for Discard
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false); // unsaved changes in the main form
   const [usage, setUsage] = useState({ properties: 0, units: 0, tenants: 0, staff: 0 });
 
   useEffect(() => {
@@ -62,9 +64,16 @@ export default function Settings() {
 
   useEffect(() => {
     getCompany()
-      .then(setCompanyForm)
+      .then((c) => { setCompanyForm(c); setCompanyLoaded(c); })
       .catch((err) => setError(readApiError(err, 'load your company profile')));
   }, []);
+
+  // Let the "saved" confirmation fade on its own so the bar tidies itself away.
+  useEffect(() => {
+    if (!saved) return undefined;
+    const t = setTimeout(() => setSaved(false), 2600);
+    return () => clearTimeout(t);
+  }, [saved]);
 
   // Current usage, so plan limits are visible before they bite.
   useEffect(() => {
@@ -85,6 +94,7 @@ export default function Settings() {
   const setCo = (patch) => {
     setCompanyForm({ ...companyForm, ...patch });
     setSaved(false);
+    setDirty(true);
   };
 
   const showcaseUrl = `${window.location.origin}/showcase/${companyForm.slug}`;
@@ -92,10 +102,19 @@ export default function Settings() {
   const set = (patch) => {
     setForm({ ...form, ...patch });
     setSaved(false);
+    setDirty(true);
+  };
+
+  // Throw away unsaved edits and snap back to the last-saved values.
+  const discard = () => {
+    if (settings) setForm(settings);
+    if (companyLoaded) setCompanyForm(companyLoaded);
+    setDirty(false);
+    setError('');
   };
 
   const handleSave = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setError('');
     setSaving(true);
     try {
@@ -106,7 +125,9 @@ export default function Settings() {
       setSettings(updated);
       setForm(updated);
       setCompanyForm(updatedCompany);
+      setCompanyLoaded(updatedCompany);
       setCompany(updatedCompany);
+      setDirty(false);
       setSaved(true);
     } catch (err) {
       setError(readApiError(err, 'save settings'));
@@ -118,7 +139,7 @@ export default function Settings() {
   const currencies = form.supported_currencies || Object.keys(CURRENCY_LABELS);
 
   return (
-    <form onSubmit={handleSave} className="max-w-2xl space-y-6">
+    <form onSubmit={handleSave} className="max-w-2xl space-y-6 pb-28">
       {!isManager && (
         <div className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           Only a manager can change these settings — you can view them here.
@@ -126,11 +147,6 @@ export default function Settings() {
       )}
       {error && (
         <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-xl px-4 py-3">{error}</div>
-      )}
-      {saved && (
-        <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
-          Settings saved.
-        </div>
       )}
 
       {/* Company profile */}
@@ -182,7 +198,7 @@ export default function Settings() {
             value={companyForm.address || ''} onChange={(e) => setCo({ address: e.target.value })}
           />
           <TextField
-            label="City" disabled={!isManager}
+            label="Location" hint="Town, area or region" disabled={!isManager}
             value={companyForm.city || ''} onChange={(e) => setCo({ city: e.target.value })}
           />
           <TextField
@@ -245,7 +261,7 @@ export default function Settings() {
           })}
         </div>
         {isManager && (
-          <p className="text-[11px] text-stone mt-2">Pick one, then press “Save settings” at the bottom to apply it.</p>
+          <p className="text-[11px] text-stone mt-2">Pick one, then save your changes to apply it.</p>
         )}
       </section>
 
@@ -535,10 +551,33 @@ export default function Settings() {
         )}
       </section>
 
-      {isManager && (
-        <button disabled={saving} className="lx-btn-primary">
-          {saving ? 'Saving…' : 'Save settings'}
-        </button>
+      {/* Floating save bar — only a manager, only when there's something to
+          save (or just after saving, to confirm). Stays reachable without
+          scrolling to the end of a long settings page, and clears the mobile
+          tab bar. */}
+      {isManager && (dirty || saving || saved) && (
+        <div className="fixed inset-x-0 bottom-20 md:bottom-6 z-40 px-4 pointer-events-none">
+          <div className="max-w-2xl mx-auto pointer-events-auto">
+            <div className="lx-glass rounded-2xl shadow-lift border border-line/70 px-3.5 sm:px-4 py-2.5 flex items-center justify-between gap-3">
+              <span className="flex items-center gap-2 min-w-0">
+                <span className={`w-2 h-2 rounded-full shrink-0 ${saved && !dirty ? 'bg-emerald-500' : 'bg-gold'}`} />
+                <span className="text-sm text-ink truncate">
+                  {saved && !dirty ? 'All changes saved' : 'You have unsaved changes'}
+                </span>
+              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                {dirty && (
+                  <button type="button" onClick={discard} disabled={saving} className="lx-btn-ghost text-sm px-3 py-1.5">
+                    Discard
+                  </button>
+                )}
+                <button type="submit" disabled={saving || !dirty} className="lx-btn-primary text-sm px-4 py-1.5">
+                  {saving ? 'Saving…' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </form>
   );

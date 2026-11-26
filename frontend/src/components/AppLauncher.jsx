@@ -19,7 +19,7 @@ export default function AppLauncher() {
         const Icon = a.icon || IconGrid;
         return (
           <NavLink key={a.to} to={a.to} end={a.to === '/'} title={a.desc || a.label}
-            className="group flex flex-col items-center gap-1.5 w-[58px] sm:w-[66px] shrink-0 text-center">
+            className="group flex flex-col items-center gap-1.5 w-[76px] sm:w-[88px] shrink-0 text-center">
             {({ isActive }) => (
               <>
                 <span className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition shadow-soft border
