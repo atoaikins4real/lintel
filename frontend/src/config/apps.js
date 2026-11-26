@@ -170,28 +170,43 @@ export function quickAddActions(role) {
 const U = (id) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1600&q=70`;
 export const ROLE_HERO = {
   landlord: {
-    src: U('photo-1545324418-cc1a3fa10c00'), fallback: '/bg1.jpg',
-    eyebrow: 'Homes · Residents · Rent', alt: 'Apartment building',
+    src: U('photo-1460317442991-0ec209397118'), fallback: '/bg1.jpg',
+    eyebrow: 'Homes · Residents · Rent', alt: 'Residential apartment building',
     tagline: 'Your buildings, residents and rent — all in one place.',
   },
   hotelier: {
-    src: U('photo-1566073771259-6a8506099945'), fallback: '/bg1.jpg',
-    eyebrow: 'Rooms · Reservations · Guests', alt: 'Aerial view of a hotel resort',
+    src: U('photo-1564501049412-61c2a3083791'), fallback: '/app1.jpg',
+    eyebrow: 'Rooms · Reservations · Guests', alt: 'Aerial view of a hotel resort and pool',
     tagline: 'Your front desk, from arrivals to payments.',
   },
   shortlet: {
-    src: U('photo-1505693416388-ac5ce068fe85'), fallback: '/app1.jpg',
+    src: U('photo-1522771739844-6a9f6d5f14af'), fallback: '/app.jfif',
     eyebrow: 'Listings · Calendar · Guests', alt: 'Modern minimalist room',
     tagline: 'Your calendar, guests and payouts at a glance.',
   },
   agent: {
-    src: U('photo-1512917774080-9991f1c4c750'), fallback: '/app1.jpg',
+    src: U('photo-1600585154340-be6161a56a0c'), fallback: '/app1.jfif',
     eyebrow: 'Listings · Enquiries · Contacts', alt: 'Modern house for sale',
     tagline: 'Your listings, buyer enquiries and pipeline.',
   },
 };
 export function roleHero(role) {
   return ROLE_HERO[role] || ROLE_HERO.landlord;
+}
+
+// Each main role has its own identity colour, so the four verticals feel like
+// distinct interfaces out of the box — a hotel reads teal, a short-let coral,
+// an agent green, a landlord gold. This is only the DEFAULT: an organisation's
+// own brand colour (Settings → branding) overrides it everywhere, which is how
+// a subscriber brands their workspace. One knob, two outcomes.
+export const ROLE_ACCENT = {
+  landlord: '#b07d2b', // warm gold — homes & rent
+  hotelier: '#15746e', // teal — hospitality
+  shortlet: '#d9544d', // coral — hosting
+  agent: '#2f7d55',    // emerald — real estate
+};
+export function roleAccent(role) {
+  return ROLE_ACCENT[role] || ROLE_ACCENT.landlord;
 }
 
 // Record types each role can search from the dashboard, mapped to their detail

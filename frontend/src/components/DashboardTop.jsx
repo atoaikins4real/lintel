@@ -25,9 +25,11 @@ export default function DashboardTop() {
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = hero.fallback; } }}
         />
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,16,12,0.30) 0%, rgba(20,16,12,0.12) 40%, rgba(20,16,12,0.72) 100%)' }} />
+        {/* Role identity wash — tints the hero with the role/brand accent. */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, var(--color-gold) 0%, transparent 58%)', opacity: 0.35, mixBlendMode: 'multiply' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,16,12,0.34) 0%, rgba(20,16,12,0.12) 40%, rgba(20,16,12,0.74) 100%)' }} />
         <div className="relative z-10 h-full flex flex-col justify-between p-5 sm:p-7">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75">{hero.eyebrow}</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-light">{hero.eyebrow}</div>
           <div className="flex items-end justify-between gap-4">
             <div className="min-w-0">
               <h1 className="font-serif text-white leading-[1.05] text-[28px] sm:text-[38px]">

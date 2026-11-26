@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { IconChart, IconLogout } from './icons.jsx';
-import { NAV_BY_ROLE, PATH_PERM } from '../config/apps.js';
+import { NAV_BY_ROLE, PATH_PERM, ROLE_ACCENT } from '../config/apps.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -73,11 +73,14 @@ export default function Layout({ children }) {
   const { settings } = useSettings();
   const [sheet, setSheet] = useState(null); // grouped nav item shown in the mobile sheet
 
-  // Apply this workspace's branding accent app-wide by overriding the gold
-  // token (and its lighter shade). Cleared back to default when unset.
+  // Accent token, app-wide. Priority: the organisation's own brand colour
+  // (Settings → branding) first — that's how a subscriber brands their
+  // workspace — otherwise the role's identity colour, so each vertical looks
+  // distinct out of the box. Only a plain default if neither applies.
   useEffect(() => {
     const root = document.documentElement;
-    const accent = settings?.accent_color;
+    const org = settings?.accent_color;
+    const accent = (org && /^#[0-9a-fA-F]{6}$/.test(org)) ? org : ROLE_ACCENT[role];
     if (accent && /^#[0-9a-fA-F]{6}$/.test(accent)) {
       root.style.setProperty('--color-gold', accent);
       root.style.setProperty('--color-gold-light', lighten(accent, 0.25));
@@ -85,7 +88,7 @@ export default function Layout({ children }) {
       root.style.removeProperty('--color-gold');
       root.style.removeProperty('--color-gold-light');
     }
-  }, [settings?.accent_color]);
+  }, [settings?.accent_color, role]);
 
   // Apply the workspace's default theme for viewers who haven't chosen one.
   useEffect(() => {
