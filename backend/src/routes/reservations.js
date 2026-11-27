@@ -10,7 +10,7 @@ router.use(gateMutations);
 // on the table — anything else in the body is dropped. See utils/sanitize.js.
 const COLUMNS = [
   'unit_id', 'guest_tenant_id', 'guest_name', 'guest_contact',
-  'check_in', 'check_out', 'nightly_rate', 'status', 'source', 'notes',
+  'check_in', 'check_out', 'nightly_rate', 'rate_plan_id', 'status', 'source', 'notes',
   // Guest register / tourist details (optional) — kept per stay so the data
   // can be exported and, if desired, shared with a tourism board.
   'purpose_of_visit', 'nationality', 'id_type', 'id_number',
@@ -107,6 +107,16 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: 'That room is already booked for those dates.' });
     }
 
+    // If booked on a rate plan, its price is the default nightly rate.
+    let planRate = null;
+    let ratePlanId = blank(req.body.rate_plan_id);
+    if (ratePlanId) {
+      const { data: plan } = await supabase
+        .from('l_rate_plans').select('id, price')
+        .eq('id', ratePlanId).eq('company_id', req.user.company_id).maybeSingle();
+      if (plan) planRate = plan.price; else ratePlanId = null;
+    }
+
     const { data, error } = await supabase
       .from('l_reservations')
       .insert({
@@ -117,7 +127,8 @@ router.post('/', async (req, res, next) => {
         guest_contact: blank(req.body.guest_contact),
         check_in,
         check_out,
-        nightly_rate: toNumber(req.body.nightly_rate) ?? unit.base_rate_short ?? null,
+        nightly_rate: toNumber(req.body.nightly_rate) ?? planRate ?? unit.base_rate_short ?? null,
+        rate_plan_id: ratePlanId,
         status,
         source: blank(req.body.source),
         notes: blank(req.body.notes),
@@ -145,7 +156,7 @@ router.put('/:id', async (req, res, next) => {
       numbers: ['nightly_rate', 'guests_count'],
       dates: ['check_in', 'check_out'],
       texts: ['guest_tenant_id', 'guest_name', 'guest_contact', 'source', 'notes', 'status',
-        'purpose_of_visit', 'nationality', 'id_type', 'id_number', 'arriving_from', 'next_destination'],
+        'purpose_of_visit', 'nationality', 'id_type', 'id_number', 'arriving_from', 'next_destination', 'rate_plan_id'],
     });
     delete updates.company_id;
 

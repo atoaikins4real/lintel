@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   getReservations, createReservation, updateReservation, deleteReservation, checkAvailability,
-  getUnits, getTenants, readApiError,
+  getUnits, getTenants, getRoomTypes, readApiError,
 } from '../api/client.js';
 import StatCard from '../components/StatCard.jsx';
 import RowActions from '../components/RowActions.jsx';
@@ -26,7 +26,7 @@ const STATUS_LABEL = {
 const ACTIVE = ['confirmed', 'checked_in'];
 const emptyForm = {
   unit_id: '', guest_tenant_id: '', guest_name: '', guest_contact: '',
-  check_in: TODAY, check_out: addDays(TODAY, 1), nightly_rate: '', notes: '',
+  check_in: TODAY, check_out: addDays(TODAY, 1), nightly_rate: '', rate_plan_id: '', notes: '',
   // Guest register / tourist details (optional).
   guests_count: '', nationality: '', id_type: '', id_number: '',
   purpose_of_visit: '', arriving_from: '', next_destination: '',
@@ -73,6 +73,7 @@ export default function Reservations() {
   const { canEdit } = useAuth();
   const { money } = useSettings();
   const [rooms, setRooms] = useState([]);
+  const [roomTypes, setRoomTypes] = useState([]);
   const [guests, setGuests] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [error, setError] = useState('');
@@ -87,6 +88,7 @@ export default function Reservations() {
 
   useEffect(() => {
     getUnits().then(setRooms).catch(() => setRooms([]));
+    getRoomTypes().then(setRoomTypes).catch(() => setRoomTypes([]));
     getTenants().then(setGuests).catch(() => setGuests([]));
     loadReservations();
   }, []);
@@ -110,6 +112,12 @@ export default function Reservations() {
   const pickRoom = (id) => {
     const r = rooms.find((x) => x.id === id);
     setForm((f) => ({ ...f, unit_id: id, nightly_rate: f.nightly_rate || (r?.base_rate_short ?? '') }));
+  };
+  // Booking on a rate plan fills in its nightly price (still editable after).
+  const ratePlans = roomTypes.flatMap((t) => (t.l_rate_plans || []).map((p) => ({ ...p, typeName: t.name })));
+  const pickRatePlan = (id) => {
+    const plan = ratePlans.find((p) => p.id === id);
+    setForm((f) => ({ ...f, rate_plan_id: id, nightly_rate: plan ? plan.price : f.nightly_rate }));
   };
   const pickGuest = (id) => {
     const g = guests.find((x) => x.id === id);
@@ -288,8 +296,24 @@ export default function Reservations() {
                 <TextField label="Guest name" value={form.guest_name} onChange={(e) => setForm({ ...form, guest_name: e.target.value, guest_tenant_id: '' })} />
                 <TextField label="Contact" hint="Phone or email" value={form.guest_contact} onChange={(e) => setForm({ ...form, guest_contact: e.target.value })} />
               </div>
+              {ratePlans.length > 0 && (
+                <Field label="Rate plan" hint="Pick one to set the nightly rate — you can still adjust it">
+                  <select className="lx-select" value={form.rate_plan_id} onChange={(e) => pickRatePlan(e.target.value)}>
+                    <option value="">Custom rate</option>
+                    {roomTypes.map((t) => (
+                      (t.l_rate_plans || []).length > 0 && (
+                        <optgroup key={t.id} label={t.name}>
+                          {(t.l_rate_plans || []).map((p) => (
+                            <option key={p.id} value={p.id}>{p.name} · {money(p.price)}</option>
+                          ))}
+                        </optgroup>
+                      )
+                    ))}
+                  </select>
+                </Field>
+              )}
               <div className="grid grid-cols-2 gap-3">
-                <TextField label="Nightly rate" type="number" value={form.nightly_rate} onChange={(e) => setForm({ ...form, nightly_rate: e.target.value })} />
+                <TextField label="Nightly rate" type="number" value={form.nightly_rate} onChange={(e) => setForm({ ...form, nightly_rate: e.target.value, rate_plan_id: '' })} />
                 <div>
                   <span className="lx-label">Total</span>
                   <div className="lx-input bg-panel/60 flex items-center">

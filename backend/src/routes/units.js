@@ -49,6 +49,7 @@ const COLUMNS = [
   'photo_url',
   'photo_urls',
   'property_id',
+  'room_type_id',
   'floor_area',
   'floor_area_unit',
   'floor_number',
@@ -255,6 +256,7 @@ router.post('/', async (req, res, next) => {
         property_id: resolvedPropertyId,
         property_name: resolvedName,
         unit_type,
+        room_type_id: blank(req.body.room_type_id),
         class: unitClass || 'standard',
         status: status || 'vacant',
         // Was previously dropped on create entirely — gallery photos picked

@@ -5,6 +5,7 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import StatCard from '../components/StatCard.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import SearchBar, { useSearch } from '../components/SearchBar.jsx';
+import RoomTypesManager from '../components/RoomTypesManager.jsx';
 import { IconBuilding, IconHome, IconWrench } from '../components/icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -99,6 +100,10 @@ export default function Rooms() {
             />
           </div>
         )}
+      </div>
+
+      <div className="mt-8">
+        <RoomTypesManager />
       </div>
     </div>
   );

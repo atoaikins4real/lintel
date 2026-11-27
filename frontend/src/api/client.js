@@ -148,6 +148,15 @@ export const applyRentReview = (id, payload) =>
 export const getReservations = (params) => api.get('/reservations', { params }).then((r) => r.data);
 export const createReservation = (payload) => api.post('/reservations', payload).then((r) => r.data);
 export const updateReservation = (id, payload) => api.put(`/reservations/${id}`, payload).then((r) => r.data);
+
+// Hotel room types & rate plans.
+export const getRoomTypes = () => api.get('/room-types').then((r) => r.data);
+export const createRoomType = (payload) => api.post('/room-types', payload).then((r) => r.data);
+export const updateRoomType = (id, payload) => api.put(`/room-types/${id}`, payload).then((r) => r.data);
+export const deleteRoomType = (id) => api.delete(`/room-types/${id}`).then((r) => r.data);
+export const createRatePlan = (typeId, payload) => api.post(`/room-types/${typeId}/rate-plans`, payload).then((r) => r.data);
+export const updateRatePlan = (planId, payload) => api.put(`/room-types/rate-plans/${planId}`, payload).then((r) => r.data);
+export const deleteRatePlan = (planId) => api.delete(`/room-types/rate-plans/${planId}`).then((r) => r.data);
 export const deleteReservation = (id) => api.delete(`/reservations/${id}`).then((r) => r.data);
 export const checkAvailability = (params) => api.get('/reservations/availability', { params }).then((r) => r.data);
 
