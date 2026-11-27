@@ -485,6 +485,82 @@ router.get('/rent-roll', async (req, res, next) => {
   }
 });
 
+// GET /api/reports/arrears-aging — overdue charges grouped by tenancy and
+// bucketed by how long they have been overdue (0-30, 31-60, 61-90, 90+ days),
+// so collections can be worked oldest-first.
+router.get('/arrears-aging', async (req, res, next) => {
+  try {
+    const companyId = req.user.company_id;
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+
+    const [
+      { data: payments },
+      { data: leases },
+      { data: tenants },
+      { data: units },
+      { currency: defaultCurrency, rates },
+      unitCurrency,
+    ] = await Promise.all([
+      supabase.from('l_payments')
+        .select('lease_id, tenant_id, unit_id, amount, currency, status, due_date')
+        .eq('company_id', companyId).in('status', ['pending', 'late', 'partial']),
+      supabase.from('l_leases').select('id, tenant_id, unit_id, currency').eq('company_id', companyId),
+      supabase.from('l_tenants').select('id, lintel_id, first_name, last_name, phone, email').eq('company_id', companyId),
+      supabase.from('l_units').select('id, unit_code, property_name').eq('company_id', companyId),
+      companyCurrency(companyId),
+      currencyByUnit(companyId),
+    ]);
+
+    const tenantById = Object.fromEntries((tenants || []).map((t) => [t.id, t]));
+    const unitById = Object.fromEntries((units || []).map((u) => [u.id, u]));
+    const leaseById = Object.fromEntries((leases || []).map((l) => [l.id, l]));
+
+    const overdue = (payments || []).filter((p) => p.due_date && p.due_date < todayStr);
+    const bucketKey = (d) => (d <= 30 ? 'd0_30' : d <= 60 ? 'd31_60' : d <= 90 ? 'd61_90' : 'd90_plus');
+
+    const byLease = {};
+    for (const p of overdue) {
+      const age = Math.floor((today - new Date(p.due_date)) / 86400000);
+      const key = p.lease_id || `tenant:${p.tenant_id}`;
+      if (!byLease[key]) {
+        const l = p.lease_id ? leaseById[p.lease_id] : null;
+        const tId = p.tenant_id || (l && l.tenant_id);
+        const uId = p.unit_id || (l && l.unit_id);
+        const t = tId ? tenantById[tId] : null;
+        const u = uId ? unitById[uId] : null;
+        byLease[key] = {
+          lease_id: p.lease_id || null,
+          tenant: t ? `${t.first_name} ${t.last_name}` : '—',
+          lintel_id: (t && t.lintel_id) || null,
+          contact: [t && t.phone, t && t.email].filter(Boolean).join(' · ') || null,
+          unit: (u && u.unit_code) || '—',
+          property: (u && u.property_name) || '—',
+          currency: p.currency || (l && l.currency) || unitCurrency[uId] || defaultCurrency,
+          d0_30: 0, d31_60: 0, d61_90: 0, d90_plus: 0, total: 0, oldest_days: 0,
+        };
+      }
+      const row = byLease[key];
+      const amt = Number(p.amount || 0);
+      row[bucketKey(age)] += amt;
+      row.total += amt;
+      row.oldest_days = Math.max(row.oldest_days, age);
+    }
+
+    const rows = Object.values(byLease).sort((a, b) => b.total - a.total);
+
+    const opts = { defaultCurrency, rates };
+    const totals = {};
+    for (const b of ['d0_30', 'd31_60', 'd61_90', 'd90_plus', 'total']) {
+      totals[b] = indicativeTotal(totalByCurrency(rows, { amountKey: b, fallback: defaultCurrency }), opts).amount;
+    }
+
+    res.json({ rows, default_currency: defaultCurrency, totals, tenancies_in_arrears: rows.length });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ---------------------------------------------------------------------
 // TENANT STATEMENT — a full ledger for one tenant, in the form you'd
 // hand to them or to an accountant.

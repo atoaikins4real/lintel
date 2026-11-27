@@ -8,6 +8,7 @@ import { IconWallet, IconTrendUp, IconTrendDown, IconChart } from '../components
 import { downloadCsv } from '../utils/csv.js';
 import PropertyPnl from './reports/PropertyPnl.jsx';
 import RentRoll from './reports/RentRoll.jsx';
+import ArrearsAging from './reports/ArrearsAging.jsx';
 import TenantStatement from './reports/TenantStatement.jsx';
 
 const MONTH_LABEL = (key) => {
@@ -237,6 +238,7 @@ const TABS = [
   { key: 'overview', label: 'Overview', render: () => <Overview /> },
   { key: 'pnl', label: 'Property P&L', render: () => <PropertyPnl /> },
   { key: 'rentroll', label: 'Rent roll', render: () => <RentRoll /> },
+  { key: 'arrears', label: 'Arrears', render: () => <ArrearsAging /> },
   { key: 'statement', label: 'Statements', render: () => <TenantStatement /> },
 ];
 

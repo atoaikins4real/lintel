@@ -237,6 +237,7 @@ export const getExpenseBreakdown = (params) => api.get('/reports/expense-breakdo
 export const getReportsSummary = () => api.get('/reports/summary').then((r) => r.data);
 export const getPropertyPnl = (params) => api.get('/reports/property-pnl', { params }).then((r) => r.data);
 export const getRentRoll = () => api.get('/reports/rent-roll').then((r) => r.data);
+export const getArrearsAging = () => api.get('/reports/arrears-aging').then((r) => r.data);
 export const getTenantStatement = (tenantId) =>
   api.get(`/reports/tenant-statement/${tenantId}`).then((r) => r.data);
 

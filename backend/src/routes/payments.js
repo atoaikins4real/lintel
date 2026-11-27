@@ -40,7 +40,7 @@ const COLUMNS = [
   'utility_type_id',
 ];
 
-const CHARGE_TYPES = ['rent', 'utility', 'deposit', 'other'];
+const CHARGE_TYPES = ['rent', 'utility', 'deposit', 'late_fee', 'other'];
 
 // GET /api/payments?tenant_id=&unit_id=&lease_id=&status=
 router.get('/', async (req, res, next) => {
