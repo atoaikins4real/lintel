@@ -6,6 +6,7 @@ import {
 } from '../api/client.js';
 import { CurrencyField } from '../components/Money.jsx';
 import UnitUtilities from '../components/UnitUtilities.jsx';
+import SeasonalRates from '../components/SeasonalRates.jsx';
 import StatCard from '../components/StatCard.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
@@ -16,7 +17,7 @@ import { useSettings } from '../context/SettingsContext.jsx';
 
 export default function UnitDetail() {
   const { id } = useParams();
-  const { canEdit, company, isManager } = useAuth();
+  const { canEdit, company, isManager, isHotel } = useAuth();
   const { money, currency } = useSettings();
   const [unit, setUnit] = useState(null);
   const [perf, setPerf] = useState(null);
@@ -197,6 +198,10 @@ export default function UnitDetail() {
         canEdit={canEdit}
         currency={unit.currency || parentProperty?.currency || currency}
       />
+
+      {/* Seasonal / per-date pricing & minimum-stay — for stay (hotel &
+          short-let) listings, where nightly pricing varies by season. */}
+      {isHotel && <SeasonalRates unitId={id} canEdit={canEdit} />}
 
       {canEdit && form && (
         <form onSubmit={save} className="lx-card p-5 mb-6">

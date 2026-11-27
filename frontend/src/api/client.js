@@ -157,6 +157,12 @@ export const deleteRoomType = (id) => api.delete(`/room-types/${id}`).then((r) =
 export const createRatePlan = (typeId, payload) => api.post(`/room-types/${typeId}/rate-plans`, payload).then((r) => r.data);
 export const updateRatePlan = (planId, payload) => api.put(`/room-types/rate-plans/${planId}`, payload).then((r) => r.data);
 export const deleteRatePlan = (planId) => api.delete(`/room-types/rate-plans/${planId}`).then((r) => r.data);
+
+// Seasonal pricing & minimum-stay per listing.
+export const getRateOverrides = (params) => api.get('/rate-overrides', { params }).then((r) => r.data);
+export const createRateOverride = (payload) => api.post('/rate-overrides', payload).then((r) => r.data);
+export const updateRateOverride = (id, payload) => api.put(`/rate-overrides/${id}`, payload).then((r) => r.data);
+export const deleteRateOverride = (id) => api.delete(`/rate-overrides/${id}`).then((r) => r.data);
 export const deleteReservation = (id) => api.delete(`/reservations/${id}`).then((r) => r.data);
 export const checkAvailability = (params) => api.get('/reservations/availability', { params }).then((r) => r.data);
 

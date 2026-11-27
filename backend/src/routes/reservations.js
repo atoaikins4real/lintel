@@ -117,6 +117,20 @@ router.post('/', async (req, res, next) => {
       if (plan) planRate = plan.price; else ratePlanId = null;
     }
 
+    // Seasonal override covering the check-in date (per listing): sets a
+    // default rate and can enforce a minimum stay.
+    const stayNights = Math.max(1, Math.round((new Date(check_out) - new Date(check_in)) / 86400000));
+    const { data: ovRows } = await supabase
+      .from('l_rate_overrides').select('nightly_rate, min_stay')
+      .eq('company_id', req.user.company_id).eq('unit_id', unit_id)
+      .lte('start_date', check_in).gte('end_date', check_in)
+      .order('start_date', { ascending: false }).limit(1);
+    const override = ovRows && ovRows[0];
+    if (override && override.min_stay && stayNights < override.min_stay) {
+      return res.status(400).json({ error: `Minimum stay for these dates is ${override.min_stay} night${override.min_stay === 1 ? '' : 's'}.` });
+    }
+    const overrideRate = override && override.nightly_rate != null ? override.nightly_rate : null;
+
     const { data, error } = await supabase
       .from('l_reservations')
       .insert({
@@ -127,7 +141,7 @@ router.post('/', async (req, res, next) => {
         guest_contact: blank(req.body.guest_contact),
         check_in,
         check_out,
-        nightly_rate: toNumber(req.body.nightly_rate) ?? planRate ?? unit.base_rate_short ?? null,
+        nightly_rate: toNumber(req.body.nightly_rate) ?? planRate ?? overrideRate ?? unit.base_rate_short ?? null,
         rate_plan_id: ratePlanId,
         status,
         source: blank(req.body.source),
