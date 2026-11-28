@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext.jsx';
 import { SettingsProvider } from './context/SettingsContext.jsx';
 import RequireAuth from './components/RequireAuth.jsx';
 import Layout from './components/Layout.jsx';
+import Desktop from './components/Desktop.jsx';
 import Login from './pages/Login.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import MyStatement from './pages/MyStatement.jsx';
@@ -56,7 +57,8 @@ function App() {
               <SettingsProvider>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<Desktop />} />
+                    <Route path="/overview" element={<Dashboard />} />
                     <Route path="/tenants" element={<Tenants />} />
                     <Route path="/tenants/onboard" element={<TenantOnboarding />} />
                     <Route path="/tenants/:id/onboard" element={<TenantOnboarding />} />
