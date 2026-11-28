@@ -90,6 +90,8 @@ export default function Leases() {
       end_date: l.end_date || '',
       agreed_rate: l.agreed_rate ?? '',
       status: l.status,
+      escalation_percent: l.escalation_percent ?? '',
+      next_review_on: l.next_review_on || '',
     });
   };
 
@@ -288,6 +290,12 @@ export default function Leases() {
                 </div>
                 <input type="number" className="lx-input" placeholder="Agreed rate" value={edit.agreed_rate ?? ''}
                   onChange={(e) => setEdit({ ...edit, agreed_rate: e.target.value })} />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="number" step="0.1" className="lx-input" placeholder="Escalation %" value={edit.escalation_percent ?? ''}
+                    onChange={(e) => setEdit({ ...edit, escalation_percent: e.target.value })} />
+                  <input type="date" className="lx-input" title="Next rent review" value={edit.next_review_on || ''}
+                    onChange={(e) => setEdit({ ...edit, next_review_on: e.target.value })} />
+                </div>
                 <select className="lx-select" value={edit.status}
                   onChange={(e) => setEdit({ ...edit, status: e.target.value })}>
                   <option value="active">Active</option>
@@ -369,8 +377,16 @@ export default function Leases() {
                   </td>
                   <td className="text-right">
                     {editingId === l.id ? (
-                      <input type="number" className="lx-input !py-1 text-xs w-24 text-right"
-                        value={edit.agreed_rate ?? ''} onChange={(e) => setEdit({ ...edit, agreed_rate: e.target.value })} />
+                      <div className="flex flex-col items-end gap-1">
+                        <input type="number" className="lx-input !py-1 text-xs w-24 text-right"
+                          value={edit.agreed_rate ?? ''} onChange={(e) => setEdit({ ...edit, agreed_rate: e.target.value })} />
+                        <div className="flex gap-1">
+                          <input type="number" step="0.1" className="lx-input !py-1 text-xs w-14 text-right" title="Escalation %" placeholder="% esc"
+                            value={edit.escalation_percent ?? ''} onChange={(e) => setEdit({ ...edit, escalation_percent: e.target.value })} />
+                          <input type="date" className="lx-input !py-1 text-xs w-32" title="Next rent review"
+                            value={edit.next_review_on || ''} onChange={(e) => setEdit({ ...edit, next_review_on: e.target.value })} />
+                        </div>
+                      </div>
                     ) : (
                       <>{money(l.agreed_rate)}/{l.rate_period}</>
                     )}
