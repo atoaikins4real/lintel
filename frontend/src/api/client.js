@@ -163,6 +163,12 @@ export const getRateOverrides = (params) => api.get('/rate-overrides', { params 
 export const createRateOverride = (payload) => api.post('/rate-overrides', payload).then((r) => r.data);
 export const updateRateOverride = (id, payload) => api.put(`/rate-overrides/${id}`, payload).then((r) => r.data);
 export const deleteRateOverride = (id) => api.delete(`/rate-overrides/${id}`).then((r) => r.data);
+
+// OTA / iCal calendar sync per listing.
+export const getCalendarSync = (unitId) => api.get('/calendars', { params: { unit_id: unitId } }).then((r) => r.data);
+export const addCalendarFeed = (payload) => api.post('/calendars', payload).then((r) => r.data);
+export const deleteCalendarFeed = (id) => api.delete(`/calendars/${id}`).then((r) => r.data);
+export const syncCalendarFeed = (id) => api.post(`/calendars/${id}/sync`).then((r) => r.data);
 export const deleteReservation = (id) => api.delete(`/reservations/${id}`).then((r) => r.data);
 export const checkAvailability = (params) => api.get('/reservations/availability', { params }).then((r) => r.data);
 

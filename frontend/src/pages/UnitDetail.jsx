@@ -7,6 +7,7 @@ import {
 import { CurrencyField } from '../components/Money.jsx';
 import UnitUtilities from '../components/UnitUtilities.jsx';
 import SeasonalRates from '../components/SeasonalRates.jsx';
+import CalendarSync from '../components/CalendarSync.jsx';
 import StatCard from '../components/StatCard.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PhotoUploader from '../components/PhotoUploader.jsx';
@@ -202,6 +203,7 @@ export default function UnitDetail() {
       {/* Seasonal / per-date pricing & minimum-stay — for stay (hotel &
           short-let) listings, where nightly pricing varies by season. */}
       {isHotel && <SeasonalRates unitId={id} canEdit={canEdit} />}
+      {isHotel && <CalendarSync unitId={id} canEdit={canEdit} />}
 
       {canEdit && form && (
         <form onSubmit={save} className="lx-card p-5 mb-6">

@@ -12,6 +12,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { supabase } = require('../config/supabase');
+const { buildIcs } = require('../utils/ical');
 const mailer = require('../utils/mailer');
 
 const router = express.Router();
@@ -65,6 +66,25 @@ async function currencyFor(companyId) {
 }
 
 // GET /api/public/:slug/units — one company's showcase grid.
+// GET /api/public/calendar/:token.ics — a listing's busy calendar as an iCal
+// feed, for OTAs (Airbnb, Booking.com) to subscribe to. The token is
+// unguessable and exposes only booked date ranges, never guest or price data.
+router.get('/calendar/:file', async (req, res, next) => {
+  try {
+    const token = String(req.params.file || '').replace(/\.ics$/i, '');
+    if (!token) return res.status(404).type('text/plain').send('Not found');
+    const { data: unit } = await supabase
+      .from('l_units').select('id, unit_code, company_id').eq('ical_token', token).maybeSingle();
+    if (!unit) return res.status(404).type('text/plain').send('Not found');
+    const { data: resv } = await supabase
+      .from('l_reservations').select('id, check_in, check_out, status')
+      .eq('company_id', unit.company_id).eq('unit_id', unit.id)
+      .in('status', ['confirmed', 'checked_in', 'checked_out']);
+    const ics = buildIcs(`Lintel \u00b7 ${unit.unit_code}`, (resv || []).map((r) => ({ id: r.id, check_in: r.check_in, check_out: r.check_out, summary: 'Booked' })));
+    res.type('text/calendar').set('Content-Disposition', `inline; filename="${token}.ics"`).send(ics);
+  } catch (err) { next(err); }
+});
+
 router.get('/:slug/units', async (req, res, next) => {
   try {
     const company = await companyBySlug(req.params.slug);

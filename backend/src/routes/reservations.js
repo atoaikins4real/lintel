@@ -35,7 +35,17 @@ async function hasConflict(companyId, unitId, checkIn, checkOut, excludeId) {
   if (excludeId) q = q.neq('id', excludeId);
   const { data, error } = await q;
   if (error) throw error;
-  return (data || []).length > 0;
+  if ((data || []).length > 0) return true;
+  // Also block against imported external (OTA) calendars. Best-effort: if the
+  // table isn't present yet (migration not run), ignore rather than erroring.
+  try {
+    const { data: ext, error: extErr } = await supabase
+      .from('l_external_bookings').select('id')
+      .eq('company_id', companyId).eq('unit_id', unitId)
+      .lt('check_in', checkOut).gt('check_out', checkIn);
+    if (!extErr && (ext || []).length > 0) return true;
+  } catch (e) { /* external calendars optional */ }
+  return false;
 }
 
 router.get('/', async (req, res, next) => {
