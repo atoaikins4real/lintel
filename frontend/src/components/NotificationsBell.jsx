@@ -13,6 +13,10 @@ const TODAY = iso(new Date());
 // so the bell is useful from day one and literally notifies about updates.
 // Add an entry (with a NEW id) whenever a feature ships.
 const RELEASES = [
+  { id: 'rel-2026-11-os-home', title: 'A new home screen', detail: 'Your dashboard is now a tidy desktop — a spotlight search and an app dock floating over your workspace photo.' },
+  { id: 'rel-2026-11-calendar-sync', title: 'Calendar sync (Airbnb, Booking.com)', detail: 'Import other sites’ calendars so a listing never double-books, and share Lintel’s calendar back to them.' },
+  { id: 'rel-2026-11-arrears', title: 'Arrears & late fees', detail: 'Overdue rent aged into buckets, with a one-click late fee — under Reports → Arrears.' },
+  { id: 'rel-2026-11-rates', title: 'Room types & seasonal rates', detail: 'Group rooms into types with rate plans (hotels); set seasonal nightly prices and minimum stays per listing (short-let).' },
   { id: 'rel-2026-11-workers', title: 'Workers & custom roles', detail: 'Add your team and give each worker a custom role — a receptionist, housekeeper or accountant sees only their tools.' },
   { id: 'rel-2026-11-housekeeping', title: 'Housekeeping board', detail: 'Track every room’s cleaning status; rooms flip to “needs cleaning” on checkout.' },
   { id: 'rel-2026-11-customize', title: 'Make it yours', detail: 'Set an accent colour, a default theme, and hide the modules you don’t use in Settings.' },
@@ -20,6 +24,16 @@ const RELEASES = [
   { id: 'rel-2026-11-notifications', title: 'Activity notifications', detail: 'This bell now flags arrivals, overdue rent, new enquiries and open repairs.' },
   { id: 'rel-2026-11-roles', title: 'Choose your role', detail: 'Landlord, hotelier, short-let host or estate agent — each with its own dashboard. Switch anytime in Settings.' },
   { id: 'rel-2026-11-guest-register', title: 'Guest register & tourism export', detail: 'Capture guest and travel details per stay, and export a CSV for a tourism board.' },
+];
+
+// "Coming soon" — the public roadmap, so you can see what's on the way. Purely
+// informational (no unread badge); reorder or trim as plans change.
+const ROADMAP = [
+  { title: 'Automated email reminders', detail: 'Rent reminders, and booking & payment confirmations, sent for you.' },
+  { title: 'Guest folio & taxes (hotels)', detail: 'Add incidentals and configurable taxes to one itemised invoice at checkout.' },
+  { title: 'Book & pay on your public page', detail: 'Let guests book and pay you online, straight from your showcase.' },
+  { title: 'Estate-agent deal pipeline', detail: 'Track enquiries through viewing, offer and close — with commission.' },
+  { title: 'PDF leases, invoices & receipts', detail: 'Generate and send polished documents in a click.' },
 ];
 
 function BellIcon(p) {
@@ -176,6 +190,24 @@ export default function NotificationsBell() {
                     </li>
                   );
                 })}
+              </ul>
+
+              {/* Coming soon — the roadmap of what's on the way. */}
+              <div className="px-4 pt-3 pb-1 lx-eyebrow text-stone flex items-center gap-1.5 border-t border-line/60 mt-1">
+                <IconSparkle width={12} height={12} className="text-stone" /> Coming soon
+              </div>
+              <ul className="divide-y divide-line/60">
+                {ROADMAP.map((r) => (
+                  <li key={r.title} className="px-4 py-3 flex items-start gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-panel border border-line text-stone flex items-center justify-center shrink-0">
+                      <IconSparkle width={16} height={16} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-ink">{r.title}<span className="ml-2 align-middle text-[10px] font-semibold uppercase tracking-wide text-stone">Soon</span></span>
+                      <span className="block text-xs text-stone">{r.detail}</span>
+                    </span>
+                  </li>
+                ))}
               </ul>
 
               {activity.length === 0 && (

@@ -4,9 +4,10 @@ import DashboardSearch from './DashboardSearch.jsx';
 import AppLauncher from './AppLauncher.jsx';
 import { IconArrowRight } from './icons.jsx';
 
-// The tidy top of every role dashboard: a representative photo + greeting, a
-// front-and-centre search, and a compact dock of your apps — so the numbers
-// below (arrivals, departures, occupancy…) sit high and show at a glance.
+// The home as an "operating-system desktop": a large wallpaper (the role photo)
+// with everything floating on it in frosted glass — the greeting, a spotlight
+// search, and a macOS-style dock of your apps. The dashboard's numbers follow
+// below. Inspired by the glassmorphism / liquid-glass dock UI trend.
 export default function DashboardTop() {
   const { user, company, role } = useAuth();
   const hero = roleHero(role);
@@ -18,50 +19,52 @@ export default function DashboardTop() {
 
   return (
     <section className="mb-6">
-      {/* Representative hero — compact, theme-independent colours over the photo. */}
-      <div className="relative rounded-[24px] overflow-hidden shadow-lift h-[280px] sm:h-[360px]">
+      <div className="relative rounded-[28px] overflow-hidden shadow-lift h-[460px] sm:h-[560px]">
+        {/* Wallpaper */}
         <img
           src={hero.src} alt={hero.alt} aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { if (!e.currentTarget.dataset.fb) { e.currentTarget.dataset.fb = '1'; e.currentTarget.src = hero.fallback; } }}
         />
-        {/* Role identity wash — a restrained accent tint from the lower-left,
-            keeping the luxury, stone-toned feel rather than a loud colour cast. */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, transparent 45%, var(--color-gold) 120%)', opacity: 0.28, mixBlendMode: 'multiply' }} />
-        {/* Readability scrim — darker toward the bottom where the text sits, so
-            the eyebrow and headline stay legible over any photo. */}
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,16,12,0.30) 0%, rgba(20,16,12,0.20) 38%, rgba(20,16,12,0.72) 80%, rgba(20,16,12,0.86) 100%)' }} />
+        {/* Role identity wash — a restrained accent tint, keeping the luxury feel. */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, transparent 50%, var(--color-gold) 125%)', opacity: 0.26, mixBlendMode: 'multiply' }} />
+        {/* Legibility: darker at the very top (greeting) and bottom (dock), clear
+            through the middle so the wallpaper shows behind the glass. */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, rgba(20,16,12,0.56) 0%, rgba(20,16,12,0.10) 26%, rgba(20,16,12,0.04) 52%, rgba(20,16,12,0.40) 82%, rgba(20,16,12,0.72) 100%)' }} />
 
-        {/* Public-page link, pinned to the top-right corner. */}
-        <a href={publicHref} target={publicExternal ? '_blank' : undefined} rel="noopener noreferrer"
-          className="absolute top-5 right-5 sm:top-7 sm:right-7 z-10 hidden sm:inline-flex items-center gap-2 text-white text-xs font-medium group">
-          <span className="w-9 h-9 rounded-full bg-white/15 border border-white/30 backdrop-blur flex items-center justify-center group-hover:bg-white/25 transition">
-            <IconArrowRight width={15} height={15} />
-          </span>
-          Public page
-        </a>
-
-        {/* Content cluster — eyebrow, headline and tagline together in the dark
-            lower band, echoing the reference's stacked title treatment. */}
-        <div className="relative z-10 h-full flex flex-col justify-end p-5 sm:p-7">
-          <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-light mb-2.5" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.35)' }}>
-            {hero.eyebrow}
+        {/* ── Top bar: greeting (left), public page (right) ─────────────── */}
+        <div className="absolute inset-x-0 top-0 z-10 p-5 sm:p-7 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.22em] text-gold-light mb-2" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.45)' }}>
+              {hero.eyebrow}
+            </div>
+            <h1 className="font-serif text-white leading-[1.03] text-[30px] sm:text-[44px]" style={{ textShadow: '0 2px 14px rgba(0,0,0,0.35)' }}>
+              {greeting}, <span className="text-gold-light">{first}.</span>
+            </h1>
+            <p className="text-white/85 text-sm mt-2 max-w-md hidden sm:block" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>{hero.tagline}</p>
           </div>
-          <h1 className="font-serif text-white leading-[1.04] text-[30px] sm:text-[42px]" style={{ textShadow: '0 1px 10px rgba(0,0,0,0.25)' }}>
-            {greeting}, <span className="text-gold-light">{first}.</span>
-          </h1>
-          <p className="text-white/85 text-sm mt-2 max-w-md">{hero.tagline}</p>
+          <a href={publicHref} target={publicExternal ? '_blank' : undefined} rel="noopener noreferrer"
+            className="hidden sm:inline-flex items-center gap-2 text-white text-xs font-medium group shrink-0 rounded-full bg-white/15 border border-white/25 backdrop-blur-md pl-3 pr-1.5 py-1.5 hover:bg-white/25 transition">
+            Public page
+            <span className="w-7 h-7 rounded-full bg-white/90 text-ink flex items-center justify-center">
+              <IconArrowRight width={14} height={14} />
+            </span>
+          </a>
         </div>
-      </div>
 
-      {/* Search — overlaps the hero's lower edge, front and centre. */}
-      <div className="relative z-20 -mt-7 px-2 sm:px-6">
-        <DashboardSearch />
-      </div>
+        {/* ── Spotlight search — floating, centred ──────────────────────── */}
+        <div className="absolute z-20 inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
+          <div className="max-w-xl mx-auto drop-shadow-2xl">
+            <DashboardSearch />
+          </div>
+        </div>
 
-      {/* Compact app dock beneath the search. */}
-      <div className="mt-5 px-1">
-        <AppLauncher />
+        {/* ── Frosted glass dock — floating near the bottom ─────────────── */}
+        <div className="absolute z-10 inset-x-0 bottom-4 sm:bottom-5 flex justify-center px-4">
+          <div className="lx-glass rounded-[22px] shadow-lift px-3 sm:px-4 py-2.5 max-w-full">
+            <AppLauncher />
+          </div>
+        </div>
       </div>
     </section>
   );
