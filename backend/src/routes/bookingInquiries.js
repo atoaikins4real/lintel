@@ -35,15 +35,35 @@ router.get('/', async (req, res, next) => {
 router.patch('/:id', requireRole('manager', 'finance'), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
-    const allowed = ['pending', 'approved', 'declined'];
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+    const updates = {};
+    if (req.body.status !== undefined) {
+      const allowed = ['pending', 'approved', 'declined'];
+      if (!allowed.includes(req.body.status)) {
+        return res.status(400).json({ error: `status must be one of: ${allowed.join(', ')}` });
+      }
+      updates.status = req.body.status;
+    }
+    if (req.body.stage !== undefined) {
+      const stages = ['new', 'contacted', 'viewing', 'offer', 'won', 'lost'];
+      if (!stages.includes(req.body.stage)) {
+        return res.status(400).json({ error: `stage must be one of: ${stages.join(', ')}` });
+      }
+      updates.stage = req.body.stage;
+      // Keep the legacy approve/decline status roughly in step for other views.
+      if (req.body.stage === 'won' && updates.status === undefined) updates.status = 'approved';
+      if (req.body.stage === 'lost' && updates.status === undefined) updates.status = 'declined';
+    }
+    if (req.body.commission_amount !== undefined) {
+      const c = req.body.commission_amount;
+      updates.commission_amount = (c === '' || c === null) ? null : Number(c);
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Nothing to update' });
     }
 
     const { data, error } = await supabase
       .from('l_booking_inquiries')
-      .update({ status })
+      .update(updates)
       .eq('id', id)
       .eq('company_id', req.user.company_id)
       .select('*, l_units(unit_code, property_name)')

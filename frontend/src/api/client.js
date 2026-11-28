@@ -281,6 +281,9 @@ export const updateCompany = (payload) => api.put('/company', payload).then((r) 
 export const getBookingInquiries = (params) => api.get('/booking-inquiries', { params }).then((r) => r.data);
 export const updateBookingInquiry = (id, status) =>
   api.patch(`/booking-inquiries/${id}`, { status }).then((r) => r.data);
+// Agent deal pipeline: update stage and/or commission on an enquiry.
+export const updateInquiryDeal = (id, payload) =>
+  api.patch(`/booking-inquiries/${id}`, payload).then((r) => r.data);
 
 // Uploads
 export const uploadPhoto = (payload) => api.post('/uploads/photo', payload).then((r) => r.data);

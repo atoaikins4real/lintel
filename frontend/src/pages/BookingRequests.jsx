@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getBookingInquiries, updateBookingInquiry } from '../api/client.js';
 import StatusBadge from '../components/StatusBadge.jsx';
+import DealPipeline from '../components/DealPipeline.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -8,18 +9,21 @@ import { useSettings } from '../context/SettingsContext.jsx';
 // from the public /showcase pages. Viewer role can see this (read-only,
 // same as everywhere else); only manager/finance can approve or decline.
 export default function BookingRequests() {
-  const { canEdit } = useAuth();
+  const { canEdit, role } = useAuth();
   const { money } = useSettings();
+  const isAgent = role === 'agent';
   const [inquiries, setInquiries] = useState([]);
   const [filter, setFilter] = useState('');
   const [busyId, setBusyId] = useState(null);
 
-  const load = () => getBookingInquiries(filter ? { status: filter } : undefined).then(setInquiries);
+  // Agents work the full pipeline (no status filter); other roles keep the
+  // simple approve/decline list with its filter.
+  const load = () => getBookingInquiries(!isAgent && filter ? { status: filter } : undefined).then(setInquiries);
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, isAgent]);
 
   const act = async (id, status) => {
     setBusyId(id);
@@ -30,6 +34,15 @@ export default function BookingRequests() {
       setBusyId(null);
     }
   };
+
+  if (isAgent) {
+    return (
+      <div>
+        <p className="text-stone text-sm mb-5">Your buyer enquiries as a pipeline — drag each deal from first contact through to a close.</p>
+        <DealPipeline inquiries={inquiries} canEdit={canEdit} onChanged={load} />
+      </div>
+    );
+  }
 
   return (
     <div>
