@@ -193,17 +193,17 @@ h1, h2, h3 { @apply font-serif; letter-spacing: -0.01em; }
 .lx-app-bg {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background-size: cover; background-position: center;
-  opacity: 0.10;
+  opacity: 0.42;
 }
 .lx-app-scrim {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 10%, transparent), transparent 60%),
+    radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 12%, transparent), transparent 60%),
     linear-gradient(180deg,
-      color-mix(in srgb, var(--color-canvas) 80%, transparent),
-      color-mix(in srgb, var(--color-canvas) 93%, transparent));
+      color-mix(in srgb, var(--color-canvas) 58%, transparent),
+      color-mix(in srgb, var(--color-canvas) 80%, transparent));
 }
-:root[data-theme="dark"] .lx-app-bg { opacity: 0.09; }
+:root[data-theme="dark"] .lx-app-bg { opacity: 0.16; }
 :root[data-theme="dark"] .lx-app-scrim {
   background:
     radial-gradient(1100px 560px at 82% -12%, color-mix(in srgb, var(--color-gold) 13%, transparent), transparent 60%),

@@ -227,6 +227,29 @@ export function roleAccent(role) {
   return ROLE_ACCENT[role] || ROLE_ACCENT.landlord;
 }
 
+// ── Desktop wallpaper ────────────────────────────────────────────────────
+// Lintel runs like an operating system: one wallpaper behind the whole shell,
+// with the rail, top bar and cards floating on it. Each role gets a fitting
+// default; a workspace can pick another in Settings. Presets are bundled so
+// they always load. A stored value may also be a path/URL (future uploads).
+export const WALLPAPERS = [
+  { key: 'lintel', label: 'Lintel', url: '/app-bg.jpg' },
+  { key: 'studio', label: 'Studio', url: '/bg1.jpg' },
+  { key: 'interior', label: 'Interior', url: '/app1.jpg' },
+  { key: 'suite', label: 'Suite', url: '/app.jfif' },
+  { key: 'estate', label: 'Estate', url: '/app1.jfif' },
+  { key: 'coast', label: 'Coast', url: '/lv.jfif' },
+];
+const WALLPAPER_BY_KEY = Object.fromEntries(WALLPAPERS.map((w) => [w.key, w.url]));
+const ROLE_WALLPAPER = { landlord: 'studio', hotelier: 'suite', shortlet: 'interior', agent: 'estate' };
+
+export function resolveWallpaper(settings, role) {
+  const v = settings && settings.wallpaper;
+  if (v && WALLPAPER_BY_KEY[v]) return WALLPAPER_BY_KEY[v];
+  if (v && (v.startsWith('/') || v.startsWith('http'))) return v;
+  return WALLPAPER_BY_KEY[ROLE_WALLPAPER[role]] || WALLPAPER_BY_KEY.lintel;
+}
+
 // Record types each role can search from the dashboard, mapped to their detail
 // route and the role's word for them. Consumed by the search index hook.
 export const RECORD_SOURCES = {

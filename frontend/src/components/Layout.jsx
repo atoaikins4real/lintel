@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { IconChart, IconLogout } from './icons.jsx';
-import { NAV_BY_ROLE, PATH_PERM, ROLE_ACCENT } from '../config/apps.js';
+import { NAV_BY_ROLE, PATH_PERM, ROLE_ACCENT, resolveWallpaper } from '../config/apps.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
@@ -119,7 +119,7 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen text-ink">
       {/* Ambient interior photo + scrim behind the whole shell. */}
-      <div className="lx-app-bg" style={{ backgroundImage: 'url(/app-bg.jpg)' }} aria-hidden="true" />
+      <div className="lx-app-bg" style={{ backgroundImage: `url(${resolveWallpaper(settings, role)})` }} aria-hidden="true" />
       <div className="lx-app-scrim" aria-hidden="true" />
 
       {/* Floating rail — left-aligned, vertically centered (desktop + tablet). */}

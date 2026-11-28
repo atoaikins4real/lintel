@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { resolveRole } from '../config/roles.js';
+import { WALLPAPERS } from '../config/apps.js';
 import { CURRENCY_LABELS } from '../utils/currency.js';
 
 // The business roles a company can switch between. Keep in step with the
@@ -303,6 +304,52 @@ export default function Settings() {
           </div>
           <p className="text-[11px] text-stone mt-1.5">Anyone who hasn’t set their own theme starts here. Each person’s own choice (the top-bar toggle) always wins for them.</p>
         </div>
+
+        <div className="mt-5">
+          <span className="lx-label mb-1.5">Wallpaper</span>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            <button type="button" disabled={!isManager} onClick={() => set({ wallpaper: null })}
+              className={`aspect-video rounded-xl border text-xs flex items-center justify-center transition disabled:opacity-60 ${!form.wallpaper ? 'border-gold ring-2 ring-gold/30 text-ink' : 'border-line text-stone hover:border-ink/30'}`}>
+              Role default
+            </button>
+            {WALLPAPERS.map((w) => (
+              <button key={w.key} type="button" disabled={!isManager} onClick={() => set({ wallpaper: w.key })} title={w.label}
+                className={`relative aspect-video rounded-xl overflow-hidden border transition disabled:opacity-60 ${form.wallpaper === w.key ? 'border-gold ring-2 ring-gold/40' : 'border-line hover:border-ink/30'}`}>
+                <img src={w.url} alt={w.label} className="w-full h-full object-cover" />
+                <span className="absolute bottom-0 inset-x-0 text-[10px] text-white bg-black/45 py-0.5 text-center">{w.label}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-stone mt-1.5">The backdrop your whole workspace sits on. “Role default” matches what you manage.</p>
+        </div>
+      </section>
+
+      {/* Taxes & service charge — applied to guest folios and invoices. */}
+      <section className="lx-card p-5 sm:p-6">
+        <h2 className="font-serif text-lg text-ink mb-1">Taxes &amp; service charge</h2>
+        <p className="text-xs text-stone mb-4">Lines added to guest folios and invoices — VAT, levies, a service charge. Each is a percentage of the subtotal; turn one off without deleting it.</p>
+        <div className="space-y-2">
+          {(form.taxes || []).map((t, idx) => (
+            <div key={idx} className="flex items-center gap-2 flex-wrap">
+              <input className="lx-input flex-1 min-w-[140px]" disabled={!isManager} placeholder="e.g. VAT"
+                value={t.name} onChange={(e) => set({ taxes: form.taxes.map((x, i) => (i === idx ? { ...x, name: e.target.value } : x)) })} />
+              <div className="flex items-center gap-1">
+                <input type="number" step="0.1" className="lx-input w-24" disabled={!isManager} placeholder="%"
+                  value={t.rate} onChange={(e) => set({ taxes: form.taxes.map((x, i) => (i === idx ? { ...x, rate: e.target.value } : x)) })} />
+                <span className="text-xs text-stone">%</span>
+              </div>
+              <label className="flex items-center gap-1.5 text-xs text-stone">
+                <input type="checkbox" disabled={!isManager} checked={t.enabled !== false}
+                  onChange={(e) => set({ taxes: form.taxes.map((x, i) => (i === idx ? { ...x, enabled: e.target.checked } : x)) })} className="accent-gold w-4 h-4" /> On
+              </label>
+              {isManager && <button type="button" onClick={() => set({ taxes: form.taxes.filter((_, i) => i !== idx) })} className="text-xs text-stone hover:text-rose-600">Remove</button>}
+            </div>
+          ))}
+          {(form.taxes || []).length === 0 && <p className="text-sm text-stone">No tax lines — folios show just the charges.</p>}
+        </div>
+        {isManager && (
+          <button type="button" onClick={() => set({ taxes: [...(form.taxes || []), { name: '', rate: '', enabled: true }] })} className="lx-btn-ghost text-sm mt-3">+ Add tax line</button>
+        )}
       </section>
 
       {/* Features — hide modules the workspace doesn't use. */}

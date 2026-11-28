@@ -171,6 +171,20 @@ router.put('/', requireRole('manager'), async (req, res, next) => {
       }
       updates.hidden_features = req.body.hidden_features.map((x) => String(x)).slice(0, 40);
     }
+    //  - wallpaper: a preset key (or path/URL) for the app-wide desktop wallpaper.
+    if (req.body.wallpaper !== undefined) {
+      updates.wallpaper = req.body.wallpaper === null ? null : String(req.body.wallpaper).slice(0, 300);
+    }
+    //  - taxes: lines applied to folios & invoices, each { name, rate, enabled }.
+    if (req.body.taxes !== undefined) {
+      if (!Array.isArray(req.body.taxes)) {
+        return res.status(400).json({ error: 'taxes must be an array' });
+      }
+      updates.taxes = req.body.taxes
+        .slice(0, 20)
+        .map((t) => ({ name: String((t && t.name) || '').slice(0, 60), rate: Number(t && t.rate) || 0, enabled: !(t && t.enabled === false) }))
+        .filter((t) => t.name);
+    }
 
     if (req.body.online_payments_enabled !== undefined) {
       const wantOn = req.body.online_payments_enabled === true || req.body.online_payments_enabled === 'true';
