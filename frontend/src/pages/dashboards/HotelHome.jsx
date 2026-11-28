@@ -65,7 +65,7 @@ export default function HotelHome() {
       {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
 
       {/* Compact hero + search + app dock. */}
-      <DashboardTop />
+      <DashboardTop stats={[{ label: 'Arrivals today', value: arrivals.length }, { label: 'Occupied', value: `${occupancy}%` }, { label: 'In house', value: inHouse.length }]} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">

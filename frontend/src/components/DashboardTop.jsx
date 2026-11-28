@@ -8,7 +8,7 @@ import { IconArrowRight } from './icons.jsx';
 // with everything floating on it in frosted glass — the greeting, a spotlight
 // search, and a macOS-style dock of your apps. The dashboard's numbers follow
 // below. Inspired by the glassmorphism / liquid-glass dock UI trend.
-export default function DashboardTop() {
+export default function DashboardTop({ stats = [] }) {
   const { user, company, role } = useAuth();
   const hero = roleHero(role);
   const first = user?.name?.trim().split(/\s+/)[0] || 'there';
@@ -52,6 +52,18 @@ export default function DashboardTop() {
           </a>
         </div>
 
+        {/* ── Floating glass stat widgets (bento) — upper right ─────────── */}
+        {stats.length > 0 && (
+          <div className="absolute right-5 sm:right-7 top-[88px] sm:top-[104px] z-10 hidden lg:flex flex-col gap-2.5 w-44">
+            {stats.slice(0, 3).map((s) => (
+              <div key={s.label} className="lx-glass rounded-2xl px-4 py-3 shadow-lift ring-1 ring-white/25">
+                <div className="lx-eyebrow text-stone mb-0.5">{s.label}</div>
+                <div className="font-serif text-xl text-ink leading-none">{s.value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Spotlight search — floating, centred ──────────────────────── */}
         <div className="absolute z-20 inset-x-0 top-1/2 -translate-y-1/2 px-5 sm:px-8">
           <div className="max-w-xl mx-auto drop-shadow-2xl">
@@ -61,7 +73,8 @@ export default function DashboardTop() {
 
         {/* ── Frosted glass dock — floating near the bottom ─────────────── */}
         <div className="absolute z-10 inset-x-0 bottom-4 sm:bottom-5 flex justify-center px-4">
-          <div className="lx-glass rounded-[22px] shadow-lift px-3 sm:px-4 py-2.5 max-w-full">
+          <div className="lx-glass rounded-[26px] shadow-lift ring-1 ring-white/25 px-3 sm:px-4 py-2.5 max-w-full"
+            style={{ backdropFilter: 'blur(18px) saturate(1.3)' }}>
             <AppLauncher />
           </div>
         </div>

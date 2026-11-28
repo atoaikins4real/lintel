@@ -54,7 +54,7 @@ export default function AgentHome() {
       {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
 
       {/* Compact hero + search + app dock. */}
-      <DashboardTop />
+      <DashboardTop stats={[{ label: 'Listings', value: total }, { label: 'Enquiries', value: pending.length }]} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">

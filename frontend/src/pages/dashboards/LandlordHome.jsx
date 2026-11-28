@@ -73,7 +73,7 @@ export default function LandlordHome() {
       )}
 
       {/* Compact hero + search + app dock. */}
-      <DashboardTop />
+      <DashboardTop stats={[{ label: 'Collected', value: money(totalRevenue) }, { label: 'Occupancy', value: `${avgOccupancy}%` }, { label: 'Residents', value: tenants.length }]} />
 
       {/* At-a-glance numbers, high up. */}
       {hasData && (

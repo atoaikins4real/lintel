@@ -68,7 +68,7 @@ export default function ShortletHome() {
       {error && <div className="mb-5 lx-alert lx-alert-danger">{error}</div>}
 
       {/* Compact hero + search + app dock. */}
-      <DashboardTop />
+      <DashboardTop stats={[{ label: 'Booked tonight', value: `${bookedTonight}/${total || 0}` }, { label: 'Occupancy', value: `${occupancyTonight}%` }, { label: 'Arrivals', value: arrivalsToday }]} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
