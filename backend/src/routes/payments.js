@@ -28,6 +28,7 @@ const COLUMNS = [
   'lease_id',
   'tenant_id',
   'unit_id',
+  'reservation_id',
   'amount',
   'currency',
   'due_date',
@@ -40,7 +41,7 @@ const COLUMNS = [
   'utility_type_id',
 ];
 
-const CHARGE_TYPES = ['rent', 'utility', 'deposit', 'late_fee', 'other'];
+const CHARGE_TYPES = ['rent', 'utility', 'deposit', 'late_fee', 'incidental', 'other'];
 
 // GET /api/payments?tenant_id=&unit_id=&lease_id=&status=
 router.get('/', async (req, res, next) => {
@@ -63,10 +64,10 @@ router.get('/', async (req, res, next) => {
 // POST /api/payments — logs a payment against a lease
 router.post('/', async (req, res, next) => {
   try {
-    const { lease_id, amount, currency, due_date, payment_date, status, method, reference, notes } = req.body;
+    const { lease_id, reservation_id, amount, currency, due_date, payment_date, status, method, reference, notes } = req.body;
 
-    if (!lease_id || !amount) {
-      return res.status(400).json({ error: 'lease_id and amount are required' });
+    if ((!lease_id && !reservation_id) || !amount) {
+      return res.status(400).json({ error: 'A lease or reservation, and an amount, are required' });
     }
 
     const chargeType = req.body.charge_type || 'rent';
@@ -74,29 +75,41 @@ router.post('/', async (req, res, next) => {
       return res.status(400).json({ error: `Charge type must be one of: ${CHARGE_TYPES.join(', ')}` });
     }
 
-    const { data: lease, error: leaseError } = await supabase
-      .from('l_leases')
-      .select('tenant_id, unit_id')
-      .eq('id', lease_id)
-      .eq('company_id', req.user.company_id)
-      .maybeSingle();
-    if (leaseError) throw leaseError;
-    if (!lease) return res.status(404).json({ error: 'Lease not found' });
-
-    // An explicit currency wins (a one-off settled in another currency),
-    // otherwise resolve the lease's own down the inheritance chain.
     const requested = parseCurrency(currency);
     if (!requested.ok) return res.status(400).json({ error: requested.error });
-    const resolvedCurrency =
-      requested.value || (await currencyForLease(lease_id, req.user.company_id));
+
+    // A payment hangs off either a lease (long-let rent) or a reservation
+    // (hotel / short-let folio). Both resolve the guest and the unit.
+    let linkTenantId = null;
+    let linkUnitId = null;
+    let resolvedCurrency = requested.value;
+    if (lease_id) {
+      const { data: lease, error: leaseError } = await supabase
+        .from('l_leases').select('tenant_id, unit_id')
+        .eq('id', lease_id).eq('company_id', req.user.company_id).maybeSingle();
+      if (leaseError) throw leaseError;
+      if (!lease) return res.status(404).json({ error: 'Lease not found' });
+      linkTenantId = lease.tenant_id;
+      linkUnitId = lease.unit_id;
+      if (!resolvedCurrency) resolvedCurrency = await currencyForLease(lease_id, req.user.company_id);
+    } else {
+      const { data: resv, error: resvErr } = await supabase
+        .from('l_reservations').select('guest_tenant_id, unit_id')
+        .eq('id', reservation_id).eq('company_id', req.user.company_id).maybeSingle();
+      if (resvErr) throw resvErr;
+      if (!resv) return res.status(404).json({ error: 'Reservation not found' });
+      linkTenantId = resv.guest_tenant_id || null;
+      linkUnitId = resv.unit_id;
+    }
 
     const { data, error } = await supabase
       .from('l_payments')
       .insert({
         company_id: req.user.company_id,
-        lease_id,
-        tenant_id: lease.tenant_id,
-        unit_id: lease.unit_id,
+        lease_id: lease_id || null,
+        reservation_id: reservation_id || null,
+        tenant_id: linkTenantId,
+        unit_id: linkUnitId,
         amount: num(amount),
         currency: resolvedCurrency,
         charge_type: chargeType,

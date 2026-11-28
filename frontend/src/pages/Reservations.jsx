@@ -5,6 +5,7 @@ import {
 } from '../api/client.js';
 import StatCard from '../components/StatCard.jsx';
 import RowActions from '../components/RowActions.jsx';
+import ReservationFolio from '../components/ReservationFolio.jsx';
 import Field, { TextField } from '../components/Field.jsx';
 import { IconCalendar, IconBuilding, IconUsers, IconHome } from '../components/icons.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -74,6 +75,7 @@ export default function Reservations() {
   const { money } = useSettings();
   const [rooms, setRooms] = useState([]);
   const [roomTypes, setRoomTypes] = useState([]);
+  const [folioRes, setFolioRes] = useState(null);
   const [guests, setGuests] = useState([]);
   const [reservations, setReservations] = useState([]);
   const [error, setError] = useState('');
@@ -245,13 +247,15 @@ export default function Reservations() {
 
       {/* Lists */}
       <ResGroup title="In house" rows={house} empty="No one is checked in right now."
-        money={money} roomLabel={roomLabel} canEdit={canEdit} busyId={busyId} setStatus={setStatus} remove={remove} />
+        money={money} roomLabel={roomLabel} canEdit={canEdit} busyId={busyId} setStatus={setStatus} remove={remove} onFolio={setFolioRes} />
       <ResGroup title="Arrivals & upcoming" rows={upcoming} empty="No upcoming bookings."
-        money={money} roomLabel={roomLabel} canEdit={canEdit} busyId={busyId} setStatus={setStatus} remove={remove} />
+        money={money} roomLabel={roomLabel} canEdit={canEdit} busyId={busyId} setStatus={setStatus} remove={remove} onFolio={setFolioRes} />
       {past.length > 0 && (
         <ResGroup title="Past & cancelled" rows={past} empty=""
-          money={money} roomLabel={roomLabel} canEdit={canEdit} busyId={busyId} setStatus={setStatus} remove={remove} />
+          money={money} roomLabel={roomLabel} canEdit={canEdit} busyId={busyId} setStatus={setStatus} remove={remove} onFolio={setFolioRes} />
       )}
+
+      {folioRes && <ReservationFolio reservation={folioRes} money={money} onClose={() => setFolioRes(null)} />}
 
       {/* New reservation modal */}
       {showForm && (
@@ -369,7 +373,7 @@ export default function Reservations() {
   );
 }
 
-function ResGroup({ title, rows, empty, money, roomLabel, canEdit, busyId, setStatus, remove }) {
+function ResGroup({ title, rows, empty, money, roomLabel, canEdit, busyId, setStatus, remove, onFolio }) {
   return (
     <div className="mb-6">
       <h2 className="font-serif text-xl text-ink mb-3">{title} {rows.length > 0 && <span className="text-sm text-stone font-sans">· {rows.length}</span>}</h2>
@@ -403,6 +407,7 @@ function ResGroup({ title, rows, empty, money, roomLabel, canEdit, busyId, setSt
                       </div>
                     )}
                   </div>
+                  <button type="button" onClick={() => onFolio(r)} className="lx-btn-ghost !py-1.5 !px-3 text-xs shrink-0">Folio</button>
                   {canEdit && (
                     <div className="flex items-center gap-2 shrink-0">
                       {r.status === 'confirmed' && (
