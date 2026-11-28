@@ -224,6 +224,26 @@ export function IconChevron(props) {
   );
 }
 
+// Recent-apps / switcher glyph: two offset rounded squares.
+export function IconStack(props) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="4" y="7" width="11" height="11" rx="2.2" />
+      <path d="M9 7V5.6A1.6 1.6 0 0 1 10.6 4H18.4A1.6 1.6 0 0 1 20 5.6v7.8A1.6 1.6 0 0 1 18.4 15H17" />
+    </svg>
+  );
+}
+
+// Lightbulb — used for user tips.
+export function IconBulb(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M9 18h6M10 21h4" />
+      <path d="M12 3a6 6 0 0 0-3.7 10.7c.5.4.7.9.8 1.5l.1.8h5.6l.1-.8c.1-.6.3-1.1.8-1.5A6 6 0 0 0 12 3Z" />
+    </svg>
+  );
+}
+
 export function IconPlus(props) {
   return (
     <svg {...base} {...props}>

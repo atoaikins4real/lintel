@@ -1,8 +1,9 @@
-import { IconGrid } from './icons.jsx';
+import { IconGrid, IconStack } from './icons.jsx';
 
 // The taskbar / dock: a start-home button plus a chip for every open app, so you
 // can switch between them or close them — the OS metaphor. Fixed to the bottom.
-export default function Dock({ openApps, current, titleFor, iconForPath, onHome, onOpen, onClose }) {
+// A recent-apps (switcher) button sits at the end.
+export default function Dock({ openApps, current, titleFor, iconForPath, onHome, onOpen, onClose, onSwitcher }) {
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 px-2 sm:px-4 pb-2 sm:pb-3 pointer-events-none">
       <div className="max-w-4xl mx-auto pointer-events-auto lx-glass rounded-2xl shadow-lift ring-1 ring-white/20 px-2 py-1.5 flex items-center gap-2"
@@ -36,6 +37,16 @@ export default function Dock({ openApps, current, titleFor, iconForPath, onHome,
             <span className="text-[11px] text-stone px-2 truncate">No apps open — tap an icon on the desktop.</span>
           )}
         </div>
+
+        <div className="h-7 w-px bg-line/70 shrink-0" />
+
+        <button type="button" onClick={onSwitcher} title="Recent apps (Ctrl/⌘+`)" aria-label="Recent apps"
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-ink/70 hover:text-ink hover:bg-panel/70 transition relative">
+          <IconStack width={19} height={19} />
+          {openApps.length > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-gold text-white text-[9px] font-semibold flex items-center justify-center">{openApps.length}</span>
+          )}
+        </button>
       </div>
     </div>
   );

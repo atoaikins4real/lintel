@@ -12,6 +12,7 @@ import CommandPalette from './CommandPalette.jsx';
 import Desktop from './Desktop.jsx';
 import AppWindow from './AppWindow.jsx';
 import Dock from './Dock.jsx';
+import AppSwitcher from './AppSwitcher.jsx';
 
 function lighten(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
@@ -62,6 +63,7 @@ export default function Layout({ children }) {
   const { settings } = useSettings();
   const [openApps, setOpenApps] = useState(loadOpen);
   const [maximized, setMaximized] = useState(false);
+  const [switcher, setSwitcher] = useState(false);
 
   // Accent token, app-wide (org brand colour first, else the role's identity).
   useEffect(() => {
@@ -114,6 +116,15 @@ export default function Layout({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
+  // Recent-apps switcher: Ctrl/Cmd+` toggles it (the Android "square" gesture).
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === '`') { e.preventDefault(); setSwitcher((s) => !s); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const closeApp = (rootA) => {
     setOpenApps((prev) => { const n = prev.filter((x) => x !== rootA); saveOpen(n); return n; });
     if (current === rootA) navigate('/');
@@ -164,8 +175,9 @@ export default function Layout({ children }) {
         </div>
       </header>
 
-      {/* Desktop (home) or an open app window. */}
-      <main className="relative z-10 pb-28">
+      {/* Desktop (home) or an open app window. The home screen owns the
+          viewport (no scroll on desktop); app windows clear the dock with padding. */}
+      <main className={`relative z-10 ${isDesktop ? '' : 'pb-28'}`}>
         {isDesktop ? (
           <div key="desktop">{children}</div>
         ) : (
@@ -191,6 +203,19 @@ export default function Layout({ children }) {
         onHome={() => navigate('/')}
         onOpen={(p) => navigate(p)}
         onClose={closeApp}
+        onSwitcher={() => setSwitcher(true)}
+      />
+
+      <AppSwitcher
+        open={switcher}
+        openApps={openApps.filter((p) => matchApp(p))}
+        current={current}
+        titleFor={titleFor}
+        iconForPath={iconForPath}
+        onOpen={(p) => navigate(p)}
+        onClose={closeApp}
+        onHome={() => navigate('/')}
+        onDismiss={() => setSwitcher(false)}
       />
     </div>
   );
